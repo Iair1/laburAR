@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import Login from './pages/Login.jsx'
 import Registro from './pages/Registro.jsx'
+import Mensajes from './pages/Mensajes.jsx';
 import './index.css'
 
 import { BrowserRouter, Routes, Route } from "react-router-dom"
@@ -14,6 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/mensajes" element={<Mensajes />} /> 
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

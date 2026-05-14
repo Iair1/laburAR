@@ -14,7 +14,7 @@ function Login() {
 
       <p>
         ¿No tienes una cuenta?{" "}
-        <span onClick={() => navigate("/registro")}>
+        <span onClick={() => navigate("/paso1")}>
           Regístrate
         </span>
       </p>

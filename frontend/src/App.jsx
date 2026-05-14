@@ -11,8 +11,18 @@ function App() {
       </div>
 
       <div className="center">
-        <button className="nav-btn">Empleos</button>
-        <button className="nav-btn">Mensajes</button>
+      <button 
+          className="nav-btn" 
+          onClick={() => navigate("/empleos")} // Navega a la página de Empleos
+        >
+          Empleos
+        </button>
+        <button 
+          className="nav-btn" 
+          onClick={() => navigate("/mensajes")}
+        >
+          Mensajes
+        </button>
         <button className="nav-btn">Botón</button>
         <input type="text" placeholder="Buscar..." />
         <button className="filter-btn">Filtro</button>

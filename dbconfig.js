@@ -1,8 +1,8 @@
 const config = {
-    host: 'ep-purple-resonance-aq89vxq0-pooler.c-8.us-east-1.aws.neon.tech',
-    database: 'neondb',
-    user: 'neondb_owner',
-    password: 'npg_w7AYJuiR1xBa',
+    host: DB_HOST,
+    database: DB_NAME,
+    user: DB_USER,
+    password: DB_PASSWORD,
     post: 5432,
     ssl: true
 }

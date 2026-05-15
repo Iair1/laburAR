@@ -1,4 +1,4 @@
-import config from "../../dbconfig.js";
+import config from "../dbconfig.js";
 import pkg from "pg";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";

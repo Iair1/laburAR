@@ -21,7 +21,7 @@ app.get("/", (__, res) => res.send("Bienvenido a laburAR"));
 
 app.get("/usuarios", UsuariosRouter);
 /*
-app.use("/aptitudes", AptitudesRouter);
+app.use("/aptitudes", AptitudesRouter); 
 app.use("/tdr", TdrRouter);
 app.use("/historial", HistorialRouter);
 app.use("/mensajes", MensajesRouter);

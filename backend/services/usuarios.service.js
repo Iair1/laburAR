@@ -7,7 +7,7 @@ const {Client} = pkg;
 const prueba = async()=>{
     const client = new Client(config);
     try{
-        return
+        return{ "HOLA": "CONEXION EXITOSA" }
     }finally{
         await client.end();
     }

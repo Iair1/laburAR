@@ -1,8 +1,8 @@
 const config = {
-    host: DB_HOST,
-    database: DB_NAME,
-    user: DB_USER,
-    password: DB_PASSWORD,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
     post: 5432,
     ssl: true
 }

@@ -19,7 +19,7 @@ app.use(cors());
 
 app.get("/", (__, res) => res.send("Bienvenido a laburAR"));
 
-app.use("/usuarios", UsuariosRouter);
+app.get("/usuarios", UsuariosRouter);
 /*
 app.use("/aptitudes", AptitudesRouter);
 app.use("/tdr", TdrRouter);

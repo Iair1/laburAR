@@ -13,4 +13,4 @@ const prueba = async(req, res)=>{
 const UsuariosController={
     prueba
 }
-export default UsuariosController;
+export default UsuariosController; 

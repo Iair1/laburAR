@@ -4,6 +4,9 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 const {Client} = pkg;
 
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+
 const prueba = async()=>{
     const client = new Client(config);
     try{
@@ -14,7 +17,52 @@ const prueba = async()=>{
     }
 }
 
+
+const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio, dni ) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const hasheada = await bcrypt.hash(contraseña, 11);
+        const result = await client.query(
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, domicilio, dni, puntuaciones_como_trabajador, puntuaciones_como_contratador) VALUES ($1, $2, $3, $4, $5, 0, 0) RETURNING id, nombre_completo, dni",
+            [nombre_completo, hasheada, localidad, domicilio, dni]
+        );
+        return result.rows[0];
+    } catch (error) {
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+const iniciarSesion = async (nombre_completo, contraseña) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query("SELECT * FROM usuarios WHERE nombre_completo = $1", [nombre_completo]);
+        if (result.rowCount === 0) {
+            throw new Error("Usuario no encontrado");
+        }
+        const dbUser = result.rows[0];
+        const contraCorrecta = await bcrypt.compare(contraseña, dbUser.contraseña);
+        if (!contraCorrecta) {
+            throw new Error("Contraseña invalida");
+        }
+        const token = jwt.sign(
+        { userid: dbUser.userid, nombre_completo: dbUser.nombre_completo, rol: dbUser.rol },
+        JWT_SECRET,
+        { expiresIn: "1h" }
+        );
+        return token;
+    } catch (error) {
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+
 const UsuariosService={
-    prueba
+    prueba,
+    crearCuenta,
+    iniciarSesion
 }
 export default UsuariosService;

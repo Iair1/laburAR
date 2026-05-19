@@ -62,7 +62,7 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
 
 const UsuariosService={
     prueba,
-    crearCuenta,
+    crearCuenta, 
     iniciarSesion
 }
 export default UsuariosService;

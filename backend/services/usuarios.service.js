@@ -29,6 +29,7 @@ const sip= async()=>{
         return result;
     }catch(error){
         console.error("Error al subir la imagen:", error);
+        throw error;
     }finally{
         await client.end();
     }

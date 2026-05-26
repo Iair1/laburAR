@@ -2,10 +2,36 @@ import config from "../dbconfig.js";
 import pkg from "pg";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import {v2 as cloudinary} from "cloudinary";
 const {Client} = pkg;
 
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+
+cloudinary.config({
+    cloud_name: 'dntg1hezf',
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+})
+
+async function subirImagen(imagen) {
+    const result = await cloudinary.uploader.upload(imagen)
+    console.log(result)
+    return result
+}
+
+const sip= async()=>{
+    
+    const client = new Client(config);
+    try{
+        await client.connect()
+        subirImagen("./descarga.png")
+    }catch(error){
+        console.error("Error al subir la imagen:", error);
+    }finally{
+        await client.end();
+    }
+}
 
 const prueba = async()=>{
     const client = new Client(config);
@@ -61,8 +87,10 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
 }
 
 const UsuariosService={
-    prueba,
     crearCuenta, 
-    iniciarSesion
+    iniciarSesion,
+
+    prueba,
+    sip
 }
 export default UsuariosService;

@@ -25,7 +25,8 @@ const sip= async()=>{
     const client = new Client(config);
     try{
         await client.connect()
-        subirImagen("./descarga.png")
+        const result = subirImagen("./descarga.png")
+        return result;
     }catch(error){
         console.error("Error al subir la imagen:", error);
     }finally{

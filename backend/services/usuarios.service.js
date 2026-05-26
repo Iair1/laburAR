@@ -25,7 +25,7 @@ const sip= async()=>{
     const client = new Client(config);
     try{
         await client.connect()
-        const result = subirImagen("./descarga.png")
+        const result = subirImagen("https://recursos.ort.edu.ar/static/archivos/banner/3418")
         return result;
     }catch(error){
         console.error("Error al subir la imagen:", error);

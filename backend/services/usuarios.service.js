@@ -15,14 +15,16 @@ cloudinary.config({
 })
 
 async function subirImagen(imagen) {
-    const result = await cloudinary.uploader.upload(imagen)
-    console.log(result)
-    const url = cloudinary.url(result.public_id, {
-        transformation: [
-            { width: 150, height: 150}
-        ]
-    })
-    return url;
+    if(imagen){
+        const result = await cloudinary.uploader.upload(imagen)
+        console.log(result)
+        const url = cloudinary.url(result.public_id, {
+            transformation: [
+                { width: 150, height: 150}
+            ]
+        })
+        return url;
+    }
 }
 
 const sip= async()=>{
@@ -56,9 +58,10 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio, d
     try {
         await client.connect();
         const hasheada = await bcrypt.hash(contraseña, 11);
+        const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
             "INSERT INTO usuarios (nombre_completo, contraseña, localidad, domicilio, dni, puntuaciones_como_trabajador, puntuaciones_como_contratador, foto_perfil) VALUES ($1, $2, $3, $4, $5, 0, 0, $6) RETURNING id, nombre_completo, dni",
-            [nombre_completo, hasheada, localidad, domicilio, dni, foto_perfil]
+            [nombre_completo, hasheada, localidad, domicilio, dni, fpurl]
         );
         return result.rows[0];
     } catch (error) {

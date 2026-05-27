@@ -9,6 +9,15 @@ const prueba = async(req, res)=>{
     }
 }
 
+const sip = async(req, res)=>{
+    try{
+        const result = await UsuariosService.sip()
+        res.status(201).json({message: "¿Imagen subida exitosamente?", result})
+    }catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const crearCuenta = async (req, res) => {
     try{
         const { nombre_completo, contraseña, localidad, domicilio, dni, foto_perfil } = req.body;
@@ -39,8 +48,10 @@ const iniciarSesion = async (req, res) => {
 
 
 const UsuariosController={
-    prueba,
     crearCuenta,
-    iniciarSesion
+    iniciarSesion,
+
+    prueba,
+    sip
 }
 export default UsuariosController; 

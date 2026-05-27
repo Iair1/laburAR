@@ -2,10 +2,45 @@ import config from "../dbconfig.js";
 import pkg from "pg";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import {v2 as cloudinary} from "cloudinary";
 const {Client} = pkg;
 
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+
+cloudinary.config({
+    cloud_name: 'dntg1hezf',
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+})
+
+async function subirImagen(imagen) {
+    if(imagen){
+        const result = await cloudinary.uploader.upload(imagen)
+        console.log(result)
+        const url = cloudinary.url(result.public_id, {
+            transformation: [
+                { width: 150, height: 150}
+            ]
+        })
+        return url;
+    }
+}
+
+const sip= async()=>{
+    
+    const client = new Client(config);
+    try{
+        await client.connect()
+        const result = subirImagen("https://recursos.ort.edu.ar/static/archivos/banner/3418")
+        return result;
+    }catch(error){
+        console.error("Error al subir la imagen:", error);
+        throw error;
+    }finally{
+        await client.end();
+    }
+}
 
 const prueba = async()=>{
     const client = new Client(config);
@@ -23,9 +58,10 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio, d
     try {
         await client.connect();
         const hasheada = await bcrypt.hash(contraseña, 11);
+        const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
             "INSERT INTO usuarios (nombre_completo, contraseña, localidad, domicilio, dni, puntuaciones_como_trabajador, puntuaciones_como_contratador, foto_perfil) VALUES ($1, $2, $3, $4, $5, 0, 0, $6) RETURNING id, nombre_completo, dni",
-            [nombre_completo, hasheada, localidad, domicilio, dni, foto_perfil]
+            [nombre_completo, hasheada, localidad, domicilio, dni, fpurl]
         );
         return result.rows[0];
     } catch (error) {
@@ -61,8 +97,10 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
 }
 
 const UsuariosService={
-    prueba,
     crearCuenta, 
-    iniciarSesion
+    iniciarSesion,
+
+    prueba,
+    sip
 }
 export default UsuariosService;

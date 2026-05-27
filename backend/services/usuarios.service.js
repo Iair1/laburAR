@@ -17,7 +17,12 @@ cloudinary.config({
 async function subirImagen(imagen) {
     const result = await cloudinary.uploader.upload(imagen)
     console.log(result)
-    return result
+    const url = cloudinary.url(result.public_id, {
+        transformation: [
+            { width: 150, height: 150}
+        ]
+    })
+    return url;
 }
 
 const sip= async()=>{

@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 
 function App() {
   const navigate = useNavigate()
-
+  
   return (
     <header className="navbar">
 
@@ -13,7 +13,7 @@ function App() {
       <div className="center">
       <button 
           className="nav-btn" 
-          onClick={() => navigate("/empleos")} // Navega a la página de Empleos
+          onClick={() => navigate("/empleos")} 
         >
           Empleos
         </button>

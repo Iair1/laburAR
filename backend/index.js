@@ -3,6 +3,11 @@ import cors from 'cors';
 import "dotenv/config";
 
 import UsuariosRouter from "./routers/usuarios.router.js"
+
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://laburar-three.vercel.app']
+  }))
+
 /*
 import AptitudesRouter from "./routers/aptitudes.router.js"
 import TdrRouter from "./routers/tdr.router.js"

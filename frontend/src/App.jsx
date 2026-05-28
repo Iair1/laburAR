@@ -1,7 +1,19 @@
 import { useNavigate } from "react-router-dom"
 
+/**/import { useEffect } from "react"/**/
+
 function App() {
   const navigate = useNavigate()
+
+/**/
+  useEffect(() => {
+    const base = import.meta.env.DEV ? '' : ''  // relativo en ambos casos
+    fetch('/usuarios/prueba')
+      .then(res => res.json())
+      .then(data => console.log(data))
+      .catch(err => console.error(err))
+  }, [])
+/**/
 
   return (
     <header className="navbar">

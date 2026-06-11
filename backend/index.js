@@ -3,6 +3,9 @@ import cors from 'cors';
 import "dotenv/config";
 
 import UsuariosRouter from "./routers/usuarios.router.js"
+
+
+
 /*
 import AptitudesRouter from "./routers/aptitudes.router.js"
 import TdrRouter from "./routers/tdr.router.js"

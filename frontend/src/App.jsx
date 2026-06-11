@@ -1,8 +1,10 @@
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom";
+
+
+
+
 
 function App() {
-  const navigate = useNavigate()
-  
   return (
     <header className="navbar">
 
@@ -41,4 +43,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

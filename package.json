@@ -2,6 +2,7 @@
     "name": "laburar",
     "type": "module",
     "version": "0.0.1",
+    "main": "backend/index.js",
     "engines": {
       "node": ">=22.12.0"
     },

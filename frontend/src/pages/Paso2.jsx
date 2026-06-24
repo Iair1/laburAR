@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useContext, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { RegistroContext } from "../context/RegistroContext";
 
 const TIPOS_TRABAJO = [
   "Electricidad", "Plomería", "Jardinería", "Pintura", "Mudanza",
@@ -95,11 +96,19 @@ function SelectorBuscable({ opciones, placeholder, valor, alCambiar, indiceZ }) 
 }
 
 export default function Paso2() {
-  const [tipoTrabajo, setTipoTrabajo] = useState("");
-  const [areaTrabajo, setAreaTrabajo] = useState("");
-  const [cobroPorHora, setCobroPorHora] = useState("");
-  const [tieneMatricula, setTieneMatricula] = useState(false);
-  const [archivoDni, setArchivoDni] = useState(null);
+  const {
+    tipoTrabajo,
+    setTipoTrabajo,
+    areaTrabajo,
+    setAreaTrabajo,
+    cobroPorHora,
+    setCobroPorHora,
+    tieneMatricula,
+    setTieneMatricula,
+    archivoDni,
+    setArchivoDni,
+  } = useContext(RegistroContext);
+
   const [error, setError] = useState("");
   const referenciaEntrada = useRef(null);
   const navegar = useNavigate();

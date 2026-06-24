@@ -1,13 +1,25 @@
-import { useState, useRef } from "react";
+import { useContext, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { RegistroContext } from "../context/RegistroContext";
+import { registrarUsuario } from "../api";
 import iconoSubir from "../assets/bxs_image-add@2x.png";
 
- 
-
 export default function Paso3() {
-  const [archivoAptitud, setArchivoAptitud] = useState(null);
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const {
+    nombre,
+    correo,
+    areaTrabajo,
+    contrasena,
+    archivoDni,
+    archivoAptitud,
+    setArchivoAptitud,
+    aceptaTerminos,
+    setAceptaTerminos,
+    limpiarDatos,
+  } = useContext(RegistroContext);
+
   const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
   const referenciaEntrada = useRef(null);
   const navegar = useNavigate();
 
@@ -16,14 +28,42 @@ export default function Paso3() {
     if (archivo) setArchivoAptitud(archivo);
   };
 
-  const manejarRegistro = () => {
+  const manejarRegistro = async () => {
     if (!aceptaTerminos) {
       setError("Tenés que aceptar los términos y condiciones para continuar.");
       return;
     }
+
     setError("");
-    
-    navegar("/");
+    setCargando(true);
+
+    try {
+      // Preparar los datos para enviar al backend
+      const datosCompletos = {
+        nombre,
+        correo,
+        areaTrabajo,
+        contrasena,
+        archivoDni,
+        archivoAptitud,
+      };
+
+      // Llamar a la función para registrar
+      const respuesta = await registrarUsuario(datosCompletos);
+
+      console.log("Registro exitoso:", respuesta);
+
+      // Limpiar los datos del contexto
+      limpiarDatos();
+
+      // Redirigir al login o dashboard
+      navegar("/login");
+    } catch (err) {
+      setError(err.message || "Error al registrar. Por favor intenta de nuevo.");
+      console.error("Error:", err);
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -83,8 +123,16 @@ export default function Paso3() {
 
         {error && <p style={estilos.textoError}>{error}</p>}
 
-        <button style={estilos.boton} onClick={manejarRegistro}>
-          Registrarme
+        <button
+          style={{
+            ...estilos.boton,
+            opacity: cargando ? 0.6 : 1,
+            cursor: cargando ? "not-allowed" : "pointer",
+          }}
+          onClick={manejarRegistro}
+          disabled={cargando}
+        >
+          {cargando ? "Registrando..." : "Registrarme"}
         </button>
       </div>
     </div>

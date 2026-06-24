@@ -1,13 +1,37 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { iniciarSesion } from "../api"; // 👈 IMPORTAR
 
 export default function Login() {
-  const [correo, setCorreo] = useState("");
+  const [nombre, setNombre] = useState(""); // 👈 CAMBIO: correo → nombre
   const [contrasena, setContrasena] = useState("");
+  const [error, setError] = useState(""); // 👈 NUEVO
+  const [cargando, setCargando] = useState(false); // 👈 NUEVO
   const navegar = useNavigate();
 
-  const manejarLogin = () => {
-    console.log({ correo, contrasena });
+  const manejarLogin = async () => {
+    // Validaciones
+    if (!nombre || !contrasena) {
+      setError("Por favor completa todos los campos");
+      return;
+    }
+
+    setError("");
+    setCargando(true);
+
+    try {
+      // 👈 Llamar al backend
+      const respuesta = await iniciarSesion(nombre, contrasena);
+      console.log("Login exitoso:", respuesta);
+
+      // Redirigir a la página de inicio
+      navegar("/");
+    } catch (err) {
+      setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
+      console.error("Error:", err);
+    } finally {
+      setCargando(false);
+    }
   };
 
   const manejarGoogle = () => {
@@ -22,7 +46,11 @@ export default function Login() {
           <h1 style={estilos.titulo}>Iniciar sesion en LABURAR</h1>
 
           
-          <button style={estilos.botonGoogle} onClick={manejarGoogle}>
+          <button 
+            style={estilos.botonGoogle} 
+            onClick={manejarGoogle}
+            disabled={cargando}
+          >
             Continuar con&nbsp;
             <svg width="52" height="18" viewBox="0 0 272 92" aria-hidden="true">
               <path fill="#4285F4" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
@@ -44,10 +72,11 @@ export default function Login() {
           
           <input
             style={estilos.entrada}
-            type="email"
-            placeholder="EMAIL/USUARIO"
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
+            type="text"
+            placeholder="NOMBRE COMPLETO" {/* 👈 CAMBIO */}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            disabled={cargando}
           />
           <input
             style={estilos.entrada}
@@ -55,11 +84,19 @@ export default function Login() {
             placeholder="CONTRASEÑA"
             value={contrasena}
             onChange={(e) => setContrasena(e.target.value)}
+            disabled={cargando}
           />
 
-          
-          <button style={estilos.boton} onClick={manejarLogin}>
-            Iniciar Sesion
+          {/* 👈 NUEVO: mostrar error */}
+          {error && <p style={estilos.textoError}>{error}</p>}
+
+          {/* 👈 CAMBIO: agregar estado de carga */}
+          <button 
+            style={{...estilos.boton, opacity: cargando ? 0.6 : 1}}
+            onClick={manejarLogin}
+            disabled={cargando}
+          >
+            {cargando ? "Iniciando sesión..." : "Iniciar Sesion"}
           </button>
 
           
@@ -171,6 +208,13 @@ const estilos = {
     boxSizing: "border-box",
     marginBottom: "16px",
     marginTop: "6px",
+  },
+  textoError: {
+    fontSize: "12px",
+    color: "#d0341a",
+    fontWeight: "600",
+    marginBottom: "10px",
+    textAlign: "center",
   },
   linkCentro: {
     textAlign: "center",

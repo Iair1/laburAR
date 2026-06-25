@@ -20,17 +20,17 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-app.get("/", (__, res) => res.send("Bienvenido a laburAR"));
+app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));
 
-app.use("/usuarios", UsuariosRouter);
+app.use("/api/usuarios", UsuariosRouter);
 /*
-app.use("/aptitudes", AptitudesRouter); 
-app.use("/tdr", TdrRouter);
-app.use("/historial", HistorialRouter);
-app.use("/mensajes", MensajesRouter);
-app.use("/solicitudes", SolicitudesRouter);
-app.use("/aplicaciones", AplicacionesRouter);
-app.use("/trabajos", TrabajosRouter);
+app.use("/api/aptitudes", AptitudesRouter); 
+app.use("/api/tdr", TdrRouter);
+app.use("/api/historial", HistorialRouter);
+app.use("/api/mensajes", MensajesRouter);
+app.use("/api/solicitudes", SolicitudesRouter);
+app.use("/api/aplicaciones", AplicacionesRouter);
+app.use("/api/trabajos", TrabajosRouter);
 */
 
 

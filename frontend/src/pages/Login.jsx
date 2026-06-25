@@ -73,7 +73,7 @@ export default function Login() {
           <input
             style={estilos.entrada}
             type="text"
-            placeholder="NOMBRE COMPLETO" {/* 👈 CAMBIO */}
+            placeholder="NOMBRE COMPLETO" /*{👈 CAMBIO }*/
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             disabled={cargando}

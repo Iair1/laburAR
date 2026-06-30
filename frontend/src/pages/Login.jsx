@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { iniciarSesion } from "../api"; // 👈 IMPORTAR
+import { iniciarSesion } from "../api"; 
 
 export default function Login() {
-  const [nombre, setNombre] = useState(""); // 👈 CAMBIO: correo → nombre
+  const [nombre, setNombre] = useState(""); 
   const [contrasena, setContrasena] = useState("");
-  const [error, setError] = useState(""); // 👈 NUEVO
-  const [cargando, setCargando] = useState(false); // 👈 NUEVO
+  const [error, setError] = useState(""); 
+  const [cargando, setCargando] = useState(false); 
   const navegar = useNavigate();
 
   const manejarLogin = async () => {
-    // Validaciones
+    
     if (!nombre || !contrasena) {
       setError("Por favor completa todos los campos");
       return;
@@ -20,11 +20,11 @@ export default function Login() {
     setCargando(true);
 
     try {
-      // 👈 Llamar al backend
+      
       const respuesta = await iniciarSesion(nombre, contrasena);
       console.log("Login exitoso:", respuesta);
 
-      // Redirigir a la página de inicio
+      
       navegar("/");
     } catch (err) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
@@ -73,7 +73,7 @@ export default function Login() {
           <input
             style={estilos.entrada}
             type="text"
-            placeholder="NOMBRE COMPLETO" /*{👈 CAMBIO }*/
+            placeholder="NOMBRE COMPLETO" 
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             disabled={cargando}
@@ -87,10 +87,10 @@ export default function Login() {
             disabled={cargando}
           />
 
-          {/* 👈 NUEVO: mostrar error */}
+          
           {error && <p style={estilos.textoError}>{error}</p>}
 
-          {/* 👈 CAMBIO: agregar estado de carga */}
+          
           <button 
             style={{...estilos.boton, opacity: cargando ? 0.6 : 1}}
             onClick={manejarLogin}

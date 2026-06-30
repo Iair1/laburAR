@@ -366,17 +366,7 @@ function PaginaInicio() {
 
           <div className="seccion-recientes">
             <p className="etiqueta-recientes">Retomá donde lo dejaste:</p>
-            <div className="tarjetas-recientes">
-              {trabajosRecientes.map((trabajo) => (
-                <div key={trabajo.id} className="tarjeta-reciente">
-                  <span className="icono-tarjeta">{trabajo.icono}</span>
-                  <div>
-                    <p className="titulo-tarjeta">{trabajo.titulo}</p>
-                    <p className="ubicacion-tarjeta">{trabajo.ubicacion}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            
           </div>
 
           <div className="seccion-categorias">

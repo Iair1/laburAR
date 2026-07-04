@@ -1,6 +1,8 @@
 // URL base del backend - CAMBIA ESTO SI TU BACKEND ESTÁ EN OTRO PUERTO
-const API_URL = "http://localhost:3000/api/usuarios";
-
+const API_URL = import.meta.env.DEV
+  ? "http://localhost:3000/api/usuarios"
+  : "/api/usuarios";                       // si no esta en local corre esto (vercel) prueba para ver si conecta bien
+  // en caso de no funcionar, cambiar lineas 2, 3, y 4 de vuelta a const API_URL = "http://localhost:3000/api/usuarios";
 /**
  * Registrar un nuevo usuario
  * @param {Object} datosUsuario - Datos del usuario

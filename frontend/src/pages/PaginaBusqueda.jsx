@@ -415,7 +415,8 @@ function PaginaBusqueda() {
     setFiltroCalificacion(0);
   };
 
-  const resultados = useMemo(() => {
+  // Filtro busqueda con useMemo para optimizar el rendimiento
+    const resultados = useMemo(() => {
     return trabajadores.filter((t) => {
       const textoCoincide =
         !consulta.trim() ||

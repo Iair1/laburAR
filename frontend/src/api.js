@@ -1,4 +1,4 @@
-// URL base del backend - CAMBIA ESTO SI TU BACKEND ESTÁ EN OTRO PUERTO
+// URL base del backend 
 const API_URL = 'http://localhost:3000/api';
 
 /**
@@ -6,6 +6,8 @@ const API_URL = 'http://localhost:3000/api';
  * @param {Object} datosUsuario - Datos del usuario
  * @returns {Promise} - Respuesta del backend
  */
+
+// traduce el frontend al formato del back
 export const registrarUsuario = async (datosUsuario) => {
   try {
     const datos = {
@@ -17,7 +19,7 @@ export const registrarUsuario = async (datosUsuario) => {
       foto_perfil: datosUsuario.archivo?.name,
     };
 
-    // ✅ AGREGAR ESTO PARA DEBUGGEAR
+    //  AGREGAR ESTO PARA DEBUGGEAR
     console.log("📤 Datos que se envían al backend:", datos);
 
     const respuesta = await fetch(`${API_URL}/usuarios/crearCuenta`, {

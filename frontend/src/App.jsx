@@ -9,6 +9,7 @@ import Paso2 from "./pages/Paso2";
 import Paso3 from "./pages/Paso3";
 import Mensajes from "./pages/Mensajes";
 import Empleos from "./pages/Empleos";
+import PaginaBusqueda from "./pages/PaginaBusqueda";
 
 function App() {
   return (
@@ -16,18 +17,14 @@ function App() {
       <Routes>
         
         <Route path="/" element={<PaginaInicio />} />
-
-        
         <Route path="/login" element={<Login />} />
-
-        
         <Route path="/paso1" element={<Paso1 />} />
         <Route path="/paso2" element={<Paso2 />} />
         <Route path="/paso3" element={<Paso3 />} />
-
-        
         <Route path="/mensajes" element={<Mensajes />} />
         <Route path="/empleos" element={<Empleos />} />
+        <Route path="/buscar" element={<PaginaBusqueda />} />
+
       </Routes>
     </RegistroProvider>
   );

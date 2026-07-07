@@ -1,5 +1,5 @@
 // URL base del backend - CAMBIA ESTO SI TU BACKEND ESTÁ EN OTRO PUERTO
-const API_URL = "http://localhost:3000/api/usuarios";
+const API_URL = 'http://localhost:3000/api';
 
 /**
  * Registrar un nuevo usuario
@@ -8,17 +8,19 @@ const API_URL = "http://localhost:3000/api/usuarios";
  */
 export const registrarUsuario = async (datosUsuario) => {
   try {
-    // Preparar los datos según lo que espera el backend
     const datos = {
       nombre_completo: datosUsuario.nombre,
       contraseña: datosUsuario.contrasena,
-      localidad: datosUsuario.areaTrabajo, // Del Paso 2
-      domicilio: datosUsuario.correo, // O puedes agregar un campo nuevo
-      dni: datosUsuario.archivoDni?.name, // Nombre del archivo
-      foto_perfil: datosUsuario.archivo?.name, // Nombre del archivo
+      localidad: datosUsuario.areaTrabajo,
+      domicilio: datosUsuario.correo,
+      dni: datosUsuario.archivoDni?.name,
+      foto_perfil: datosUsuario.archivo?.name,
     };
 
-    const respuesta = await fetch(`${API_URL}/crearCuenta`, {
+    // ✅ AGREGAR ESTO PARA DEBUGGEAR
+    console.log("📤 Datos que se envían al backend:", datos);
+
+    const respuesta = await fetch(`${API_URL}/usuarios/crearCuenta`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -27,6 +29,9 @@ export const registrarUsuario = async (datosUsuario) => {
     });
 
     const resultado = await respuesta.json();
+    
+    // ✅ AGREGAR ESTO PARA VER LA RESPUESTA DEL BACKEND
+    console.log("📥 Respuesta del backend:", resultado);
 
     if (!respuesta.ok) {
       throw new Error(resultado.message || "Error al registrar");
@@ -38,7 +43,6 @@ export const registrarUsuario = async (datosUsuario) => {
     throw error;
   }
 };
-
 /**
  * Iniciar sesión
  * @param {string} nombreCompleto - Nombre del usuario
@@ -47,7 +51,7 @@ export const registrarUsuario = async (datosUsuario) => {
  */
 export const iniciarSesion = async (nombreCompleto, contrasena) => {
   try {
-    const respuesta = await fetch(`${API_URL}/iniciarSesion`, {
+    const respuesta = await fetch(`${API_URL}/usuarios/iniciarSesion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

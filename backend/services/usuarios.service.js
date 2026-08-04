@@ -84,7 +84,7 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
             throw new Error("Contraseña invalida");
         }
         const token = jwt.sign(
-        { userid: dbUser.userid, nombre_completo: dbUser.nombre_completo, rol: dbUser.rol },
+        { userid: dbUser.id, nombre_completo: dbUser.nombre_completo},
         JWT_SECRET,
         { expiresIn: "1h" }
         );

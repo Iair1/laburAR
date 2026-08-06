@@ -71,12 +71,7 @@ async function busqueda(id) {
             ORDER BY coincidencias DESC;
             `, [id]);
 
-        const sMasComodas = []
-        for(const solicitud of sUtiles.rows){
-            sMasComodas.push(solicitud.id)
-        }
-        
-            
+        return sUtiles
     }catch(error){
         console.error("Error en la busqueda:", error);
         throw error;

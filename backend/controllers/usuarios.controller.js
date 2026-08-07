@@ -20,14 +20,49 @@ const sip = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
-        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil } = req.body;
+        const {
+            nombre_completo,
+            contraseña,
+            correo,
+            telefono,
+            rol,
+            localidad,
+            domicilio_calle,
+            domicilio_altura,
+            codigo_postal,
+            dni,
+            tipo_trabajo,
+            cobro_por_hora,
+            tiene_matricula,
+            foto_perfil,
+            foto_dni,
+            foto_aptitud,
+        } = req.body;
         if (!nombre_completo || !contraseña || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil);
+        const usuario = await UsuariosService.crearCuenta({
+            nombre_completo,
+            contraseña,
+            correo,
+            telefono,
+            rol,
+            localidad,
+            domicilio_calle,
+            domicilio_altura,
+            codigo_postal,
+            dni,
+            tipo_trabajo,
+            cobro_por_hora,
+            tiene_matricula,
+            foto_perfil,
+            foto_dni,
+            foto_aptitud,
+        });
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){
+        console.error("❌ Error en crearCuenta:", error);
         res.status(500).json({ message: error.message });
     }
 }
@@ -42,6 +77,7 @@ const iniciarSesion = async (req, res) => {
         res.status(200).json({ token: token });
     }
     catch(error){
+        console.error("❌ Error en iniciarSesion:", error);
         res.status(500).json({ message: error.message });
     }
 }

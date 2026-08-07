@@ -12,18 +12,21 @@ export const RegistroProvider = ({ children }) => {
   const [rol, setRol] = useState("trabajador");
   const [archivo, setArchivo] = useState(null);
 
-  
+  // Nuevos campos requeridos por el backend
+  const [dni, setDni] = useState("");
+  const [domicilioCalle, setDomicilioCalle] = useState("");
+  const [domicilioAltura, setDomicilioAltura] = useState("");
+  const [codigoPostal, setCodigoPostal] = useState("");
+
   const [tipoTrabajo, setTipoTrabajo] = useState("");
   const [areaTrabajo, setAreaTrabajo] = useState("");
   const [cobroPorHora, setCobroPorHora] = useState("");
   const [tieneMatricula, setTieneMatricula] = useState(false);
   const [archivoDni, setArchivoDni] = useState(null);
 
- 
   const [archivoAptitud, setArchivoAptitud] = useState(null);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
- 
   const limpiarDatos = () => {
     setNombre("");
     setCorreo("");
@@ -32,6 +35,10 @@ export const RegistroProvider = ({ children }) => {
     setRevalidar("");
     setRol("trabajador");
     setArchivo(null);
+    setDni("");
+    setDomicilioCalle("");
+    setDomicilioAltura("");
+    setCodigoPostal("");
     setTipoTrabajo("");
     setAreaTrabajo("");
     setCobroPorHora("");
@@ -57,6 +64,14 @@ export const RegistroProvider = ({ children }) => {
     setRol,
     archivo,
     setArchivo,
+    dni,
+    setDni,
+    domicilioCalle,
+    setDomicilioCalle,
+    domicilioAltura,
+    setDomicilioAltura,
+    codigoPostal,
+    setCodigoPostal,
     // Paso 2
     tipoTrabajo,
     setTipoTrabajo,

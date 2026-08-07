@@ -20,6 +20,14 @@ export default function Paso1() {
     setRol,
     archivo,
     setArchivo,
+    dni,
+    setDni,
+    domicilioCalle,
+    setDomicilioCalle,
+    domicilioAltura,
+    setDomicilioAltura,
+    codigoPostal,
+    setCodigoPostal,
   } = useContext(RegistroContext);
 
   const referenciaEntrada = useRef(null);
@@ -32,7 +40,17 @@ export default function Paso1() {
 
   const manejarSiguiente = () => {
     // Validaciones básicas
-    if (!nombre || !correo || !telefono || !contrasena || !revalidar) {
+    if (
+      !nombre ||
+      !correo ||
+      !telefono ||
+      !contrasena ||
+      !revalidar ||
+      !dni ||
+      !domicilioCalle ||
+      !domicilioAltura ||
+      !codigoPostal
+    ) {
       alert("Por favor completa todos los campos");
       return;
     }
@@ -102,6 +120,34 @@ export default function Paso1() {
           placeholder="NRO DE TELEFONO"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
+        />
+        <input
+          style={estilos.entrada}
+          type="text"
+          placeholder="DNI"
+          value={dni}
+          onChange={(e) => setDni(e.target.value)}
+        />
+        <input
+          style={estilos.entrada}
+          type="text"
+          placeholder="CALLE"
+          value={domicilioCalle}
+          onChange={(e) => setDomicilioCalle(e.target.value)}
+        />
+        <input
+          style={estilos.entrada}
+          type="text"
+          placeholder="ALTURA"
+          value={domicilioAltura}
+          onChange={(e) => setDomicilioAltura(e.target.value)}
+        />
+        <input
+          style={estilos.entrada}
+          type="text"
+          placeholder="CÓDIGO POSTAL"
+          value={codigoPostal}
+          onChange={(e) => setCodigoPostal(e.target.value)}
         />
         <input
           style={estilos.entrada}

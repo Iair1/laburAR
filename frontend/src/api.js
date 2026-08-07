@@ -3,6 +3,71 @@ const API_URL = import.meta.env.DEV
   ? "http://localhost:3000/api/usuarios"
   : "/api/usuarios";                       // si no esta en local corre esto (vercel) prueba para ver si conecta bien
   // en caso de no funcionar, cambiar lineas 2, 3, y 4 de vuelta a const API_URL = "http://localhost:3000/api/usuarios";
+
+/**
+ * Convierte un File a base64 (data URL) para poder mandárselo al backend,
+ * que espera un string que Cloudinary pueda subir (base64, URL o ruta local).
+ *
+ * Si el archivo es una imagen, la redimensiona y comprime antes de convertirla,
+ * para no mandar fotos de varios MB (celulares suelen sacar fotos de 3-8MB) y
+ * evitar que el backend rechace el request por tamaño de body.
+ *
+ * Si es un PDF (u otro archivo no-imagen), se manda tal cual en base64 sin comprimir.
+ */
+const LADO_MAXIMO_PX = 800; // suficiente para foto de perfil o verificar un DNI
+const CALIDAD_JPEG = 0.7;
+
+const archivoABase64 = (archivo) => {
+  return new Promise((resolve, reject) => {
+    if (!archivo) {
+      resolve(null);
+      return;
+    }
+
+    // Los PDF no se pueden comprimir con canvas, van tal cual
+    if (!archivo.type.startsWith("image/")) {
+      const lector = new FileReader();
+      lector.onload = () => resolve(lector.result);
+      lector.onerror = reject;
+      lector.readAsDataURL(archivo);
+      return;
+    }
+
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+
+        // Redimensionar manteniendo la proporción si excede el lado máximo
+        if (width > LADO_MAXIMO_PX || height > LADO_MAXIMO_PX) {
+          if (width > height) {
+            height = Math.round((height * LADO_MAXIMO_PX) / width);
+            width = LADO_MAXIMO_PX;
+          } else {
+            width = Math.round((width * LADO_MAXIMO_PX) / height);
+            height = LADO_MAXIMO_PX;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Re-exportamos como JPEG comprimido (más liviano que PNG)
+        const dataUrlComprimido = canvas.toDataURL("image/jpeg", CALIDAD_JPEG);
+        resolve(dataUrlComprimido);
+      };
+      img.onerror = reject;
+      img.src = lector.result;
+    };
+    lector.onerror = reject;
+    lector.readAsDataURL(archivo);
+  });
+};
+
 /**
  * Registrar un nuevo usuario
  * @param {Object} datosUsuario - Datos del usuario
@@ -12,19 +77,38 @@ const API_URL = import.meta.env.DEV
 // traduce el frontend al formato del back
 export const registrarUsuario = async (datosUsuario) => {
   try {
+    // convertimos las 3 fotos (File) a base64 (comprimidas si son imágenes) antes de armar el body
+    const [fotoBase64, fotoDniBase64, fotoAptitudBase64] = await Promise.all([
+      archivoABase64(datosUsuario.archivo),
+      archivoABase64(datosUsuario.archivoDni),
+      archivoABase64(datosUsuario.archivoAptitud),
+    ]);
+
     const datos = {
       nombre_completo: datosUsuario.nombre,
       contraseña: datosUsuario.contrasena,
+      correo: datosUsuario.correo,
+      telefono: datosUsuario.telefono,
+      rol: datosUsuario.rol,
       localidad: datosUsuario.areaTrabajo,
-      domicilio: datosUsuario.correo,
-      dni: datosUsuario.archivoDni?.name,
-      foto_perfil: datosUsuario.archivo?.name,
+      domicilio_calle: datosUsuario.domicilioCalle,
+      domicilio_altura: datosUsuario.domicilioAltura,
+      codigo_postal: datosUsuario.codigoPostal,
+      dni: datosUsuario.dni,
+      tipo_trabajo: datosUsuario.tipoTrabajo,
+      cobro_por_hora: datosUsuario.cobroPorHora,
+      tiene_matricula: datosUsuario.tieneMatricula,
+      foto_perfil: fotoBase64,
+      foto_dni: fotoDniBase64,
+      foto_aptitud: fotoAptitudBase64,
     };
 
-    //  AGREGAR ESTO PARA DEBUGGEAR
-    console.log("📤 Datos que se envían al backend:", datos);
+    console.log("📤 Datos que se envían al backend:", {
+      ...datos,
+      foto_perfil: fotoBase64 ? "[base64 omitido en el log]" : null,
+    });
 
-    const respuesta = await fetch(`${API_URL}/usuarios/crearCuenta`, {
+    const respuesta = await fetch(`${API_URL}/crearCuenta`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -33,8 +117,7 @@ export const registrarUsuario = async (datosUsuario) => {
     });
 
     const resultado = await respuesta.json();
-    
-    // ✅ AGREGAR ESTO PARA VER LA RESPUESTA DEL BACKEND
+
     console.log("📥 Respuesta del backend:", resultado);
 
     if (!respuesta.ok) {
@@ -47,6 +130,7 @@ export const registrarUsuario = async (datosUsuario) => {
     throw error;
   }
 };
+
 /**
  * Iniciar sesión
  * @param {string} nombreCompleto - Nombre del usuario
@@ -55,7 +139,7 @@ export const registrarUsuario = async (datosUsuario) => {
  */
 export const iniciarSesion = async (nombreCompleto, contrasena) => {
   try {
-    const respuesta = await fetch(`${API_URL}/usuarios/iniciarSesion`, {
+    const respuesta = await fetch(`${API_URL}/iniciarSesion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

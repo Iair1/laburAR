@@ -60,7 +60,7 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, nombre_completo, dni",
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, nombre_completo, dni",
             [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl]
         );
         return result.rows[0];
@@ -84,7 +84,7 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
             throw new Error("Contraseña invalida");
         }
         const token = jwt.sign(
-        { userid: dbUser.userid, nombre_completo: dbUser.nombre_completo, rol: dbUser.rol },
+        { userid: dbUser.id, nombre_completo: dbUser.nombre_completo},
         JWT_SECRET,
         { expiresIn: "1h" }
         );

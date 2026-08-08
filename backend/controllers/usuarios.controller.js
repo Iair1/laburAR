@@ -20,45 +20,11 @@ const sip = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
-        const {
-            nombre_completo,
-            contraseña,
-            correo,
-            telefono,
-            rol,
-            localidad,
-            domicilio_calle,
-            domicilio_altura,
-            codigo_postal,
-            dni,
-            tipo_trabajo,
-            cobro_por_hora,
-            tiene_matricula,
-            foto_perfil,
-            foto_dni,
-            foto_aptitud,
-        } = req.body;
+        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil } = req.body;
         if (!nombre_completo || !contraseña || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const usuario = await UsuariosService.crearCuenta({
-            nombre_completo,
-            contraseña,
-            correo,
-            telefono,
-            rol,
-            localidad,
-            domicilio_calle,
-            domicilio_altura,
-            codigo_postal,
-            dni,
-            tipo_trabajo,
-            cobro_por_hora,
-            tiene_matricula,
-            foto_perfil,
-            foto_dni,
-            foto_aptitud,
-        });
+        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil);
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){

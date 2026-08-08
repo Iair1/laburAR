@@ -8,7 +8,7 @@ const {Client} = pkg;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
 
-async function entregarS (solicitudes) {
+/*async function entregarS (solicitudes) {
     const sCompletas = {}
     try{
         for(const solicitud of solicitudes){
@@ -20,6 +20,38 @@ async function entregarS (solicitudes) {
         console.error("Error al entregar solicitudes completas:", error);
         throw error;
     } 
+}*/
+async function borrarSolicitud(id, solicitudid) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query("DELETE FROM solicitudes WHERE contratadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
+        if(result.rowCount === 0) {
+            throw new Error("La solicitud que desea borrar no existe o no le pertenece a este usuario");
+        }
+    } catch(error){
+        console.error("Error al borrar la solicitud:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
+
+async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid) {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(
+            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid]
+        );
+        return result.rows[0];
+    }catch(error){
+        console.error("Error en la busqueda:", error);
+        throw error;
+    }finally{
+        await client.end();
+    }
 }
 
 async function busqueda(id) {
@@ -28,7 +60,7 @@ async function busqueda(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT t.id, t.solicitud, t.periodo FROM (
+            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo FROM (
 
             SELECT s.id, s.solicitud, s.periodo
             FROM solicitudes s
@@ -66,8 +98,12 @@ async function busqueda(id) {
                 ON u.localidad = s.localidad
             WHERE u.id = $1
 
-            ) t
-            GROUP BY id, solicitud, periodo
+            ) r
+            INNER JOIN solicitudes s ON s.id = r.id
+            INNER JOIN aptitudes a ON a.id = s.aptitudid
+            LEFT JOIN aptitudes_especificas ae ON ae.id = s.aptitud_especificaid
+            LEFT JOIN tdr t ON t.id = s.trabajoid
+            GROUP BY s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo
             ORDER BY COUNT(*) DESC;
             `, [id]);
 
@@ -81,7 +117,9 @@ async function busqueda(id) {
 }
 
 const SolicitudesService = {
-    busqueda
+    busqueda,
+    subirSolicitud,
+    borrarSolicitud
 }
 
 export default SolicitudesService;

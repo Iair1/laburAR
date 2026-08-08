@@ -24,13 +24,13 @@ async function entregarS (solicitudes) {
 
 async function busqueda(id) {
     const client = new Client(config);
+    console.log(id);
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT id
-            FROM (
+            SELECT t.id, t.solicitud, t.periodo FROM (
 
-            SELECT s.id
+            SELECT s.id, s.solicitud, s.periodo
             FROM solicitudes s
             JOIN usuarios_aptitudes ua
                 ON ua.aptitudid = s.aptitudid
@@ -40,7 +40,7 @@ async function busqueda(id) {
 
             UNION ALL
 
-            SELECT s.id
+            SELECT s.id, s.solicitud, s.periodo
             FROM solicitudes s
             JOIN usuarios_aptitudes_e uae
                 ON uae.aptitud_especificaid = s.aptitud_especificaid
@@ -50,7 +50,7 @@ async function busqueda(id) {
 
             UNION ALL
 
-            SELECT s.id
+            SELECT s.id, s.solicitud, s.periodo
             FROM solicitudes s
             JOIN usuarios_tdr ut
                 ON ut.trabajoid = s.trabajoid
@@ -60,18 +60,18 @@ async function busqueda(id) {
             
             UNION ALL
             
-            SELECT s.id
+            SELECT s.id, s.solicitud, s.periodo
             FROM solicitudes s
             JOIN usuarios u
                 ON u.localidad = s.localidad
             WHERE u.id = $1
 
             ) t
-            GROUP BY id
-            ORDER BY coincidencias DESC;
+            GROUP BY id, solicitud, periodo
+            ORDER BY COUNT(*) DESC;
             `, [id]);
 
-        return sUtiles
+        return sUtiles.rows
     }catch(error){
         console.error("Error en la busqueda:", error);
         throw error;

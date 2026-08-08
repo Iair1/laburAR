@@ -7,7 +7,11 @@ const verifyToken = (req, res, next) => {
             return res.status(401).json({ message: "Token no proporcionado" });
         }
         const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev_secret");
-        req.id = decoded.id;
+        if(decoded === undefined || decoded.userid === undefined){
+            return res.status(401).json({ message: "No se pudo verificar el token" });
+        }
+        req.id = decoded.userid;
+        console.log("Id verificado correctamente: ", req.id);
         next();
     } catch (error) {
         return res.status(401).json({error: error.message});

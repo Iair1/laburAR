@@ -1,5 +1,35 @@
 import UsuariosService from "../services/usuarios.service.js";
 
+const cambiarContraseña = async(req, res)=>{
+    try{
+        const id = req.id;
+        const {contraseñaVieja, contraseñaNueva} = req.body;
+        if(!contraseñaVieja || !contraseñaNueva){
+            return res.status(400).json({ message: "Debe completar todos los campos"});
+        }
+        const result = await UsuariosService.cambiarContraseña(id, contraseñaVieja, contraseñaNueva);
+        res.status(201).json({ message: "Contraseña cambiada exitosamente", result});
+    }catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
+const cambiarDato = async(req, res)=>{
+    try{
+        const id = req.id;
+        const {dato, valor } = req.body;
+        if(!dato || !valor){
+            return res.status(400).json({ message: "Debe completar todos los campos"});
+        } else if(dato != "nombre_completo" && dato != "localidad" && dato != "direccion_calle" && dato != "direccion_altura" && dato != "codigo_postal" && dato != "dni" && dato != "foto_perfil"){
+            return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
+        }
+        const result = await UsuariosService.cambiarDato(id, dato, valor);
+        res.status(201).json({ message: "Dato cambiado exitosamente", result});
+    }catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const prueba = async(req, res)=>{
     try{
         const result = await UsuariosService.prueba();
@@ -52,7 +82,8 @@ const iniciarSesion = async (req, res) => {
 const UsuariosController={
     crearCuenta,
     iniciarSesion,
-
+    cambiarDato,
+    cambiarContraseña,
     prueba,
     sip
 }

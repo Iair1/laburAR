@@ -60,52 +60,31 @@ async function busqueda(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo FROM (
-
-            SELECT s.id, s.solicitud, s.periodo
-            FROM solicitudes s
-            JOIN usuarios_aptitudes ua
-                ON ua.aptitudid = s.aptitudid
-            JOIN usuarios u
-                ON u.id = ua.userid
-            WHERE u.id = $1 AND u.localidad = s.localidad
-
-            UNION ALL
-
-            SELECT s.id, s.solicitud, s.periodo
-            FROM solicitudes s
-            JOIN usuarios_aptitudes_e uae
-                ON uae.aptitud_especificaid = s.aptitud_especificaid
-            JOIN usuarios u
-                ON u.id = uae.userid
-            WHERE u.id = $1 AND u.localidad = s.localidad
-
-            UNION ALL
-
-            SELECT s.id, s.solicitud, s.periodo
-            FROM solicitudes s
-            JOIN usuarios_tdr ut
-                ON ut.trabajoid = s.trabajoid
-            JOIN usuarios u
-                ON u.id = ut.userid
-            WHERE u.id = $1 AND u.localidad = s.localidad
-            
-            UNION ALL
-            
-            SELECT s.id, s.solicitud, s.periodo
+            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo,
+                (
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_aptitudes ua
+                        WHERE ua.userid = $1 AND ua.aptitudid = s.aptitudid AND s.aptitudid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_aptitudes_e uae
+                        WHERE uae.userid = $1 AND uae.aptitud_especificaid = s.aptitud_especificaid AND s.aptitud_especificaid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_tdr ut
+                        WHERE ut.userid = $1 AND ut.trabajoid = s.trabajoid AND s.trabajoid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                ) AS coincidencias
             FROM solicitudes s
             JOIN usuarios u
-                ON u.localidad = s.localidad
-            WHERE u.id = $1
-
-            ) r
-            INNER JOIN solicitudes s ON s.id = r.id
-            INNER JOIN aptitudes a ON a.id = s.aptitudid
-            LEFT JOIN aptitudes_especificas ae ON ae.id = s.aptitud_especificaid
-            LEFT JOIN tdr t ON t.id = s.trabajoid
-            GROUP BY s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo
-            ORDER BY COUNT(*) DESC;
-            `, [id]);
+                ON u.id = $1 AND u.localidad = s.localidad
+            JOIN aptitudes a
+                ON a.id = s.aptitudid
+            LEFT JOIN aptitudes_especificas ae
+                ON ae.id = s.aptitud_especificaid
+            LEFT JOIN tdr t
+                ON t.id = s.trabajoid
+            ORDER BY coincidencias DESC;`, [id]);
 
         return sUtiles.rows
     }catch(error){

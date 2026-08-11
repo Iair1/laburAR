@@ -8,5 +8,7 @@ router.get("/prueba", UsuariosController.prueba);
 router.get("/sip", UsuariosController.sip);
 router.post("/crearCuenta", UsuariosController.crearCuenta);
 router.post("/iniciarSesion", UsuariosController.iniciarSesion);
+router.put("/cambiarDato", verifyToken, UsuariosController.cambiarDato);
+router.put("/cambiarContrasena", verifyToken, UsuariosController.cambiarContraseña);
 
 export default router;

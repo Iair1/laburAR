@@ -8,11 +8,53 @@ const {Client} = pkg;
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
+async function cambiarContraseña(id, contraseñaVieja, contraseñaNueva) {
+    const client = new Client(config);
+    await client.connect();
+    try{
+        const user = await client.query("SELECT * FROM usuarios WHERE id = $1", [id]);
+        if (user.rowCount === 0) {
+            throw new Error("Usuario no encontrado");
+        }
+        const dbUser = user.rows[0];
+        const contraCorrecta = await bcrypt.compare(contraseñaVieja, dbUser.contraseña);
+        if (!contraCorrecta) {
+            throw new Error("Contraseña invalida");
+        }
+        const hasheada = await bcrypt.hash(contraseñaNueva, 11);
+        const result = await client.query("UPDATE usuarios SET contraseña = $1 WHERE id = $2", [hasheada, id]);
+        return result;
+    } catch(error){
+        console.error("Error al cambiar contraseña:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
+
 cloudinary.config({
     cloud_name: 'dntg1hezf',
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 })
+
+async function cambiarDato(id, dato, valor) {
+    const client = new Client(config);
+    await client.connect();
+    try{
+        if(dato === "foto_perfil"){
+            valor = await subirImagen(valor);
+        }
+        console.log("Dato a cambiar:", dato, "Valor nuevo:", valor);
+        const result = await client.query(`UPDATE usuarios SET ${dato} = $1 WHERE id = $2`, [valor, id]);
+        return result;
+    } catch(error){
+        console.error("Error al cambiar dato:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
 
 async function subirImagen(imagen) {
     if(imagen){
@@ -99,8 +141,9 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
 const UsuariosService={
     crearCuenta, 
     iniciarSesion,
-
+    cambiarDato,
     prueba,
-    sip
+    sip,
+    cambiarContraseña
 }
 export default UsuariosService;

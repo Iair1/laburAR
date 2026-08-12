@@ -17,13 +17,17 @@ const cambiarContraseña = async(req, res)=>{
 const cambiarDato = async(req, res)=>{
     try{
         const id = req.id;
-        const {dato, valor } = req.body;
-        if(!dato || !valor){
+        const {inf} = req.body;
+        if(!inf){
             return res.status(400).json({ message: "Debe completar todos los campos"});
-        } else if(dato != "nombre_completo" && dato != "localidad" && dato != "direccion_calle" && dato != "direccion_altura" && dato != "codigo_postal" && dato != "dni" && dato != "foto_perfil"){
-            return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
         }
-        const result = await UsuariosService.cambiarDato(id, dato, valor);
+        console.log(inf);
+        for(let i = 0; i < inf.length; i++){
+            if(inf[i].dato != "nombre_completo" && inf[i].dato != "localidad" && inf[i].dato != "direccion_calle" && inf[i].dato != "direccion_altura" && inf[i].dato != "codigo_postal" && inf[i].dato != "dni" && inf[i].dato != "foto_perfil"){
+                return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
+            }
+        }
+        const result = await UsuariosService.cambiarDato(id, inf);
         res.status(201).json({ message: "Dato cambiado exitosamente", result});
     }catch(error){
         res.status(500).json({ message: error.message });

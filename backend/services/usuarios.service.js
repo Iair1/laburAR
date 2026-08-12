@@ -38,15 +38,20 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 })
 
-async function cambiarDato(id, dato, valor) {
+async function cambiarDato(id, inf) {
     const client = new Client(config);
     await client.connect();
     try{
-        if(dato === "foto_perfil"){
-            valor = await subirImagen(valor);
+        let a = ""
+        for(let i = 0; i < inf.length; i++){
+            if(inf[i].dato==="foto_perfil"){
+                inf[i].valor = await subirImagen(inf[i].valor);
+            }
+            a = a + `${inf[i].dato} = ${inf[i].valor}, `;
         }
-        console.log("Dato a cambiar:", dato, "Valor nuevo:", valor);
-        const result = await client.query(`UPDATE usuarios SET ${dato} = $1 WHERE id = $2`, [valor, id]);
+        a = a.slice(0, -2);
+        console.log(a);
+        const result = await client.query(`UPDATE usuarios SET ${a} WHERE id = $1`, [id]);
         return result;
     } catch(error){
         console.error("Error al cambiar dato:", error);

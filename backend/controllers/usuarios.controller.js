@@ -23,7 +23,7 @@ const cambiarDato = async(req, res)=>{
         }
         console.log(inf);
         for(let i = 0; i < inf.length; i++){
-            if(inf[i].dato != "nombre_completo" && inf[i].dato != "localidad" && inf[i].dato != "direccion_calle" && inf[i].dato != "direccion_altura" && inf[i].dato != "codigo_postal" && inf[i].dato != "dni" && inf[i].dato != "foto_perfil"){
+            if(inf[i].dato != "nombre_completo" && inf[i].dato != "localidad" && inf[i].dato != "direccion_calle" && inf[i].dato != "direccion_altura" && inf[i].dato != "codigo_postal" && inf[i].dato != "dni" && inf[i].dato != "foto_perfil" && inf[i].dato != "sombreMi"){
                 return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
             }
         }

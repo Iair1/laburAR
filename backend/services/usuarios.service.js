@@ -133,7 +133,7 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
         const token = jwt.sign(
         { userid: dbUser.id, nombre_completo: dbUser.nombre_completo},
         JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "3h" }
         );
         return token;
     } catch (error) {

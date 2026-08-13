@@ -37,13 +37,13 @@ async function borrarSolicitud(id, solicitudid) {
     }
 }
 
-async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid) {
+async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana) {
     const client = new Client(config);
     try {
         await client.connect();
         const result = await client.query(
-            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid]
+            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana]
         );
         return result.rows[0];
     }catch(error){

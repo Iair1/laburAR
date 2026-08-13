@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import BarraNav from "../componentes/BarraNav";
+import { obtenerPublicaciones } from "../sesion";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -9,40 +11,6 @@ const estilos = `
     background: #f5f5f3;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
-
-  .barra-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    height: 56px;
-    background: #e8e8e6;
-    border-bottom: 1px solid #d4d4d0;
-  }
-  .logotipo {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #1a1a1a;
-    cursor: pointer;
-    user-select: none;
-  }
-  .nav-derecha { display: flex; align-items: center; gap: 0.25rem; }
-  .enlace-nav {
-    background: none;
-    border: none;
-    padding: 0.4rem 0.75rem;
-    font-size: 0.82rem;
-    color: #333;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-  .enlace-nav:hover { background: #d6d6d3; }
-  .icono-usuario { background: none; border: none; cursor: pointer; padding: 0; margin-left: 0.5rem; }
-  .icono-usuario img { width: 32px; height: 32px; opacity: 0.65; transition: opacity 0.15s; }
-  .icono-usuario:hover img { opacity: 1; }
 
   .barra-busqueda-superior {
     display: flex;
@@ -192,78 +160,98 @@ const estilos = `
   }
   .resumen-resultados strong { color: #1a1a1a; }
 
-  .lista-tarjetas { display: flex; flex-direction: column; gap: 12px; }
+  /* Grilla de tarjetas cuadradas, estilo marketplace */
+  .lista-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
 
   .tarjeta-trabajador {
     display: flex;
-    gap: 14px;
+    flex-direction: column;
     background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    padding: 16px;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    border: 1px solid #e2e2df;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
   }
   .tarjeta-trabajador:hover {
     border-color: #bbb;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
   }
-  .avatar-trabajador {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: #e8e8e6;
+  .imagen-trabajador {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #eef0ee;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
-    flex-shrink: 0;
+    font-size: 3rem;
+    overflow: hidden;
   }
-  .info-trabajador { flex: 1; min-width: 0; }
-  .fila-encabezado-trabajador {
+  .imagen-trabajador img { width: 100%; height: 100%; object-fit: cover; }
+  .insignia-verificado {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #1a2332;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 999px;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
   }
-  .nombre-trabajador { font-size: 1rem; font-weight: 700; color: #1a1a1a; }
-  .precio-trabajador { font-size: 0.9rem; font-weight: 700; color: #1a1a1a; white-space: nowrap; }
-  .precio-trabajador span { font-size: 0.72rem; font-weight: 500; color: #777; }
+
+  .info-trabajador { flex: 1; min-width: 0; padding: 12px 14px 14px; display: flex; flex-direction: column; }
+  .nombre-trabajador { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .categoria-trabajador {
     display: inline-block;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: #555;
     background: #efefed;
     border-radius: 5px;
     padding: 2px 7px;
-    margin: 4px 0 6px;
+    margin: 5px 0 6px;
+    width: fit-content;
   }
   .fila-meta-trabajador {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 0.78rem;
+    gap: 10px;
+    font-size: 0.74rem;
     color: #666;
     margin-bottom: 6px;
+    flex-wrap: wrap;
   }
   .calificacion-trabajador { display: flex; align-items: center; gap: 4px; color: #b8860b; font-weight: 600; }
-  .calificacion-trabajador svg { width: 13px; height: 13px; }
+  .calificacion-trabajador svg { width: 12px; height: 12px; }
   .zona-trabajador { display: flex; align-items: center; gap: 4px; }
-  .descripcion-trabajador { font-size: 0.82rem; color: #555; line-height: 1.4; }
-  .acciones-tarjeta { display: flex; gap: 8px; margin-top: 10px; }
-  .boton-ver-perfil, .boton-contactar {
-    font-size: 0.78rem;
-    font-weight: 600;
+  .precio-trabajador { font-size: 0.88rem; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
+  .precio-trabajador span { font-size: 0.68rem; font-weight: 500; color: #777; }
+
+  .acciones-tarjeta { display: flex; gap: 8px; margin-top: auto; }
+  .boton-ver-perfil, .boton-agendar {
+    flex: 1;
+    font-size: 0.74rem;
+    font-weight: 700;
     border-radius: 7px;
-    padding: 6px 12px;
+    padding: 8px 10px;
     cursor: pointer;
     transition: background 0.15s;
+    border: none;
+    text-align: center;
   }
   .boton-ver-perfil { background: #fff; border: 1px solid #ccc; color: #333; }
   .boton-ver-perfil:hover { background: #f0f0ee; }
-  .boton-contactar { background: #555; border: 1px solid #555; color: #fff; }
-  .boton-contactar:hover { background: #333; }
+  .boton-agendar { background: #1a2332; color: #fff; }
+  .boton-agendar:hover { background: #0f1621; }
 
   .sin-resultados {
     text-align: center;
@@ -272,15 +260,31 @@ const estilos = `
     font-size: 0.9rem;
   }
 
+  .toast-agendar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a2332;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    z-index: 100;
+  }
+
   @media (max-width: 800px) {
     .layout-resultados { flex-direction: column; }
     .panel-filtros { width: 100%; position: static; }
     .barra-busqueda-superior { flex-wrap: wrap; }
+    .lista-tarjetas { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   }
 `;
 
 // --- Datos de trabajadores cargados a mano (mock, sin backend) ---
-const trabajadores = [
+const trabajadoresMock = [
   {
     id: 1,
     nombre: "Marcos Gimenez",
@@ -379,8 +383,6 @@ const trabajadores = [
   },
 ];
 
-const zonasDisponibles = [...new Set(trabajadores.map((t) => t.zona))].sort();
-
 function Estrella() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -402,6 +404,21 @@ function PaginaBusqueda() {
   const [precioMax, setPrecioMax] = useState("");
   const [filtroZona, setFiltroZona] = useState("");
   const [filtroCalificacion, setFiltroCalificacion] = useState(0);
+  const [toast, setToast] = useState("");
+
+  // Publicaciones reales creadas desde "Ofrecer servicios" (localStorage)
+  const [publicaciones, setPublicaciones] = useState(obtenerPublicaciones());
+  useEffect(() => {
+    const actualizar = () => setPublicaciones(obtenerPublicaciones());
+    window.addEventListener("laburar-publicaciones-cambio", actualizar);
+    return () => window.removeEventListener("laburar-publicaciones-cambio", actualizar);
+  }, []);
+
+  // Las publicaciones reales se muestran primero
+  const trabajadores = useMemo(
+    () => [...publicaciones, ...trabajadoresMock],
+    [publicaciones]
+  );
 
   const manejarTecla = (e) => {
     if (e.key === "Enter") e.target.blur();
@@ -415,14 +432,23 @@ function PaginaBusqueda() {
     setFiltroCalificacion(0);
   };
 
-  // Filtro busqueda con useMemo para optimizar el rendimiento
-    const resultados = useMemo(() => {
+  const manejarAgendar = (t) => {
+    setToast(`Vas a poder agendar con ${t.nombre} muy pronto 🙌`);
+    setTimeout(() => setToast(""), 2500);
+  };
+
+  const zonasDisponibles = useMemo(
+    () => [...new Set(trabajadores.map((t) => t.zona))].sort(),
+    [trabajadores]
+  );
+
+  const resultados = useMemo(() => {
     return trabajadores.filter((t) => {
       const textoCoincide =
         !consulta.trim() ||
         t.nombre.toLowerCase().includes(consulta.toLowerCase()) ||
         t.etiquetaCategoria.toLowerCase().includes(consulta.toLowerCase()) ||
-        t.descripcion.toLowerCase().includes(consulta.toLowerCase());
+        (t.descripcion || "").toLowerCase().includes(consulta.toLowerCase());
 
       const categoriaCoincide = !filtroCategoria || t.categoria === filtroCategoria;
       const zonaCoincide = !filtroZona || t.zona === filtroZona;
@@ -439,27 +465,14 @@ function PaginaBusqueda() {
         calificacionCoincide
       );
     });
-  }, [consulta, filtroCategoria, filtroZona, precioMin, precioMax, filtroCalificacion]);
+  }, [trabajadores, consulta, filtroCategoria, filtroZona, precioMin, precioMax, filtroCalificacion]);
 
   return (
     <>
       <style>{estilos}</style>
 
       <div className="pagina-busqueda">
-        <header className="barra-nav">
-          <div className="logotipo" onClick={() => navegar("/")}>laburAR</div>
-          <nav className="nav-derecha">
-            <button className="enlace-nav" onClick={() => navegar("/paso1")}>
-              Registrarme como trabajador
-            </button>
-            <button className="enlace-nav" onClick={() => navegar("/mensajes")}>
-              Bandeja de entrada
-            </button>
-            <button className="icono-usuario" onClick={() => navegar("/login")} aria-label="Iniciar sesión">
-              <img src="https://cdn-icons-png.flaticon.com/128/310/310869.png" alt="Iniciar sesión" />
-            </button>
-          </nav>
-        </header>
+        <BarraNav />
 
         <div className="barra-busqueda-superior">
           <div className="campo-busqueda-superior">
@@ -578,28 +591,34 @@ function PaginaBusqueda() {
               <div className="lista-tarjetas">
                 {resultados.map((t) => (
                   <div className="tarjeta-trabajador" key={t.id}>
-                    <div className="avatar-trabajador">{t.avatar}</div>
+                    <div className="imagen-trabajador">
+                      {t.fotoPerfilURL ? (
+                        <img src={t.fotoPerfilURL} alt={t.nombre} />
+                      ) : (
+                        t.avatar
+                      )}
+                      {t.verificado && (
+                        <span className="insignia-verificado">✓ Verificado</span>
+                      )}
+                    </div>
                     <div className="info-trabajador">
-                      <div className="fila-encabezado-trabajador">
-                        <span className="nombre-trabajador">{t.nombre}</span>
-                        <span className="precio-trabajador">
-                          ${t.precio.toLocaleString("es-AR")} <span>/ trabajo</span>
-                        </span>
-                      </div>
+                      <span className="nombre-trabajador">{t.nombre}</span>
                       <span className="categoria-trabajador">{t.etiquetaCategoria}</span>
                       <div className="fila-meta-trabajador">
                         <span className="calificacion-trabajador">
-                          <Estrella /> {t.calificacion.toFixed(1)} ({t.reseñas})
+                          <Estrella /> {t.reseñas > 0 ? t.calificacion.toFixed(1) : "Nuevo"} {t.reseñas > 0 && `(${t.reseñas})`}
                         </span>
                         <span className="zona-trabajador">📍 {t.zona}</span>
                       </div>
-                      <p className="descripcion-trabajador">{t.descripcion}</p>
+                      <div className="precio-trabajador">
+                        ${t.precio.toLocaleString("es-AR")} <span>/ hora</span>
+                      </div>
                       <div className="acciones-tarjeta">
                         <button className="boton-ver-perfil" onClick={() => navegar(`/trabajador/${t.id}`)}>
                           Ver perfil
                         </button>
-                        <button className="boton-contactar" onClick={() => navegar("/mensajes")}>
-                          Contactar
+                        <button className="boton-agendar" onClick={() => manejarAgendar(t)}>
+                          Agendar
                         </button>
                       </div>
                     </div>
@@ -609,6 +628,8 @@ function PaginaBusqueda() {
             )}
           </div>
         </div>
+
+        {toast && <div className="toast-agendar">{toast}</div>}
       </div>
     </>
   );

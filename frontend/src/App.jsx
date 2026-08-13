@@ -10,6 +10,7 @@ import Paso3 from "./pages/Paso3";
 import Mensajes from "./pages/Mensajes";
 import Empleos from "./pages/Empleos";
 import PaginaBusqueda from "./pages/PaginaBusqueda";
+import OfrecerServicios from "./pages/OfrecerServicios"
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/mensajes" element={<Mensajes />} />
         <Route path="/empleos" element={<Empleos />} />
         <Route path="/buscar" element={<PaginaBusqueda />} />
+        <Route path="/ofrecer-servicios" element={<OfrecerServicios />} />
 
       </Routes>
     </RegistroProvider>

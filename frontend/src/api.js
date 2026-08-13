@@ -1,9 +1,6 @@
-// URL base del backend - CAMBIA ESTO SI TU BACKEND ESTÁ EN OTRO PUERTO
 const API_URL = import.meta.env.DEV
-  ? "http://localhost:3000/api/usuarios"
-  : "/api/usuarios";                       // si no esta en local corre esto (vercel) prueba para ver si conecta bien
-  // en caso de no funcionar, cambiar lineas 2, 3, y 4 de vuelta a const API_URL = "http://localhost:3000/api/usuarios";
-
+  ? "https://laburar-three.vercel.app/api/usuarios"
+  : "/api/usuarios";
 /**
  * Convierte un File a base64 (data URL) para poder mandárselo al backend,
  * que espera un string que Cloudinary pueda subir (base64, URL o ruta local).
@@ -90,7 +87,7 @@ export const registrarUsuario = async (datosUsuario) => {
       correo: datosUsuario.correo,
       telefono: datosUsuario.telefono,
       rol: datosUsuario.rol,
-      localidad: datosUsuario.areaTrabajo,
+      localidad: datosUsuario.localidad,
       domicilio_calle: datosUsuario.domicilioCalle,
       domicilio_altura: datosUsuario.domicilioAltura,
       codigo_postal: datosUsuario.codigoPostal,

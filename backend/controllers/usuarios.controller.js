@@ -22,9 +22,20 @@ const cambiarDato = async(req, res)=>{
             return res.status(400).json({ message: "Debe completar todos los campos"});
         }
         console.log(inf);
-        for(let i = 0; i < inf.length; i++){
-            if(inf[i].dato != "nombre_completo" && inf[i].dato != "localidad" && inf[i].dato != "direccion_calle" && inf[i].dato != "direccion_altura" && inf[i].dato != "codigo_postal" && inf[i].dato != "dni" && inf[i].dato != "foto_perfil" && inf[i].dato != "sombreMi"){
-                return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
+        const allowed = new Set([
+            "disponibilidad",
+            "nombre_completo",
+            "localidad",
+            "direccion_calle",
+            "direccion_altura",
+            "codigo_postal",
+            "dni",
+            "foto_perfil",
+            "sombreMi",
+        ]);
+        for (const item of inf) {
+            if (!allowed.has(item.dato)) {
+                return res.status(400).json({ message: "No se puede cambiar, ingrese un dato válido" });
             }
         }
         const result = await UsuariosService.cambiarDato(id, inf);
@@ -54,11 +65,11 @@ const sip = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
-        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil } = req.body;
+        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad} = req.body;
         if (!nombre_completo || !contraseña || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil);
+        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad);
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){

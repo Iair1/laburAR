@@ -1,12 +1,6 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import {v2 as cloudinary} from "cloudinary";
 const {Client} = pkg;
-
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
-
 
 /*async function entregarS (solicitudes) {
     const sCompletas = {}

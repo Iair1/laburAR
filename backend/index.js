@@ -5,6 +5,7 @@ import "dotenv/config";
 import UsuariosRouter from "./routers/usuarios.router.js"
 import SolicitudesRouter from "./routers/solicitudes.router.js"
 import AplicacionesRouter from "./routers/aplicaciones.router.js"
+import Usuarios_AptitudesRouter from "./routers/usuarios_aptitudes.router.js"
 
 
 
@@ -25,6 +26,7 @@ app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));
 app.use("/api/usuarios", UsuariosRouter);
 app.use("/api/solicitudes", SolicitudesRouter);
 app.use("/api/aplicaciones", AplicacionesRouter);
+app.use("/api/usuarios_aptitudes", Usuarios_AptitudesRouter); 
 /*
 app.use("/api/aptitudes", AptitudesRouter); 
 app.use("/api/tdr", TdrRouter);

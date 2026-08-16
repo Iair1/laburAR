@@ -28,7 +28,43 @@ async function nuevaAptitud(id, aptitud, matricula_numero, matricula_dni, matric
     }
 }
 
+async function eliminarAptitud(id, aptitud) {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+          DELETE FROM usuarios_aptitudes
+          WHERE userid = $1 AND aptitudid = (SELECT id FROM aptitudes WHERE aptitud = $2)
+          RETURNING *;
+        `, [id, aptitud]);
+        return result.rows[0];
+    } catch (error) {
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+
+async function misAptitudes(id) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT a.aptitud, a.id
+            FROM aptitudes a INNER JOIN usuarios_aptitudes ua ON a.id = ua.aptitudid
+            WHERE ua.userid = $1;
+        `, [id]);
+        return result.rows;
+    } catch (error) {
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+
 const Usuarios_AptitudesService = {
-    nuevaAptitud
+    nuevaAptitud,
+    eliminarAptitud,
+    misAptitudes
 };
 export default Usuarios_AptitudesService;

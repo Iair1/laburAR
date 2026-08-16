@@ -6,6 +6,7 @@ import UsuariosRouter from "./routers/usuarios.router.js"
 import SolicitudesRouter from "./routers/solicitudes.router.js"
 import AplicacionesRouter from "./routers/aplicaciones.router.js"
 import Usuarios_AptitudesRouter from "./routers/usuarios_aptitudes.router.js"
+import Usuarios_Aptitudes_EspecificasRouter from "./routers/usuarios_aptitudes_especificas.router.js"
 
 
 
@@ -27,6 +28,7 @@ app.use("/api/usuarios", UsuariosRouter);
 app.use("/api/solicitudes", SolicitudesRouter);
 app.use("/api/aplicaciones", AplicacionesRouter);
 app.use("/api/usuarios_aptitudes", Usuarios_AptitudesRouter); 
+app.use("/api/usuarios_aptitudes_especificas", Usuarios_Aptitudes_EspecificasRouter);
 /*
 app.use("/api/aptitudes", AptitudesRouter); 
 app.use("/api/tdr", TdrRouter);

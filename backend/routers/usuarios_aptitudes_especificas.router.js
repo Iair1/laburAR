@@ -5,5 +5,7 @@ import {verifyToken} from "../auth.middleware.js";
 const router = Router();
 
 router.post("/nuevaAptitudEspecifica", verifyToken, Usuarios_Aptitudes_EspecificasController.nuevaAptitudEspecifica);
+router.get("/misAptitudesEspecificas", verifyToken, Usuarios_Aptitudes_EspecificasController.misAptitudesEspecificas);
+router.delete("/eliminarAptitudEspecifica", verifyToken, Usuarios_Aptitudes_EspecificasController.eliminarAptitudEspecifica)
 
 export default router;

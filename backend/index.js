@@ -26,6 +26,20 @@ app.use(cors());
 
 app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));
 
+
+import PruebaChatService from "./services/pruebaChat.service.js"
+const pruebaChat= async(req, res)=>{
+    try{
+        const {prompt} = req.body
+        const result = await PruebaChatService.probar(prompt)
+        res.status(201).json({message: "Mensaje exitoso", result})
+    }catch(error){
+        res.status(500).json({message: error.message})
+    }
+}
+app.post("/api/pruebaChat", pruebaChat)
+
+
 app.use("/api/usuarios", UsuariosRouter);
 app.use("/api/solicitudes", SolicitudesRouter);
 app.use("/api/aplicaciones", AplicacionesRouter);
@@ -40,6 +54,7 @@ app.use("/api/historial", HistorialRouter);
 app.use("/api/mensajes", MensajesRouter);
 app.use("/api/trabajos", TrabajosRouter);
 */
+
 
 
 

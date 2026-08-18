@@ -36,7 +36,8 @@ async function misAptitudesEspecificas(id){
     const client = new Client(config);
     try{
         await client.connect();
-        const result = await client.query(`SELECT uae.* ae.aptitud_especifica, a.aptitud 
+        console.log("ACA ACA")
+        const result = await client.query(`SELECT uae.*, ae.aptitud_especifica, a.aptitud 
             FROM usuarios_aptitudes_especificas uae
             INNER JOIN aptitudes_especificas ae
             ON uae.aptitud_especificaid = ae.id

@@ -5,6 +5,6 @@ import {verifyToken} from "../auth.middleware.js";
 const router = Router();
 
 router.post("/mandarMensaje", verifyToken, MensajesController.mandarMensaje)
-router.post("conseguirChat", verifyToken, MensajesController.conseguirChat)
 router.delete("borrarMensaje", verifyToken, MensajesController.borrarMensaje)
-router.get("conseguirChats", verifyToken, MensajesController.conseguirChats)
+router.post("conseguirChat", verifyToken, MensajesController.conseguirChat)
+router.get("misChats", verifyToken, MensajesController.conseguirChats)

@@ -93,6 +93,16 @@ const iniciarSesion = async (req, res) => {
     }
 }
 
+const buscarUsuarios=async(req, res)=>{
+    const id = req.id //hace falta?
+    const {zonas} = req.body
+    try{
+        const result = await UsuariosService.buscarUsuarios(id, zonas)
+        res.status(201).json(result)
+    }catch(error){
+        throw error
+    }
+}
 
 const UsuariosController={
     crearCuenta,
@@ -100,6 +110,7 @@ const UsuariosController={
     cambiarDato,
     cambiarContraseña,
     prueba,
-    sip
+    sip,
+    buscarUsuarios
 }
 export default UsuariosController; 

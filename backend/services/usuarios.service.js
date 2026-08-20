@@ -143,12 +143,15 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
     }
 }
 
+const buscarUsuarios = async(id, zonas)=>{}
+
 const UsuariosService={
     crearCuenta, 
     iniciarSesion,
     cambiarDato,
     prueba,
     sip,
-    cambiarContraseña
+    cambiarContraseña,
+    buscarUsuarios
 }
 export default UsuariosService;

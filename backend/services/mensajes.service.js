@@ -6,6 +6,7 @@ async function mandarMensaje(id, receptor, texto) {
     const client = new Client(config);
     try {
         await client.connect();
+        console.log("emisor id = " + id)
         const result =  await client.query("INSERT INTO mensajes (emisorid, receptorid, contenido) VALUES ($1, $2, $3)", [id, receptor, texto]);
         return result.rows[0]
     }catch(error){
@@ -51,8 +52,8 @@ async function misChats(id) {
         await client.connect();
         const result = await client.query(`SELECT DISTINCT
                 u.id,
-                u.nombre,
-                u.foto
+                u.nombre_completo,
+                u.foto_perfil
             FROM mensajes m
             JOIN usuarios u
                 ON u.id = CASE

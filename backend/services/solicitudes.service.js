@@ -31,13 +31,13 @@ async function borrarSolicitud(id, solicitudid) {
     }
 }
 
-async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana) {
+async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid) {
     const client = new Client(config);
     try {
         await client.connect();
         const result = await client.query(
-            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
-            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana]
+            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid]
         );
         return result.rows[0];
     }catch(error){
@@ -71,7 +71,7 @@ async function busqueda(id) {
                 ) AS coincidencias
             FROM solicitudes s
             JOIN usuarios u
-                ON u.id = $1 AND u.localidad = s.localidad
+                ON u.id = $1 AND u.localidad = s.localidad AND u.id=s.trabajadorid
             JOIN aptitudes a
                 ON a.id = s.aptitudid
             LEFT JOIN aptitudes_especificas ae

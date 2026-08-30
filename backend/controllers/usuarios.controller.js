@@ -94,7 +94,7 @@ const iniciarSesion = async (req, res) => {
 }
 
 const buscarUsuarios=async(req, res)=>{
-    const id = req.id //hace falta?
+    const id = req.id //hace falta? si
     const {zonas} = req.body
     try{
         const result = await UsuariosService.buscarUsuarios(id, zonas)

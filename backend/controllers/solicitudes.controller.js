@@ -16,12 +16,12 @@ const borrarSolicitud = async(req, res)=>{
 
 const subirSolicitud = async(req, res)=>{
     const id = req.id;
-    const { solicitud, aptitudid, aptitud_especificaid, trabajoid, periodo, localidad, diassemana } = req.body;
-    if(!solicitud || !aptitudid || !periodo || !localidad) {
+    const { solicitud, aptitudid, aptitud_especificaid, trabajoid, periodo, localidad, diassemana, trabajadorid } = req.body;
+    if(!solicitud || !aptitudid || !periodo || !localidad || !trabajadorid) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
     try{
-        const result = await SolicitudesService.subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana);
+        const result = await SolicitudesService.subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid);
         res.status(201).json({ message: "Solicitud subida exitosamente", result });
     } catch(error){
         res.status(500).json({ message: error.message });

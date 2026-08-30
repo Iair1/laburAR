@@ -100,15 +100,15 @@ const prueba = async()=>{
 }
 
 
-const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad ) => {
+const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) => {
     const client = new Client(config);
     try {
         await client.connect();
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, nombre_completo, dni",
-            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad]
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, nombre_completo, dni",
+            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora]
         );
         return result.rows[0];
     } catch (error) {
@@ -149,14 +149,7 @@ const buscarUsuarios = async(id, zonas)=>{
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT
-            u.id,
-            u.nombre_completo,
-            u.localidad,
-            u.foto_perfil,
-            u.puntuacion_trabajador,
-            u.sobre_mi,
-            u.disponibilidad,
+            SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
 
             ARRAY_AGG(DISTINCT a.aptitud)
                 FILTER (WHERE a.aptitud IS NOT NULL) AS aptitudes,
@@ -187,13 +180,7 @@ const buscarUsuarios = async(id, zonas)=>{
         WHERE u.localidad = ANY($1)
 
         GROUP BY
-            u.id,
-            u.nombre_completo,
-            u.localidad,
-            u.foto_perfil,
-            u.puntuacion_trabajador,
-            u.sobre_mi,
-            u.disponibilidad
+            u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
         ;`, [zonas])
         return result.rows
     }catch(error){

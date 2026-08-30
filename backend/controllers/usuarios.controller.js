@@ -31,7 +31,8 @@ const cambiarDato = async(req, res)=>{
             "codigo_postal",
             "dni",
             "foto_perfil",
-            "sombreMi",
+            "sombre_ mi",
+            "cobro_por_hora"
         ]);
         for (const item of inf) {
             if (!allowed.has(item.dato)) {
@@ -65,7 +66,7 @@ const sip = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
-        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad} = req.body;
+        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora} = req.body;
         if (!nombre_completo || !contraseña || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }

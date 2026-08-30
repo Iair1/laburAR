@@ -65,7 +65,7 @@ async function subirImagen(imagen) {
     if(imagen){
         const result = await cloudinary.uploader.upload(imagen)
         console.log(result)
-        const url = cloudinary.url(result.public_id, {
+        const url = cloudinary.url(result.publicid, {
             transformation: [
                 { width: 150, height: 150}
             ]
@@ -143,7 +143,65 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
     }
 }
 
-const buscarUsuarios = async(id, zonas)=>{}
+const buscarUsuarios = async(id, zonas)=>{
+    const client = new Client(config);
+    console.log(`Zonas: ${zonas}`)
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT
+            u.id,
+            u.nombre_completo,
+            u.localidad,
+            u.foto_perfil,
+            u.puntuacion_trabajador,
+            u.sobre_mi,
+            u.disponibilidad,
+
+            ARRAY_AGG(DISTINCT a.aptitud)
+                FILTER (WHERE a.aptitud IS NOT NULL) AS aptitudes,
+
+            ARRAY_AGG(DISTINCT ae.aptitud_especifica)
+                FILTER (WHERE ae.aptitud_especifica IS NOT NULL) AS aptitudes_especificas,
+
+            ARRAY_AGG(DISTINCT t.trabajo)
+                FILTER (WHERE t.trabajo IS NOT NULL) AS trabajos
+
+        FROM usuarios u
+
+        INNER JOIN usuarios_aptitudes ua
+            ON ua.userid = u.id
+        INNER JOIN aptitudes a
+            ON a.id = ua.aptitudid
+
+        LEFT JOIN usuarios_aptitudes_especificas uae
+            ON uae.userid = u.id
+        LEFT JOIN aptitudes_especificas ae
+            ON ae.id = uae.aptitud_especificaid
+
+        LEFT JOIN usuarios_tdr utdr
+            ON utdr.userid = u.id
+        LEFT JOIN tdr t
+            ON t.id = utdr.trabajoid
+
+        WHERE u.localidad = ANY($1)
+
+        GROUP BY
+            u.id,
+            u.nombre_completo,
+            u.localidad,
+            u.foto_perfil,
+            u.puntuacion_trabajador,
+            u.sobre_mi,
+            u.disponibilidad
+        ;`, [zonas])
+        return result.rows
+    }catch(error){
+        throw error
+    }finally{
+        await client.end();
+    }
+}
 
 const UsuariosService={
     crearCuenta, 

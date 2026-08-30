@@ -88,7 +88,7 @@ const iniciarSesion = async (req, res) => {
         res.status(200).json({ token: token });
     }
     catch(error){
-        console.error("❌ Error en iniciarSesion:", error);
+        console.error("Error al iniciar sesion:", error);
         res.status(500).json({ message: error.message });
     }
 }
@@ -100,7 +100,8 @@ const buscarUsuarios=async(req, res)=>{
         const result = await UsuariosService.buscarUsuarios(id, zonas)
         res.status(201).json(result)
     }catch(error){
-        throw error
+        console.error("Error al buscar trabajadores", error);
+        res.status(500).json({ message: error.message });
     }
 }
 

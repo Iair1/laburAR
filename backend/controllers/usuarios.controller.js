@@ -85,8 +85,8 @@ const iniciarSesion = async (req, res) => {
         if (!nombre_completo || !contraseña) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const token = await UsuariosService.iniciarSesion(nombre_completo, contraseña);
-        res.status(200).json({ token: token });
+        const result = await UsuariosService.iniciarSesion(nombre_completo, contraseña);
+        res.status(200).json({ token: result.token, notificaciones: result.notificaciones });
     }
     catch(error){
         console.error("Error al iniciar sesion:", error);
@@ -94,11 +94,11 @@ const iniciarSesion = async (req, res) => {
     }
 }
 
-const buscarUsuarios=async(req, res)=>{
+const buscarTrabajadores=async(req, res)=>{
     const id = req.id //hace falta? si
     const {zonas} = req.body
     try{
-        const result = await UsuariosService.buscarUsuarios(id, zonas)
+        const result = await UsuariosService.buscarTrabajadores(id, zonas)
         res.status(201).json(result)
     }catch(error){
         console.error("Error al buscar trabajadores", error);
@@ -113,6 +113,6 @@ const UsuariosController={
     cambiarContraseña,
     prueba,
     sip,
-    buscarUsuarios
+    buscarTrabajadores
 }
 export default UsuariosController; 

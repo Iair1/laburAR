@@ -54,14 +54,14 @@ async function busqueda(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo,
+            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
                         WHERE ua.userid = $1 AND ua.aptitudid = s.aptitudid AND s.aptitudid IS NOT NULL
                     ) THEN 1 ELSE 0 END
                     + CASE WHEN EXISTS (
-                        SELECT 1 FROM usuarios_aptitudes_e uae
+                        SELECT 1 FROM usuarios_aptitudes_especificas uae
                         WHERE uae.userid = $1 AND uae.aptitud_especificaid = s.aptitud_especificaid AND s.aptitud_especificaid IS NOT NULL
                     ) THEN 1 ELSE 0 END
                     + CASE WHEN EXISTS (
@@ -70,14 +70,16 @@ async function busqueda(id) {
                     ) THEN 1 ELSE 0 END
                 ) AS coincidencias
             FROM solicitudes s
-            JOIN usuarios u
-                ON u.id = $1 AND u.localidad = s.localidad AND u.id=s.trabajadorid
-            JOIN aptitudes a
+            INNER JOIN usuarios u
+                ON u.id = $1 AND u.id=s.trabajadorid
+            LEFT JOIN aptitudes a
                 ON a.id = s.aptitudid
             LEFT JOIN aptitudes_especificas ae
                 ON ae.id = s.aptitud_especificaid
             LEFT JOIN tdr t
                 ON t.id = s.trabajoid
+            INNER JOIN usuarios uc
+                ON uc.id = s.contratadorid
             ORDER BY coincidencias DESC;`, [id]);
 
         return sUtiles.rows
@@ -89,10 +91,60 @@ async function busqueda(id) {
     }
 }
 
+const aceptarSolicitud = async(id, solicitudid) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query("UPDATE solicitudes SET estado = 'pendiente' WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
+        if(result.rowCount === 0) {
+            throw new Error("La solicitud que desea aceptar no existe o no le pertenece a este usuario");
+        }
+        const avisotxt=`Su solicitud ha sido aceptada por el trabajador
+                        Solicitud: ${result.rows[0].solicitud}
+                        Periodo: ${result.rows[0].periodo}`;
+        const aviso = await client.query(`
+            INSERT INTO notificaciones (tipo, userid, contenido)
+            VALUES('solicitudes', $1
+            , $2)`, [result.rows[0].contratadorid, avisotxt]);
+        return{solicitud: result.rows[0], aviso: aviso.rows[0]};
+    } catch(error) {
+        console.error("Error al aceptar la solicitud:", error);
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+
+const rechazarSolicitud = async(id, solicitudid) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query("DELETE FROM solicitudes WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
+        if(result.rowCount === 0) {
+            throw new Error("La solicitud que desea rechazar no existe o no le pertenece a este usuario");
+        }
+        const avisotxt=`Su solicitud ha sido rechazada por el trabajador
+                        Solicitud: ${result.rows[0].solicitud}
+                        Periodo: ${result.rows[0].periodo}`;
+        const aviso = await client.query(`
+            INSERT INTO notificaciones (tipo, userid, contenido)
+            VALUES('solicitudes', $1
+            , $2)`, [result.rows[0].contratadorid, avisotxt]);
+        return{solicitud: result.rows[0], aviso: aviso.rows[0]};
+    } catch(error) {
+        console.error("Error al rechazar la solicitud:", error);
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+
 const SolicitudesService = {
     busqueda,
     subirSolicitud,
-    borrarSolicitud
+    borrarSolicitud,
+    aceptarSolicitud,
+    rechazarSolicitud
 }
 
 export default SolicitudesService;

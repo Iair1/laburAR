@@ -135,7 +135,8 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
         JWT_SECRET,
         { expiresIn: "3h" }
         );
-        return token;
+        const notificaciones= await client.query("SELECT * FROM notificaciones WHERE userid = $1", [dbUser.id]);
+        return {token, notificaciones: notificaciones.rows};
     } catch (error) {
         throw error;
     } finally {
@@ -143,13 +144,13 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
     }
 }
 
-const buscarUsuarios = async(id, zonas)=>{
+const buscarTrabajadores = async(id, zonas)=>{
     const client = new Client(config);
-    console.log(`Zonas: ${zonas}`)
+    console.log(zonas)
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
+            SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora,
 
             ARRAY_AGG(DISTINCT a.aptitud)
                 FILTER (WHERE a.aptitud IS NOT NULL) AS aptitudes,
@@ -177,11 +178,11 @@ const buscarUsuarios = async(id, zonas)=>{
         LEFT JOIN tdr t
             ON t.id = utdr.trabajoid
 
-        WHERE u.localidad = ANY($1)
+        WHERE u.localidad = ANY($1) AND u.id != $2
 
         GROUP BY
             u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
-        ;`, [zonas])
+        ;`, [zonas, id])
         return result.rows
     }catch(error){
         throw error
@@ -189,6 +190,16 @@ const buscarUsuarios = async(id, zonas)=>{
         await client.end();
     }
 }
+/*
+const buscarClientes = async(id)=>{
+    const client = await Client(config);
+    try{
+        const result = await client.query(`SELECT s.*,  u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_contratador
+            FROM solicitudes s INNER JOIN usuarios u
+            ON s.contratadorid = u.id
+            WHERE s.trabajadorid = $1`)
+    }
+}*/
 
 const UsuariosService={
     crearCuenta, 
@@ -197,6 +208,6 @@ const UsuariosService={
     prueba,
     sip,
     cambiarContraseña,
-    buscarUsuarios
+    buscarTrabajadores
 }
 export default UsuariosService;

@@ -17,7 +17,7 @@ const borrarSolicitud = async(req, res)=>{
 const subirSolicitud = async(req, res)=>{
     const id = req.id;
     const { solicitud, aptitudid, aptitud_especificaid, trabajoid, periodo, localidad, diassemana, trabajadorid } = req.body;
-    if(!solicitud || !aptitudid || !periodo || !localidad || !trabajadorid) {
+    if(!solicitud || !periodo || !localidad || !trabajadorid) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
     try{
@@ -28,7 +28,27 @@ const subirSolicitud = async(req, res)=>{
     }
 }
 
+const aceptarSolicitud = async(req, res)=>{
+    const id = req.id;
+    const { solicitudid } = req.body;
+    try{
+        const result = await SolicitudesService.aceptarSolicitud(id, solicitudid);
+        res.status(200).json({ message: "Solicitud aceptada exitosamente", result });
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
 
+const rechazarSolicitud = async(req, res)=>{
+    const id = req.id;
+    const { solicitudid } = req.body;
+    try{
+        const result = await SolicitudesService.rechazarSolicitud(id, solicitudid);
+        res.status(200).json({ message: "Solicitud rechazada exitosamente", result });
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
 
 const busqueda = async(req, res)=>{
     const id = req.id;
@@ -42,6 +62,8 @@ const busqueda = async(req, res)=>{
 const SolicitudesController = {
     busqueda,
     subirSolicitud,
-    borrarSolicitud
+    borrarSolicitud,
+    aceptarSolicitud,
+    rechazarSolicitud
 }
 export default SolicitudesController;

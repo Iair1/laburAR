@@ -38,15 +38,20 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 })
 
-async function cambiarDato(id, dato, valor) {
+async function cambiarDato(id, inf) {
     const client = new Client(config);
     await client.connect();
     try{
-        if(dato === "foto_perfil"){
-            valor = await subirImagen(valor);
+        let a = ""
+        for(let i = 0; i < inf.length; i++){
+            if(inf[i].dato==="foto_perfil"){
+                inf[i].valor = await subirImagen(inf[i].valor);
+            }
+            a = a + `${inf[i].dato} = ${inf[i].valor}, `;
         }
-        console.log("Dato a cambiar:", dato, "Valor nuevo:", valor);
-        const result = await client.query(`UPDATE usuarios SET ${dato} = $1 WHERE id = $2`, [valor, id]);
+        a = a.slice(0, -2);
+        console.log(a);
+        const result = await client.query(`UPDATE usuarios SET ${a} WHERE id = $1`, [id]);
         return result;
     } catch(error){
         console.error("Error al cambiar dato:", error);
@@ -60,7 +65,7 @@ async function subirImagen(imagen) {
     if(imagen){
         const result = await cloudinary.uploader.upload(imagen)
         console.log(result)
-        const url = cloudinary.url(result.public_id, {
+        const url = cloudinary.url(result.publicid, {
             transformation: [
                 { width: 150, height: 150}
             ]
@@ -95,15 +100,15 @@ const prueba = async()=>{
 }
 
 
-const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil ) => {
+const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) => {
     const client = new Client(config);
     try {
         await client.connect();
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, nombre_completo, dni",
-            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl]
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, nombre_completo, dni",
+            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora]
         );
         return result.rows[0];
     } catch (error) {
@@ -128,9 +133,10 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
         const token = jwt.sign(
         { userid: dbUser.id, nombre_completo: dbUser.nombre_completo},
         JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "3h" }
         );
-        return token;
+        const notificaciones= await client.query("SELECT * FROM notificaciones WHERE userid = $1", [dbUser.id]);
+        return {token, notificaciones: notificaciones.rows};
     } catch (error) {
         throw error;
     } finally {
@@ -138,12 +144,70 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
     }
 }
 
+const buscarTrabajadores = async(id, zonas)=>{
+    const client = new Client(config);
+    console.log(zonas)
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora,
+
+            ARRAY_AGG(DISTINCT a.aptitud)
+                FILTER (WHERE a.aptitud IS NOT NULL) AS aptitudes,
+
+            ARRAY_AGG(DISTINCT ae.aptitud_especifica)
+                FILTER (WHERE ae.aptitud_especifica IS NOT NULL) AS aptitudes_especificas,
+
+            ARRAY_AGG(DISTINCT t.trabajo)
+                FILTER (WHERE t.trabajo IS NOT NULL) AS trabajos
+
+        FROM usuarios u
+
+        INNER JOIN usuarios_aptitudes ua
+            ON ua.userid = u.id
+        INNER JOIN aptitudes a
+            ON a.id = ua.aptitudid
+
+        LEFT JOIN usuarios_aptitudes_especificas uae
+            ON uae.userid = u.id
+        LEFT JOIN aptitudes_especificas ae
+            ON ae.id = uae.aptitud_especificaid
+
+        LEFT JOIN usuarios_tdr utdr
+            ON utdr.userid = u.id
+        LEFT JOIN tdr t
+            ON t.id = utdr.trabajoid
+
+        WHERE u.localidad = ANY($1) AND u.id != $2
+
+        GROUP BY
+            u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
+        ;`, [zonas, id])
+        return result.rows
+    }catch(error){
+        throw error
+    }finally{
+        await client.end();
+    }
+}
+/*
+const buscarClientes = async(id)=>{
+    const client = await Client(config);
+    try{
+        const result = await client.query(`SELECT s.*,  u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_contratador
+            FROM solicitudes s INNER JOIN usuarios u
+            ON s.contratadorid = u.id
+            WHERE s.trabajadorid = $1`)
+    }
+}*/
+
 const UsuariosService={
     crearCuenta, 
     iniciarSesion,
     cambiarDato,
     prueba,
     sip,
-    cambiarContraseña
+    cambiarContraseña,
+    buscarTrabajadores
 }
 export default UsuariosService;

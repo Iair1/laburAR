@@ -10,5 +10,6 @@ router.post("/crearCuenta", UsuariosController.crearCuenta);
 router.post("/iniciarSesion", UsuariosController.iniciarSesion);
 router.put("/cambiarDato", verifyToken, UsuariosController.cambiarDato);
 router.put("/cambiarContrasena", verifyToken, UsuariosController.cambiarContraseña);
+router.post("/buscarTrabajadores", verifyToken, UsuariosController.buscarTrabajadores)
 
 export default router;

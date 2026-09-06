@@ -17,13 +17,29 @@ const cambiarContraseña = async(req, res)=>{
 const cambiarDato = async(req, res)=>{
     try{
         const id = req.id;
-        const {dato, valor } = req.body;
-        if(!dato || !valor){
+        const {inf} = req.body;
+        if(!inf){
             return res.status(400).json({ message: "Debe completar todos los campos"});
-        } else if(dato != "nombre_completo" && dato != "localidad" && dato != "direccion_calle" && dato != "direccion_altura" && dato != "codigo_postal" && dato != "dni" && dato != "foto_perfil"){
-            return res.status(400).json({ message: "No se puede cambiar, ingrsese un dato válido"});
         }
-        const result = await UsuariosService.cambiarDato(id, dato, valor);
+        console.log(inf);
+        const allowed = new Set([
+            "disponibilidad",
+            "nombre_completo",
+            "localidad",
+            "direccion_calle",
+            "direccion_altura",
+            "codigo_postal",
+            "dni",
+            "foto_perfil",
+            "sombre_ mi",
+            "cobro_por_hora"
+        ]);
+        for (const item of inf) {
+            if (!allowed.has(item.dato)) {
+                return res.status(400).json({ message: "No se puede cambiar, ingrese un dato válido" });
+            }
+        }
+        const result = await UsuariosService.cambiarDato(id, inf);
         res.status(201).json({ message: "Dato cambiado exitosamente", result});
     }catch(error){
         res.status(500).json({ message: error.message });
@@ -50,11 +66,11 @@ const sip = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
-        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil } = req.body;
+        const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora} = req.body;
         if (!nombre_completo || !contraseña || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil);
+        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad);
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){
@@ -69,15 +85,26 @@ const iniciarSesion = async (req, res) => {
         if (!nombre_completo || !contraseña) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
-        const token = await UsuariosService.iniciarSesion(nombre_completo, contraseña);
-        res.status(200).json({ token: token });
+        const result = await UsuariosService.iniciarSesion(nombre_completo, contraseña);
+        res.status(200).json({ token: result.token, notificaciones: result.notificaciones });
     }
     catch(error){
-        console.error("❌ Error en iniciarSesion:", error);
+        console.error("Error al iniciar sesion:", error);
         res.status(500).json({ message: error.message });
     }
 }
 
+const buscarTrabajadores=async(req, res)=>{
+    const id = req.id //hace falta? si
+    const {zonas} = req.body
+    try{
+        const result = await UsuariosService.buscarTrabajadores(id, zonas)
+        res.status(201).json(result)
+    }catch(error){
+        console.error("Error al buscar trabajadores", error);
+        res.status(500).json({ message: error.message });
+    }
+}
 
 const UsuariosController={
     crearCuenta,
@@ -85,6 +112,7 @@ const UsuariosController={
     cambiarDato,
     cambiarContraseña,
     prueba,
-    sip
+    sip,
+    buscarTrabajadores
 }
 export default UsuariosController; 

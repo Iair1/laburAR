@@ -217,6 +217,46 @@ const estaVerificado = async(id)=>{
     }
 }
 
+const verificarUsuario = async(id, dniFoto)=>{
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const datos = await client.query("SELECT dni, nombre_completo FROM usuarios WHERE id = $1", [id]);
+        if(datos.rowCount === 0){
+            throw new Error("Usuario no encontrado");
+        }
+        console.log("Ya tengo los datos")
+        const siONO =await chatVerifica(datos.rows[0], dniFoto);
+        if(siONO.verificado){
+            const result = await client.query("UPDATE usuarios SET verificado = true WHERE id = $1 RETURNING verificado", [id]);
+            return {verificado: result.rows[0].verificado, razon: "DNI válido y datos coinciden"}
+        }
+        return{verificado: false, razon: siONO.razon}
+    } catch(error){
+        console.log("El error viene de aca")
+        throw error;
+    }finally{
+        await client.end();
+    }
+}
+
+const chatVerifica=async(datos, dniFoto)=>{
+    try{
+        const prompt = `Verifica mediante la foto en este enlace si este es un DNI argentino legítimo y si tiene los siguientes datos:
+        Nombre y Apellido: ${datos.nombre_completo}
+        DNI: ${datos.dni}
+        Responde con un JSON que contenga un campo "verificado" con valor true o false, y un campo "razon" que diga "DNI no legitimo", "nombre no coincide", "numero de DNI no coincide" o "enlace no muestra la imagen correctamente". 
+        La foto del DNI esta en este enlace: ${dniFoto}.`
+        const result = await PruebaChatService.probar(prompt)
+        console.log(result)
+        return JSON.parse(result)
+    }catch(error){
+        console.log("Error en chatVerifica")
+        console.log(error.message)
+        throw error
+    }
+}
+
 const UsuariosService={
     crearCuenta, 
     iniciarSesion,
@@ -224,6 +264,8 @@ const UsuariosService={
     prueba,
     sip,
     cambiarContraseña,
-    buscarTrabajadores
+    buscarTrabajadores,
+    estaVerificado,
+    verificarUsuario
 }
 export default UsuariosService;

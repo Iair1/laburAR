@@ -3,6 +3,7 @@ import pkg from "pg";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {v2 as cloudinary} from "cloudinary";
+import PruebaChatService from "./pruebaChat.service.js";
 const {Client} = pkg;
 
 
@@ -200,6 +201,21 @@ const buscarClientes = async(id)=>{
             WHERE s.trabajadorid = $1`)
     }
 }*/
+
+const estaVerificado = async(id)=>{
+    const client = new Client(config);
+    try{
+        await client.connect();
+        console.log("Hola, llegaste hasta aca")
+        const result = await client.query("SELECT verificado FROM usuarios WHERE id = $1", [id]);
+        return {verificado: result.rows[0].verificado}
+    } catch(error){
+        console.log(error)
+        throw error;
+    }finally{
+        await client.end();
+    }
+}
 
 const UsuariosService={
     crearCuenta, 

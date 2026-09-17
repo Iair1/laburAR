@@ -86,7 +86,7 @@ const estilos = `
   .boton-enviar-agendar:disabled { opacity: 0.6; cursor: not-allowed; }
 `;
 
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 /**
  * Modal para mandarle una solicitud (pedido de cita) a un trabajador.
@@ -111,6 +111,11 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
     );
   };
 
+  const todosLosDiasActivo = diasSeleccionados.length === DIAS.length;
+  const alternarTodosLosDias = () => {
+    setDiasSeleccionados((prev) => (prev.length === DIAS.length ? [] : [...DIAS]));
+  };
+
   const manejarEnviar = async () => {
     if (!descripcion.trim() || !periodo.trim() || !localidad.trim()) {
       setError("Completá la descripción, el período y la localidad.");
@@ -125,7 +130,10 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
         solicitud: descripcion.trim(),
         periodo: periodo.trim(),
         localidad: localidad.trim(),
-        diassemana: diasSeleccionados.join(", "),
+        // Ojo: la columna diassemana en Postgres es un array (text[]).
+        // Hay que mandar un array de JS de verdad, nunca un string armado
+        // a mano (eso tira "malformed array literal" en el backend).
+        diassemana: diasSeleccionados,
       });
       onEnviada?.(trabajador);
     } catch (err) {
@@ -184,6 +192,12 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
           <div className="campo-agendar">
             <label className="etiqueta-agendar">Días de la semana (opcional)</label>
             <div className="chips-dias-agendar">
+              <span
+                className={`chip-dia-agendar ${todosLosDiasActivo ? "activo" : ""}`}
+                onClick={alternarTodosLosDias}
+              >
+                Todos los días
+              </span>
               {DIAS.map((dia) => (
                 <span
                   key={dia}

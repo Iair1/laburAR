@@ -97,7 +97,10 @@ const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "
  */
 export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
   const [descripcion, setDescripcion] = useState("");
-  const [periodo, setPeriodo] = useState("");
+  //  const [periodo, setPeriodo] = useState("");
+  const [periodoInicio, setPeriodoInicio] = useState("");
+  const [periodoFin, setPeriodoFin] = useState("");
+
   const [localidad, setLocalidad] = useState(trabajador?.zona || "");
   const [diasSeleccionados, setDiasSeleccionados] = useState([]);
   const [error, setError] = useState("");
@@ -117,8 +120,15 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
   };
 
   const manejarEnviar = async () => {
-    if (!descripcion.trim() || !periodo.trim() || !localidad.trim()) {
+    //    if (!descripcion.trim() || !periodo.trim() || !localidad.trim()) {
+    if (!descripcion.trim() || !periodoInicio || !periodoFin || !localidad.trim()) {
       setError("Completá la descripción, el período y la localidad.");
+      return;
+    }
+
+    //
+    if (periodoFin < periodoInicio) {
+      setError("La fecha de fin no puede ser anterior a la fecha de inicio.");
       return;
     }
 
@@ -128,14 +138,12 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
       await crearSolicitud({
         trabajadorid: trabajador.id,
         solicitud: descripcion.trim(),
-        // Ojo: periodo también resultó ser una columna array (igual que
-        // diassemana), no texto plano. Mandamos un array de un elemento.
-        periodo: [periodo.trim()],
+
+        // periodo: [periodo.trim()],
+        periodo: [periodoInicio, periodoFin],
         localidad: localidad.trim(),
-        // Ojo: la columna diassemana en Postgres es un array (text[]).
-        // Hay que mandar un array de JS de verdad, nunca un string armado
-        // a mano (eso tira "malformed array literal" en el backend).
-        diassemana: diasSeleccionados,
+        //    diassemana: diasSeleccionados,
+        diassemana: DIAS.map((dia) => diasSeleccionados.includes(dia)),
       });
       onEnviada?.(trabajador);
     } catch (err) {
@@ -171,6 +179,7 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
 
           <div className="campo-agendar">
             <label className="etiqueta-agendar">Período</label>
+            {/*
             <input
               className="entrada-agendar"
               type="text"
@@ -178,6 +187,23 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
               value={periodo}
               onChange={(e) => setPeriodo(e.target.value)}
             />
+            */}
+            <div className="periodo-agendar">
+              <input
+                className="entrada-agendar"
+                type="date"
+                aria-label="Fecha de inicio"
+                value={periodoInicio}
+                onChange={(e) => setPeriodoInicio(e.target.value)}
+              />
+              <input
+                className="entrada-agendar"
+                type="date"
+                aria-label="Fecha de fin"
+                value={periodoFin}
+                onChange={(e) => setPeriodoFin(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="campo-agendar">

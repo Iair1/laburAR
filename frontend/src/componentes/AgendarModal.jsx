@@ -128,7 +128,9 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
       await crearSolicitud({
         trabajadorid: trabajador.id,
         solicitud: descripcion.trim(),
-        periodo: periodo.trim(),
+        // Ojo: periodo también resultó ser una columna array (igual que
+        // diassemana), no texto plano. Mandamos un array de un elemento.
+        periodo: [periodo.trim()],
         localidad: localidad.trim(),
         // Ojo: la columna diassemana en Postgres es un array (text[]).
         // Hay que mandar un array de JS de verdad, nunca un string armado

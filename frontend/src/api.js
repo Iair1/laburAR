@@ -1,9 +1,13 @@
-// URL base del backend - CAMBIA ESTO SI TU BACKEND ESTÁ EN OTRO PUERTO
 const API_URL = import.meta.env.DEV
-  ? "http://localhost:3000/api/usuarios"
-  : "/api/usuarios";                       // si no esta en local corre esto (vercel) prueba para ver si conecta bien
-  // en caso de no funcionar, cambiar lineas 2, 3, y 4 de vuelta a const API_URL = "http://localhost:3000/api/usuarios";
+  ? "https://laburar-three.vercel.app/api/usuarios"
+  : "/api/usuarios";
 
+// ⚠️ Asumo que el router de solicitudes está montado en /api/solicitudes,
+// igual que usuarios en /api/usuarios. Si en tu server.js/index.js lo montaste
+// en otra ruta, cambiala acá nomás.
+const API_URL_SOLICITUDES = import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api/solicitudes"
+  : "/api/solicitudes";
 /**
  * Convierte un File a base64 (data URL) para poder mandárselo al backend,
  * que espera un string que Cloudinary pueda subir (base64, URL o ruta local).
@@ -90,7 +94,7 @@ export const registrarUsuario = async (datosUsuario) => {
       correo: datosUsuario.correo,
       telefono: datosUsuario.telefono,
       rol: datosUsuario.rol,
-      localidad: datosUsuario.areaTrabajo,
+      localidad: datosUsuario.localidad,
       domicilio_calle: datosUsuario.domicilioCalle,
       domicilio_altura: datosUsuario.domicilioAltura,
       codigo_postal: datosUsuario.codigoPostal,
@@ -181,4 +185,170 @@ export const cerrarSesion = () => {
  */
 export const obtenerToken = () => {
   return localStorage.getItem("token");
+};
+
+/**
+ * Arma los headers con el JWT para las rutas protegidas (verifyToken).
+ */
+const encabezadosAutenticados = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${obtenerToken()}`,
+});
+
+/* ============================================================
+ * BÚSQUEDA DE TRABAJADORES (usuarios/buscarTrabajadores)
+ * ============================================================ */
+
+/**
+ * Busca trabajadores reales en la base de datos por localidad.
+ * @param {string[]} zonas - Array de localidades a buscar (ej: ["CABA", "Tigre"])
+ * @returns {Promise<Array>} - Lista de trabajadores encontrados
+ */
+export const buscarTrabajadores = async (zonas) => {
+  try {
+    const respuesta = await fetch(`${API_URL}/buscarTrabajadores`, {
+      method: "POST",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify({ zonas }),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      const error = new Error(resultado.message || "Error al buscar trabajadores");
+      error.status = respuesta.status;
+      throw error;
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error("Error en buscarTrabajadores:", error);
+    throw error;
+  }
+};
+
+/* ============================================================
+ * SOLICITUDES (pedidos de cita entre contratador y trabajador)
+ * ============================================================ */
+
+/**
+ * Envía una solicitud (pedido de cita) de un contratador a un trabajador.
+ * El contratador sale del token (req.id en el backend).
+ * @param {Object} datos - { trabajadorid, solicitud, periodo, localidad, diassemana, aptitudid?, aptitud_especificaid?, trabajoid? }
+ */
+export const crearSolicitud = async (datos) => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/subirSolicitud`, {
+      method: "POST",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify(datos),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al enviar la solicitud");
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error("Error en crearSolicitud:", error);
+    throw error;
+  }
+};
+
+/**
+ * Trae las solicitudes que le llegaron al usuario logueado (como trabajador),
+ * ordenadas por coincidencia con sus aptitudes/trabajos.
+ */
+export const obtenerSolicitudesRecibidas = async () => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/busqueda`, {
+      method: "GET",
+      headers: encabezadosAutenticados(),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al obtener las solicitudes");
+    }
+
+    return resultado.result || [];
+  } catch (error) {
+    console.error("Error en obtenerSolicitudesRecibidas:", error);
+    throw error;
+  }
+};
+
+/**
+ * El trabajador acepta una solicitud recibida.
+ */
+export const aceptarSolicitud = async (solicitudid) => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/aceptarSolicitud`, {
+      method: "POST",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify({ solicitudid }),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al aceptar la solicitud");
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error("Error en aceptarSolicitud:", error);
+    throw error;
+  }
+};
+
+/**
+ * El trabajador rechaza (borra) una solicitud recibida.
+ */
+export const rechazarSolicitud = async (solicitudid) => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/rechazarSolicitud`, {
+      method: "POST",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify({ solicitudid }),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al rechazar la solicitud");
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error("Error en rechazarSolicitud:", error);
+    throw error;
+  }
+};
+
+/**
+ * El contratador borra una solicitud que él mismo envió.
+ */
+export const borrarSolicitud = async (solicitudid) => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/borrarSolicitud`, {
+      method: "DELETE",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify({ solicitudid }),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al borrar la solicitud");
+    }
+
+    return resultado;
+  } catch (error) {
+    console.error("Error en borrarSolicitud:", error);
+    throw error;
+  }
 };

@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { iniciarSesion } from "../api"; 
+import { iniciarSesion } from "../api";
+import { guardarSesionUsuario, iniciarSesionConGoogleSimulado } from "../sesion";
 
 export default function Login() {
-  const [nombre, setNombre] = useState(""); 
+  const [nombre, setNombre] = useState("");
   const [contrasena, setContrasena] = useState("");
-  const [error, setError] = useState(""); 
-  const [cargando, setCargando] = useState(false); 
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
   const navegar = useNavigate();
 
   const manejarLogin = async () => {
-    
     if (!nombre || !contrasena) {
       setError("Por favor completa todos los campos");
       return;
@@ -20,11 +20,17 @@ export default function Login() {
     setCargando(true);
 
     try {
-      
       const respuesta = await iniciarSesion(nombre, contrasena);
-      console.log("Login exitoso:", respuesta);
 
-      
+      // El backend puede devolver el perfil dentro de "usuario" -- si no,
+      // usamos lo que el usuario tipeó para no dejar la sesión incompleta.
+      guardarSesionUsuario({
+        id: respuesta?.usuario?.id ?? Date.now(),
+        nombre: respuesta?.usuario?.nombre_completo || nombre,
+        correo: respuesta?.usuario?.correo || "",
+        fotoPerfilURL: respuesta?.usuario?.foto_perfil || null,
+      });
+
       navegar("/");
     } catch (err) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
@@ -34,20 +40,30 @@ export default function Login() {
     }
   };
 
-  const manejarGoogle = () => {
-    console.log("Login con Google");
+  const manejarGoogle = async () => {
+    setCargando(true);
+    try {
+      const perfil = await iniciarSesionConGoogleSimulado();
+      guardarSesionUsuario({
+        id: `google_${Date.now()}`,
+        nombre: perfil.nombre,
+        correo: perfil.correo,
+        fotoPerfilURL: perfil.fotoPerfilURL,
+      });
+      navegar("/");
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
     <div style={estilos.fondo}>
       <div style={estilos.contenedor}>
-        
         <div style={estilos.tarjeta}>
           <h1 style={estilos.titulo}>Iniciar sesion en LABURAR</h1>
 
-          
-          <button 
-            style={estilos.botonGoogle} 
+          <button
+            style={estilos.botonGoogle}
             onClick={manejarGoogle}
             disabled={cargando}
           >
@@ -62,18 +78,16 @@ export default function Login() {
             </svg>
           </button>
 
-          
           <div style={estilos.separador}>
             <div style={estilos.linea} />
             <span style={estilos.separadorTexto}>O</span>
             <div style={estilos.linea} />
           </div>
 
-          
           <input
             style={estilos.entrada}
             type="text"
-            placeholder="NOMBRE COMPLETO" 
+            placeholder="NOMBRE COMPLETO"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             disabled={cargando}
@@ -87,19 +101,16 @@ export default function Login() {
             disabled={cargando}
           />
 
-          
           {error && <p style={estilos.textoError}>{error}</p>}
 
-          
-          <button 
-            style={{...estilos.boton, opacity: cargando ? 0.6 : 1}}
+          <button
+            style={{ ...estilos.boton, opacity: cargando ? 0.6 : 1 }}
             onClick={manejarLogin}
             disabled={cargando}
           >
             {cargando ? "Iniciando sesión..." : "Iniciar Sesion"}
           </button>
 
-          
           <p style={estilos.linkCentro}>
             <span style={estilos.enlaceAzul} onClick={() => navegar("/recuperar-contrasena")}>
               Olvide mi contraseña

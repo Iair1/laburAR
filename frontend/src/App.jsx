@@ -11,6 +11,7 @@ import Mensajes from "./pages/Mensajes";
 import Empleos from "./pages/Empleos";
 import PaginaBusqueda from "./pages/PaginaBusqueda";
 import OfrecerServicios from "./pages/OfrecerServicios"
+import SolicitudesRecibidas from "./pages/SolicitudesRecibidas"
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/empleos" element={<Empleos />} />
         <Route path="/buscar" element={<PaginaBusqueda />} />
         <Route path="/ofrecer-servicios" element={<OfrecerServicios />} />
+        <Route path="/solicitudes-recibidas" element={<SolicitudesRecibidas />} />
 
       </Routes>
     </RegistroProvider>

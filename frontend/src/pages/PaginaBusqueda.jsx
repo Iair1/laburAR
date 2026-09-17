@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
-import { obtenerPublicaciones } from "../sesion";
+import AgendarModal from "../componentes/AgendarModal";
+import { obtenerSesionUsuario } from "../sesion";
+import { buscarTrabajadores } from "../api";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,18 +44,17 @@ const estilos = `
   }
   .campo-busqueda-superior input::placeholder { color: #666; }
   .campo-busqueda-superior svg { width: 16px; height: 16px; color: #555; flex-shrink: 0; }
-  .campo-cp-superior {
-    width: 100px;
+  .select-zona-superior {
     height: 42px;
-    background: #ccc;
+    padding: 0 14px;
     border-radius: 999px;
     border: none;
+    background: #ccc;
     outline: none;
     text-align: center;
     font-size: 0.85rem;
     color: #222;
   }
-  .campo-cp-superior::placeholder { color: #666; }
   .boton-buscar-superior {
     height: 42px;
     padding: 0 1.1rem;
@@ -67,6 +68,37 @@ const estilos = `
     transition: background 0.15s;
   }
   .boton-buscar-superior:hover { background: #666; }
+  .boton-buscar-superior:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .aviso-login-busqueda {
+    max-width: 1180px;
+    margin: 1.5rem auto 0;
+    padding: 0 2rem;
+  }
+  .tarjeta-aviso-login {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.85rem;
+    color: #6b5300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .boton-login-aviso {
+    background: #1a2332;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
 
   .layout-resultados {
     display: flex;
@@ -160,7 +192,6 @@ const estilos = `
   }
   .resumen-resultados strong { color: #1a1a1a; }
 
-  /* Grilla de tarjetas cuadradas, estilo marketplace */
   .lista-tarjetas {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -193,20 +224,6 @@ const estilos = `
     overflow: hidden;
   }
   .imagen-trabajador img { width: 100%; height: 100%; object-fit: cover; }
-  .insignia-verificado {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: #1a2332;
-    color: #fff;
-    font-size: 0.62rem;
-    font-weight: 700;
-    padding: 3px 7px;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
 
   .info-trabajador { flex: 1; min-width: 0; padding: 12px 14px 14px; display: flex; flex-direction: column; }
   .nombre-trabajador { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -253,12 +270,13 @@ const estilos = `
   .boton-agendar { background: #1a2332; color: #fff; }
   .boton-agendar:hover { background: #0f1621; }
 
-  .sin-resultados {
+  .sin-resultados, .estado-carga, .estado-error {
     text-align: center;
     padding: 3rem 1rem;
     color: #777;
     font-size: 0.9rem;
   }
+  .estado-error { color: #b23a1c; }
 
   .toast-agendar {
     position: fixed;
@@ -283,104 +301,12 @@ const estilos = `
   }
 `;
 
-// --- Datos de trabajadores cargados a mano (mock, sin backend) ---
-const trabajadoresMock = [
-  {
-    id: 1,
-    nombre: "Marcos Gimenez",
-    categoria: "jardineria",
-    etiquetaCategoria: "Jardinería",
-    precio: 4500,
-    zona: "San Isidro",
-    calificacion: 4.8,
-    reseñas: 32,
-    avatar: "🌿",
-    descripcion: "Mantenimiento de jardines, poda y diseño de espacios verdes. Más de 8 años de experiencia.",
-  },
-  {
-    id: 2,
-    nombre: "Laura Fernández",
-    categoria: "pintura",
-    etiquetaCategoria: "Pintura",
-    precio: 6000,
-    zona: "CABA",
-    calificacion: 4.6,
-    reseñas: 21,
-    avatar: "🖌️",
-    descripcion: "Pintura de interiores y exteriores. Presupuesto sin cargo y trabajo prolijo.",
-  },
-  {
-    id: 3,
-    nombre: "Diego Romero",
-    categoria: "electricidad",
-    etiquetaCategoria: "Electricidad",
-    precio: 5200,
-    zona: "Avellaneda",
-    calificacion: 4.9,
-    reseñas: 47,
-    avatar: "⚡",
-    descripcion: "Electricista matriculado. Instalaciones, urgencias y certificaciones.",
-  },
-  {
-    id: 4,
-    nombre: "Sofía Álvarez",
-    categoria: "mudanza",
-    etiquetaCategoria: "Mudanza",
-    precio: 8000,
-    zona: "Vicente López",
-    calificacion: 4.3,
-    reseñas: 14,
-    avatar: "📦",
-    descripcion: "Mudanzas chicas y grandes, embalaje incluido. Camión propio.",
-  },
-  {
-    id: 5,
-    nombre: "Pablo Acosta",
-    categoria: "piletero",
-    etiquetaCategoria: "Piletero",
-    precio: 3800,
-    zona: "Tigre",
-    calificacion: 4.7,
-    reseñas: 19,
-    avatar: "🏊",
-    descripcion: "Limpieza y mantenimiento de piletas. Tratamiento químico incluido.",
-  },
-  {
-    id: 6,
-    nombre: "Carla Medina",
-    categoria: "jardineria",
-    etiquetaCategoria: "Jardinería",
-    precio: 4000,
-    zona: "CABA",
-    calificacion: 4.5,
-    reseñas: 11,
-    avatar: "🌿",
-    descripcion: "Diseño de jardines verticales y mantenimiento mensual.",
-  },
-  {
-    id: 7,
-    nombre: "Ezequiel Torres",
-    categoria: "electricidad",
-    etiquetaCategoria: "Electricidad",
-    precio: 4700,
-    zona: "San Isidro",
-    calificacion: 4.2,
-    reseñas: 9,
-    avatar: "⚡",
-    descripcion: "Reparaciones eléctricas a domicilio, respuesta rápida.",
-  },
-  {
-    id: 8,
-    nombre: "Valentina Ruiz",
-    categoria: "pintura",
-    etiquetaCategoria: "Pintura",
-    precio: 5500,
-    zona: "Avellaneda",
-    calificacion: 4.9,
-    reseñas: 38,
-    avatar: "🖌️",
-    descripcion: "Especialista en terminaciones decorativas y revestimientos.",
-  },
+// Debe coincidir con las localidades que se guardan en la tabla "usuarios"
+// (mismo listado que usa OfrecerServicios.jsx al registrar la zona).
+const ZONAS = [
+  "CABA", "GBA Norte", "GBA Sur", "GBA Oeste", "Córdoba Capital",
+  "Rosario", "Mendoza Capital", "La Plata", "Mar del Plata", "Tucumán",
+  "Salta Capital", "Santa Fe Capital", "Neuquén Capital", "Bahía Blanca",
 ];
 
 function Estrella() {
@@ -391,33 +317,76 @@ function Estrella() {
   );
 }
 
+// Traduce lo que devuelve /usuarios/buscarTrabajadores al formato que usa la tarjeta
+function mapearTrabajador(u) {
+  const aptitudes = u.aptitudes || [];
+  return {
+    id: u.id,
+    nombre: u.nombre_completo,
+    zona: u.localidad,
+    precio: u.cobro_por_hora != null ? Number(u.cobro_por_hora) : null,
+    calificacion: u.puntuacion_trabajador != null ? Number(u.puntuacion_trabajador) : 0,
+    fotoPerfilURL: u.foto_perfil || null,
+    avatar: "🛠️",
+    descripcion: u.sobre_mi || "",
+    disponibilidad: u.disponibilidad,
+    aptitudes,
+    aptitudesEspecificas: u.aptitudes_especificas || [],
+    trabajos: u.trabajos || [],
+    etiquetaCategoria: aptitudes[0] || "Servicios generales",
+  };
+}
+
 function PaginaBusqueda() {
   const navegar = useNavigate();
   const [parametros] = useSearchParams();
+  const usuario = obtenerSesionUsuario();
 
   const [consulta, setConsulta] = useState(parametros.get("q") || "");
-  const [codigoPostal, setCodigoPostal] = useState(parametros.get("cp") || "");
-  const categoriaInicial = parametros.get("categoria") || "";
+  const zonaInicial = parametros.get("categoria") ? "" : parametros.get("zona") || "";
 
-  const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
+  const [filtroCategoria, setFiltroCategoria] = useState("");
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
-  const [filtroZona, setFiltroZona] = useState("");
+  const [filtroZona, setFiltroZona] = useState(zonaInicial);
   const [filtroCalificacion, setFiltroCalificacion] = useState(0);
   const [toast, setToast] = useState("");
 
-  // Publicaciones reales creadas desde "Ofrecer servicios" (localStorage)
-  const [publicaciones, setPublicaciones] = useState(obtenerPublicaciones());
-  useEffect(() => {
-    const actualizar = () => setPublicaciones(obtenerPublicaciones());
-    window.addEventListener("laburar-publicaciones-cambio", actualizar);
-    return () => window.removeEventListener("laburar-publicaciones-cambio", actualizar);
-  }, []);
+  const [trabajadoresCrudos, setTrabajadoresCrudos] = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
 
-  // Las publicaciones reales se muestran primero
+  const [trabajadorParaAgendar, setTrabajadorParaAgendar] = useState(null);
+
+  const buscar = useCallback(async (zona) => {
+    if (!usuario) return;
+    setCargando(true);
+    setError("");
+    try {
+      const zonas = zona ? [zona] : ZONAS;
+      const resultado = await buscarTrabajadores(zonas);
+      setTrabajadoresCrudos(Array.isArray(resultado) ? resultado : []);
+    } catch (err) {
+      setError(err.message || "No se pudo cargar la búsqueda. Probá de nuevo.");
+    } finally {
+      setCargando(false);
+    }
+  }, [usuario]);
+
+  // Búsqueda inicial y cada vez que cambia la zona seleccionada
+  useEffect(() => {
+    buscar(filtroZona);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroZona, usuario]);
+
   const trabajadores = useMemo(
-    () => [...publicaciones, ...trabajadoresMock],
-    [publicaciones]
+    () => trabajadoresCrudos.map(mapearTrabajador),
+    [trabajadoresCrudos]
+  );
+
+  const categoriasDisponibles = useMemo(
+    () => [...new Set(trabajadores.flatMap((t) => t.aptitudes))].sort(),
+    [trabajadores]
   );
 
   const manejarTecla = (e) => {
@@ -430,42 +399,40 @@ function PaginaBusqueda() {
     setPrecioMax("");
     setFiltroZona("");
     setFiltroCalificacion(0);
+    setConsulta("");
   };
 
-  const manejarAgendar = (t) => {
-    setToast(`Vas a poder agendar con ${t.nombre} muy pronto 🙌`);
-    setTimeout(() => setToast(""), 2500);
+  const manejarAgendarClick = (t) => {
+    if (!usuario) {
+      navegar("/login");
+      return;
+    }
+    setTrabajadorParaAgendar(t);
   };
 
-  const zonasDisponibles = useMemo(
-    () => [...new Set(trabajadores.map((t) => t.zona))].sort(),
-    [trabajadores]
-  );
+  const manejarSolicitudEnviada = (t) => {
+    setTrabajadorParaAgendar(null);
+    setToast(`Le mandaste una solicitud a ${t.nombre} 🙌`);
+    setTimeout(() => setToast(""), 3000);
+  };
 
   const resultados = useMemo(() => {
     return trabajadores.filter((t) => {
+      const textoBusqueda = consulta.trim().toLowerCase();
       const textoCoincide =
-        !consulta.trim() ||
-        t.nombre.toLowerCase().includes(consulta.toLowerCase()) ||
-        t.etiquetaCategoria.toLowerCase().includes(consulta.toLowerCase()) ||
-        (t.descripcion || "").toLowerCase().includes(consulta.toLowerCase());
+        !textoBusqueda ||
+        t.nombre.toLowerCase().includes(textoBusqueda) ||
+        t.aptitudes.some((a) => a.toLowerCase().includes(textoBusqueda)) ||
+        (t.descripcion || "").toLowerCase().includes(textoBusqueda);
 
-      const categoriaCoincide = !filtroCategoria || t.categoria === filtroCategoria;
-      const zonaCoincide = !filtroZona || t.zona === filtroZona;
-      const minCoincide = !precioMin || t.precio >= Number(precioMin);
-      const maxCoincide = !precioMax || t.precio <= Number(precioMax);
+      const categoriaCoincide = !filtroCategoria || t.aptitudes.includes(filtroCategoria);
+      const minCoincide = !precioMin || t.precio == null || t.precio >= Number(precioMin);
+      const maxCoincide = !precioMax || t.precio == null || t.precio <= Number(precioMax);
       const calificacionCoincide = t.calificacion >= filtroCalificacion;
 
-      return (
-        textoCoincide &&
-        categoriaCoincide &&
-        zonaCoincide &&
-        minCoincide &&
-        maxCoincide &&
-        calificacionCoincide
-      );
+      return textoCoincide && categoriaCoincide && minCoincide && maxCoincide && calificacionCoincide;
     });
-  }, [trabajadores, consulta, filtroCategoria, filtroZona, precioMin, precioMax, filtroCalificacion]);
+  }, [trabajadores, consulta, filtroCategoria, precioMin, precioMax, filtroCalificacion]);
 
   return (
     <>
@@ -487,19 +454,31 @@ function PaginaBusqueda() {
               onKeyDown={manejarTecla}
             />
           </div>
-          <input
-            type="text"
-            className="campo-cp-superior"
-            placeholder="Cod. Postal"
-            value={codigoPostal}
-            onChange={(e) => setCodigoPostal(e.target.value)}
-            onKeyDown={manejarTecla}
-            maxLength={8}
-          />
-          <button className="boton-buscar-superior" onClick={() => {}}>
-            Buscar
+          <select
+            className="select-zona-superior"
+            value={filtroZona}
+            onChange={(e) => setFiltroZona(e.target.value)}
+          >
+            <option value="">Todas las zonas</option>
+            {ZONAS.map((z) => (
+              <option key={z} value={z}>{z}</option>
+            ))}
+          </select>
+          <button className="boton-buscar-superior" onClick={() => buscar(filtroZona)} disabled={cargando}>
+            {cargando ? "Buscando..." : "Buscar"}
           </button>
         </div>
+
+        {!usuario && (
+          <div className="aviso-login-busqueda">
+            <div className="tarjeta-aviso-login">
+              <span>Iniciá sesión para ver trabajadores y mandar solicitudes.</span>
+              <button className="boton-login-aviso" onClick={() => navegar("/login")}>
+                Iniciar sesión
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="layout-resultados">
           <aside className="panel-filtros">
@@ -513,16 +492,14 @@ function PaginaBusqueda() {
                 onChange={(e) => setFiltroCategoria(e.target.value)}
               >
                 <option value="">Todas</option>
-                <option value="jardineria">Jardinería</option>
-                <option value="mudanza">Mudanza</option>
-                <option value="electricidad">Electricidad</option>
-                <option value="pintura">Pintura</option>
-                <option value="piletero">Piletero</option>
+                {categoriasDisponibles.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
               </select>
             </div>
 
             <div className="grupo-filtro">
-              <label className="etiqueta-filtro">Precio</label>
+              <label className="etiqueta-filtro">Precio por hora</label>
               <div className="fila-precio">
                 <input
                   type="number"
@@ -540,20 +517,6 @@ function PaginaBusqueda() {
                   min="0"
                 />
               </div>
-            </div>
-
-            <div className="grupo-filtro">
-              <label className="etiqueta-filtro">Zona</label>
-              <select
-                className="select-filtro"
-                value={filtroZona}
-                onChange={(e) => setFiltroZona(e.target.value)}
-              >
-                <option value="">Todas las zonas</option>
-                {zonasDisponibles.map((z) => (
-                  <option key={z} value={z}>{z}</option>
-                ))}
-              </select>
             </div>
 
             <div className="grupo-filtro">
@@ -579,55 +542,74 @@ function PaginaBusqueda() {
           </aside>
 
           <div className="columna-resultados">
-            <p className="resumen-resultados">
-              <strong>{resultados.length}</strong> trabajador{resultados.length === 1 ? "" : "es"} encontrado{resultados.length === 1 ? "" : "s"}
-            </p>
-
-            {resultados.length === 0 ? (
-              <div className="sin-resultados">
-                No encontramos trabajadores con esos filtros. Probá ajustarlos.
-              </div>
+            {cargando ? (
+              <div className="estado-carga">Buscando trabajadores...</div>
+            ) : error ? (
+              <div className="estado-error">{error}</div>
             ) : (
-              <div className="lista-tarjetas">
-                {resultados.map((t) => (
-                  <div className="tarjeta-trabajador" key={t.id}>
-                    <div className="imagen-trabajador">
-                      {t.fotoPerfilURL ? (
-                        <img src={t.fotoPerfilURL} alt={t.nombre} />
-                      ) : (
-                        t.avatar
-                      )}
-                      {t.verificado && (
-                        <span className="insignia-verificado">✓ Verificado</span>
-                      )}
-                    </div>
-                    <div className="info-trabajador">
-                      <span className="nombre-trabajador">{t.nombre}</span>
-                      <span className="categoria-trabajador">{t.etiquetaCategoria}</span>
-                      <div className="fila-meta-trabajador">
-                        <span className="calificacion-trabajador">
-                          <Estrella /> {t.reseñas > 0 ? t.calificacion.toFixed(1) : "Nuevo"} {t.reseñas > 0 && `(${t.reseñas})`}
-                        </span>
-                        <span className="zona-trabajador">📍 {t.zona}</span>
-                      </div>
-                      <div className="precio-trabajador">
-                        ${t.precio.toLocaleString("es-AR")} <span>/ hora</span>
-                      </div>
-                      <div className="acciones-tarjeta">
-                        <button className="boton-ver-perfil" onClick={() => navegar(`/trabajador/${t.id}`)}>
-                          Ver perfil
-                        </button>
-                        <button className="boton-agendar" onClick={() => manejarAgendar(t)}>
-                          Agendar
-                        </button>
-                      </div>
-                    </div>
+              <>
+                <p className="resumen-resultados">
+                  <strong>{resultados.length}</strong> trabajador{resultados.length === 1 ? "" : "es"} encontrado{resultados.length === 1 ? "" : "s"}
+                </p>
+
+                {resultados.length === 0 ? (
+                  <div className="sin-resultados">
+                    {usuario
+                      ? "No encontramos trabajadores con esos filtros. Probá ajustarlos."
+                      : "Iniciá sesión para buscar trabajadores."}
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="lista-tarjetas">
+                    {resultados.map((t) => (
+                      <div className="tarjeta-trabajador" key={t.id}>
+                        <div className="imagen-trabajador">
+                          {t.fotoPerfilURL ? (
+                            <img src={t.fotoPerfilURL} alt={t.nombre} />
+                          ) : (
+                            t.avatar
+                          )}
+                        </div>
+                        <div className="info-trabajador">
+                          <span className="nombre-trabajador">{t.nombre}</span>
+                          <span className="categoria-trabajador">{t.etiquetaCategoria}</span>
+                          <div className="fila-meta-trabajador">
+                            <span className="calificacion-trabajador">
+                              <Estrella /> {t.calificacion > 0 ? t.calificacion.toFixed(1) : "Nuevo"}
+                            </span>
+                            <span className="zona-trabajador">📍 {t.zona}</span>
+                          </div>
+                          <div className="precio-trabajador">
+                            {t.precio != null ? (
+                              <>${t.precio.toLocaleString("es-AR")} <span>/ hora</span></>
+                            ) : (
+                              <span>Consultar precio</span>
+                            )}
+                          </div>
+                          <div className="acciones-tarjeta">
+                            <button className="boton-ver-perfil" onClick={() => navegar(`/trabajador/${t.id}`)}>
+                              Ver perfil
+                            </button>
+                            <button className="boton-agendar" onClick={() => manejarAgendarClick(t)}>
+                              Agendar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
+
+        {trabajadorParaAgendar && (
+          <AgendarModal
+            trabajador={trabajadorParaAgendar}
+            onCerrar={() => setTrabajadorParaAgendar(null)}
+            onEnviada={manejarSolicitudEnviada}
+          />
+        )}
 
         {toast && <div className="toast-agendar">{toast}</div>}
       </div>

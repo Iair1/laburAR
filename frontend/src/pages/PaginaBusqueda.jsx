@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import AgendarModal from "../componentes/AgendarModal";
-import { obtenerSesionUsuario } from "../sesion";
+import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { buscarTrabajadores } from "../api";
 
 const estilos = `
@@ -340,7 +340,19 @@ function mapearTrabajador(u) {
 function PaginaBusqueda() {
   const navegar = useNavigate();
   const [parametros] = useSearchParams();
-  const usuario = obtenerSesionUsuario();
+
+  // Ojo: obtenerSesionUsuario() devuelve un objeto NUEVO (JSON.parse) en cada
+  // llamada. Si lo usáramos directo como `const usuario = obtenerSesionUsuario()`
+  // y lo pusiéramos en dependencias de un efecto, React lo vería "distinto" en
+  // cada render (misma data, otra referencia) y el efecto se dispararía sin
+  // parar. Por eso lo guardamos en estado: se recalcula solo cuando de verdad
+  // cambia la sesión (login/logout), no en cada render.
+  const [usuario, setUsuario] = useState(() => obtenerSesionUsuario());
+  useEffect(() => {
+    const actualizar = () => setUsuario(obtenerSesionUsuario());
+    window.addEventListener("laburar-sesion-cambio", actualizar);
+    return () => window.removeEventListener("laburar-sesion-cambio", actualizar);
+  }, []);
 
   const [consulta, setConsulta] = useState(parametros.get("q") || "");
   const zonaInicial = parametros.get("categoria") ? "" : parametros.get("zona") || "";
@@ -367,7 +379,15 @@ function PaginaBusqueda() {
       const resultado = await buscarTrabajadores(zonas);
       setTrabajadoresCrudos(Array.isArray(resultado) ? resultado : []);
     } catch (err) {
-      setError(err.message || "No se pudo cargar la búsqueda. Probá de nuevo.");
+      if (err.status === 401) {
+        // El token no está, es inválido o expiró (dura 3hs). Limpiamos la
+        // sesión vieja para no quedar reintentando con un token muerto.
+        cerrarSesionCompleta();
+        setUsuario(null);
+        setError("Tu sesión expiró. Volvé a iniciar sesión para buscar trabajadores.");
+      } else {
+        setError(err.message || "No se pudo cargar la búsqueda. Probá de nuevo.");
+      }
     } finally {
       setCargando(false);
     }

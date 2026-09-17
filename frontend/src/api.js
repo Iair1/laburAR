@@ -215,7 +215,9 @@ export const buscarTrabajadores = async (zonas) => {
     const resultado = await respuesta.json();
 
     if (!respuesta.ok) {
-      throw new Error(resultado.message || "Error al buscar trabajadores");
+      const error = new Error(resultado.message || "Error al buscar trabajadores");
+      error.status = respuesta.status;
+      throw error;
     }
 
     return resultado;

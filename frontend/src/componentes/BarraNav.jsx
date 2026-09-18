@@ -148,7 +148,7 @@ export default function BarraNav() {
               <button className="enlace-nav" onClick={() => navegar("/solicitudes-recibidas")}>
                 Solicitudes recibidas
               </button>
-              <button className="enlace-nav" onClick={()=> navegar("trabajos-pendientes")}>
+              <button className="enlace-nav" onClick={()=> navegar("/trabajos-pendientes")}>
                 Trabajos Pendientes
               </button>
               <button className="enlace-nav" onClick={() => navegar("/mensajes")}>

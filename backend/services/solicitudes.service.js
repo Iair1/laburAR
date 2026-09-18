@@ -157,11 +157,11 @@ const revisarTerminadas = async() => {
                 uc.nombre_completo AS contratador_nombre,
                 s.solicitud
             FROM updated_solicitudes s
-            JOIN usuarios ut ON us.trabajadorid = ut.id
-            JOIN usuarios uc ON us.contratadorid = uc.id;
+            JOIN usuarios ut ON s.trabajadorid = ut.id
+            JOIN usuarios uc ON s.contratadorid = uc.id;
         `);
         let notificaciones=[]
-        for(trabajo in result.rows){
+        for(const trabajo of result.rows){
             const avisotxtC=`Su tabajo con ${trabajo.trabajador_nombre} sido marcada como terminada por el sistema
                             Solicitud: ${trabajo.solicitud}
                             ¿Quieres dejar una reseña?`;

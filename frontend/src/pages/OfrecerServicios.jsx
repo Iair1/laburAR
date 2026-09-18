@@ -9,6 +9,12 @@ const estilos = `
     background: #f5f5f3;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 2.5rem 1.5rem 4rem;
+    background-image: url('../assets/fondo.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    margin: 0;
   }
   .contenedor-ofrecer {
     max-width: 640px;

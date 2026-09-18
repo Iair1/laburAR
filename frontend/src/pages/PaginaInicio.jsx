@@ -7,8 +7,16 @@ const estilos = `
 
   .pagina-inicio {
     min-height: 100vh;
-    background: #f5f5f3;
+    
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    
+    background-image: url('../assets/fondo.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    margin: 0;
   }
 
   .hero-inicio {

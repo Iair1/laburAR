@@ -264,7 +264,7 @@ function PaginaInicio() {
         <BarraNav />
 
         <main className="hero-inicio">
-          <h1 className="eslogan-inicio">slogan</h1>
+          <h1 className="eslogan-inicio">LaburAR te ayuda a conectar</h1>
 
           <div className="contenedor-busqueda">
             <div className="barra-busqueda">

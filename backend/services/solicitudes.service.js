@@ -100,6 +100,7 @@ async function busqueda(id) {
                 ON t.id = s.trabajoid
             INNER JOIN usuarios uc
                 ON uc.id = s.contratadorid
+            WHERE s.estado = 'por revisar'           
             ORDER BY coincidencias DESC;`, [id]);
 
         return sUtiles.rows

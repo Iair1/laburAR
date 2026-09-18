@@ -3,6 +3,154 @@ import { useNavigate } from "react-router-dom";
 import { iniciarSesion } from "../api";
 import { guardarSesionUsuario, iniciarSesionConGoogleSimulado } from "../sesion";
 
+const estilos = `
+  * { box-sizing: border-box; }
+
+  .pagina-auth {
+    position: relative;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-image: url('../assets/fondo.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  /* --- logo --- */
+  .logo-laburar {
+    position: absolute;
+    left: 40px;
+    top: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .logo-icono { width: 48px; height: auto; display: block; }
+  .logo-texto { width: 110px; height: auto; display: block; }
+
+  /* --- tarjeta --- */
+  .tarjeta-auth {
+    background: #a8a8a8;
+    border-radius: 18px;
+    padding: 34px 38px 30px;
+    width: 100%;
+    max-width: 420px;
+    box-sizing: border-box;
+  }
+  .titulo-auth {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #232323;
+    text-align: center;
+    margin: 0 0 20px;
+  }
+  .titulo-auth b { font-weight: 800; }
+
+  .boton-google {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 11px 14px;
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #3c3c3c;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: background 0.15s;
+  }
+  .boton-google:hover { background: #f2f2f2; }
+  .boton-google:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .divisor-auth {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #3a3a3a;
+    font-weight: 700;
+    margin: 0 0 14px;
+  }
+
+  .entrada-auth {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4a4a4a;
+    letter-spacing: 0.06em;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .entrada-auth::placeholder { color: #8a8a8a; }
+  .entrada-auth:focus { border-color: #570101; }
+  .entrada-auth:disabled { opacity: 0.7; }
+
+  .boton-enviar-auth {
+    width: 100%;
+    padding: 13px;
+    background: #570101;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    margin: 6px 0 16px;
+    transition: background 0.15s;
+  }
+  .boton-enviar-auth:hover { background: #3b1e0d; }
+  .boton-enviar-auth:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .texto-error-auth {
+    font-size: 0.78rem;
+    color: #5a0000;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .enlace-centro-auth { text-align: center; margin: 0 0 6px; font-size: 0.78rem; }
+  .enlace-azul-auth { color: #3346c9; font-weight: 600; cursor: pointer; }
+  .enlace-azul-auth:hover { text-decoration: underline; }
+  .texto-gris-auth { color: #2b2b2b; }
+  .enlace-azul-bold-auth { color: #3346c9; font-weight: 800; cursor: pointer; }
+  .enlace-azul-bold-auth:hover { text-decoration: underline; }
+
+  @media (max-width: 480px) {
+    .logo-laburar { position: static; margin: 0 auto 20px; }
+    .blob-lateral-hombro, .blob-lateral-pelo, .blob-lateral-cara, .punto-lateral, .grilla-puntos { display: none; }
+    .pagina-auth { flex-direction: column; padding-top: 40px; }
+  }
+`;
+
+function LogoLaburar({ onClick }) {
+  return (
+    <div className="logo-laburar" onClick={onClick}>
+      <img src="../assets/logo-icono.svg" alt="" className="logo-icono" />
+      <img src="../assets/logo-texto.svg" alt="LABURAR" className="logo-texto" />
+    </div>
+  );
+}
+
 export default function Login() {
   const [nombre, setNombre] = useState("");
   const [contrasena, setContrasena] = useState("");
@@ -57,43 +205,36 @@ export default function Login() {
   };
 
   return (
-    <div style={estilos.fondo}>
-      <div style={estilos.contenedor}>
-        <div style={estilos.tarjeta}>
-          <h1 style={estilos.titulo}>Iniciar sesion en LABURAR</h1>
+    <>
+      <style>{estilos}</style>
+      <div className="pagina-auth">
+        <LogoLaburar onClick={() => navegar("/")} />
 
-          <button
-            style={estilos.botonGoogle}
-            onClick={manejarGoogle}
-            disabled={cargando}
-          >
-            Continuar con&nbsp;
-            <svg width="52" height="18" viewBox="0 0 272 92" aria-hidden="true">
-              <path fill="#4285F4" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
-              <path fill="#D14836" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
-              <path fill="#F4B400" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 7.87 11.17 7.87 7.31 0 11.84-4.51 11.84-13v-3.19h-.34c-2.18 2.69-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-3.61h9.25zm-8.56 20.92c0-7.81-5.21-13.52-11.84-13.52-6.72 0-12.35 5.71-12.35 13.52 0 7.73 5.63 13.36 12.35 13.36 6.63 0 11.84-5.63 11.84-13.36z"/>
-              <path fill="#4285F4" d="M225 3v65h-9.5V3h9.5z"/>
-              <path fill="#34A853" d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-23.27-7.98l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z"/>
-              <path fill="#EA4335" d="M35.29 41.41V32h31.39c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 35.19.36 16.49 16.32 1.03 35.13 1.03c10.49 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.32.05z"/>
+        <div className="tarjeta-auth">
+          <h1 className="titulo-auth">Iniciar sesion en <b>LABURAR</b></h1>
+
+          <button className="boton-google" onClick={manejarGoogle} disabled={cargando}>
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 7.1 29.6 5 24 5c-7.6 0-14.1 4.3-17.4 10.6z" />
+              <path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5c-2 1.5-4.6 2.4-7.6 2.4-5.2 0-9.6-3.3-11.2-7.9l-6.6 5.1C9.8 39.6 16.3 44 24 44z" />
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.5 5.5C41.5 36 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z" />
             </svg>
+            Continuar con Google
           </button>
 
-          <div style={estilos.separador}>
-            <div style={estilos.linea} />
-            <span style={estilos.separadorTexto}>O</span>
-            <div style={estilos.linea} />
-          </div>
+          <p className="divisor-auth">O</p>
 
           <input
-            style={estilos.entrada}
+            className="entrada-auth"
             type="text"
-            placeholder="NOMBRE COMPLETO"
+            placeholder="EMAIL/USUARIO"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             disabled={cargando}
           />
           <input
-            style={estilos.entrada}
+            className="entrada-auth"
             type="password"
             placeholder="CONTRASEÑA"
             value={contrasena}
@@ -101,148 +242,29 @@ export default function Login() {
             disabled={cargando}
           />
 
-          {error && <p style={estilos.textoError}>{error}</p>}
+          {error && <p className="texto-error-auth">{error}</p>}
 
           <button
-            style={{ ...estilos.boton, opacity: cargando ? 0.6 : 1 }}
+            className="boton-enviar-auth"
             onClick={manejarLogin}
             disabled={cargando}
           >
             {cargando ? "Iniciando sesión..." : "Iniciar Sesion"}
           </button>
 
-          <p style={estilos.linkCentro}>
-            <span style={estilos.enlaceAzul} onClick={() => navegar("/recuperar-contrasena")}>
+          <p className="enlace-centro-auth">
+            <span className="enlace-azul-auth" onClick={() => navegar("/recuperar-contrasena")}>
               Olvide mi contraseña
             </span>
           </p>
-          <p style={estilos.linkCentro}>
-            <span style={estilos.textoGris}>No tengo una cuenta </span>
-            <span style={estilos.enlaceAzulBold} onClick={() => navegar("/paso1")}>
+          <p className="enlace-centro-auth">
+            <span className="texto-gris-auth">No tengo una cuenta </span>
+            <span className="enlace-azul-bold-auth" onClick={() => navegar("/paso1")}>
               REGISTARME
             </span>
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }
-
-const estilos = {
-  fondo: {
-    minHeight: "100vh",
-    background: "#c0c0c0",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "Inter, sans-serif",
-    padding: "80px 24px 40px",
-    boxSizing: "border-box",
-  },
-  contenedor: {
-    position: "relative",
-    width: "100%",
-    maxWidth: "480px",
-  },
-  tarjeta: {
-    background: "#fff",
-    borderRadius: "0px",
-    padding: "50px 48px 40px",
-    boxSizing: "border-box",
-    position: "relative",
-    zIndex: 1,
-  },
-  titulo: {
-    fontSize: "19px",
-    fontWeight: "600",
-    color: "#1a2332",
-    textAlign: "center",
-    margin: "0 0 24px",
-  },
-  botonGoogle: {
-    width: "100%",
-    padding: "11px 14px",
-    marginBottom: "12px",
-    background: "#fff",
-    border: "1.5px solid #ccc",
-    borderRadius: "0px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#1a2332",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxSizing: "border-box",
-  },
-  separador: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    marginBottom: "14px",
-  },
-  linea: {
-    flex: 1,
-    height: "1px",
-    background: "#ddd",
-  },
-  separadorTexto: {
-    fontSize: "13px",
-    color: "#999",
-    fontWeight: "500",
-  },
-  entrada: {
-    width: "100%",
-    padding: "11px 14px",
-    marginBottom: "10px",
-    background: "#e8e8e8",
-    border: "none",
-    borderRadius: "0px",
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#555",
-    letterSpacing: "0.06em",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  boton: {
-    width: "100%",
-    padding: "13px",
-    background: "#2c2c2c",
-    color: "#fff",
-    border: "none",
-    borderRadius: "0px",
-    fontSize: "15px",
-    fontWeight: "700",
-    cursor: "pointer",
-    letterSpacing: "0.02em",
-    boxSizing: "border-box",
-    marginBottom: "16px",
-    marginTop: "6px",
-  },
-  textoError: {
-    fontSize: "12px",
-    color: "#d0341a",
-    fontWeight: "600",
-    marginBottom: "10px",
-    textAlign: "center",
-  },
-  linkCentro: {
-    textAlign: "center",
-    margin: "0 0 8px",
-    fontSize: "13px",
-  },
-  textoGris: {
-    color: "#555",
-  },
-  enlaceAzul: {
-    color: "#4a7fd4",
-    fontWeight: "500",
-    cursor: "pointer",
-  },
-  enlaceAzulBold: {
-    color: "#4a7fd4",
-    fontWeight: "700",
-    cursor: "pointer",
-  },
-};

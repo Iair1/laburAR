@@ -88,8 +88,8 @@ const estilos = `
     border: none;
     transition: background 0.15s;
   }
-  .boton-aceptar-solicitud { background: #1a2332; color: #fff; }
-  .boton-aceptar-solicitud:hover { background: #0f1621; }
+  .boton-aceptar-solicitud { background: #570101; color: #fff; }
+  .boton-aceptar-solicitud:hover { background: #3b1e0d; }
   .boton-rechazar-solicitud { background: #fff; border: 1px solid #ccc; color: #333; }
   .boton-rechazar-solicitud:hover { background: #f0f0ee; }
   .boton-aceptar-solicitud:disabled, .boton-rechazar-solicitud:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -99,7 +99,7 @@ const estilos = `
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    background: #1a2332;
+    background: #570101;
     color: #fff;
     padding: 10px 18px;
     border-radius: 8px;

@@ -9,7 +9,7 @@ const estilos = `
     background: #f5f5f3;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 2.5rem 1.5rem 4rem;
-    background-image: url('../assets/fondo.jpg');
+    background-image: url('../assets/fondo.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

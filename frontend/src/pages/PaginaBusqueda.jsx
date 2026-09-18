@@ -14,7 +14,7 @@ const estilos = `
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
     
-    background-image: url('../assets/fondo.jpg');
+    background-image: url('../assets/fondo.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

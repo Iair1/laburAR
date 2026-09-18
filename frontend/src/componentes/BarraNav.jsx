@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
+import logoIcono from "../assets/logo-icono.svg";
+import logoTexto from "../assets/logo-texto.svg";
 
 const estilos = `
   .barra-nav {
@@ -140,8 +142,8 @@ export default function BarraNav() {
       <style>{estilos}</style>
       <header className="barra-nav">
         <div className="logotipo" onClick={() => navegar("/")}>
-          <img src="../assets/logo-icono.svg" alt="" className="logo-icono-nav" />
-          <img src="../assets/logo-texto.svg" alt="LABURAR" className="logo-texto-nav" />
+          <img src={logoIcono} alt="" className="logo-icono-nav" />
+          <img src={logoTexto} alt="LABURAR" className="logo-texto-nav" />
         </div>
         <nav className="nav-derecha">
           {usuario ? (

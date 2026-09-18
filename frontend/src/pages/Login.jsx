@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { iniciarSesion } from "../api";
 import { guardarSesionUsuario, iniciarSesionConGoogleSimulado } from "../sesion";
+import logoIcono from "../assets/logo-icono.svg";
+import logoTexto from "../assets/logo-texto.svg";
 
 const estilos = `
   * { box-sizing: border-box; }
@@ -21,28 +23,38 @@ const estilos = `
     box-sizing: border-box;
   }
 
+  /* --- contenedor (logo a la izquierda, tarjeta al lado) --- */
+  .contenedor-auth {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 620px;
+  }
+
   /* --- logo --- */
   .logo-laburar {
-    position: absolute;
-    left: 40px;
-    top: 36px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    flex-shrink: 0;
     cursor: pointer;
     user-select: none;
   }
-  .logo-icono { width: 48px; height: auto; display: block; }
-  .logo-texto { width: 110px; height: auto; display: block; }
+  .logo-icono { width: 64px; height: auto; display: block; }
+  .logo-texto { width: 140px; height: auto; display: block; }
 
   /* --- tarjeta --- */
   .tarjeta-auth {
     background: #a8a8a8;
     border-radius: 18px;
     padding: 34px 38px 30px;
-    width: 100%;
-    max-width: 420px;
+    width: 420px;
+    max-width: 100%;
+    flex-shrink: 0;
     box-sizing: border-box;
   }
   .titulo-auth {
@@ -135,18 +147,20 @@ const estilos = `
   .enlace-azul-bold-auth { color: #3346c9; font-weight: 800; cursor: pointer; }
   .enlace-azul-bold-auth:hover { text-decoration: underline; }
 
-  @media (max-width: 480px) {
-    .logo-laburar { position: static; margin: 0 auto 20px; }
-    .blob-lateral-hombro, .blob-lateral-pelo, .blob-lateral-cara, .punto-lateral, .grilla-puntos { display: none; }
-    .pagina-auth { flex-direction: column; padding-top: 40px; }
+  @media (max-width: 620px) {
+    .contenedor-auth { flex-direction: column; gap: 14px; }
+    .logo-icono { width: 44px; }
+    .logo-texto { width: 96px; }
+    .tarjeta-auth { width: 100%; }
+    .pagina-auth { padding-top: 40px; }
   }
 `;
 
 function LogoLaburar({ onClick }) {
   return (
     <div className="logo-laburar" onClick={onClick}>
-      <img src="../assets/logo-icono.svg" alt="" className="logo-icono" />
-      <img src="../assets/logo-texto.svg" alt="LABURAR" className="logo-texto" />
+      <img src={logoIcono} alt="" className="logo-icono" />
+      <img src={logoTexto} alt="LABURAR" className="logo-texto" />
     </div>
   );
 }
@@ -208,9 +222,10 @@ export default function Login() {
     <>
       <style>{estilos}</style>
       <div className="pagina-auth">
-        <LogoLaburar onClick={() => navegar("/")} />
+        <div className="contenedor-auth">
+          <LogoLaburar onClick={() => navegar("/")} />
 
-        <div className="tarjeta-auth">
+          <div className="tarjeta-auth">
           <h1 className="titulo-auth">Iniciar sesion en <b>LABURAR</b></h1>
 
           <button className="boton-google" onClick={manejarGoogle} disabled={cargando}>
@@ -263,6 +278,7 @@ export default function Login() {
               REGISTARME
             </span>
           </p>
+          </div>
         </div>
       </div>
     </>

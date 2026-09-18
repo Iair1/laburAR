@@ -7,6 +7,8 @@ import {
   archivoADataURL,
   iniciarSesionConGoogleSimulado,
 } from "../sesion";
+import logoIcono from "../assets/logo-icono.svg";
+import logoTexto from "../assets/logo-texto.svg";
 
 const LOCALIDADES = [
   "CABA", "GBA Norte", "GBA Sur", "GBA Oeste", "Córdoba Capital",
@@ -32,28 +34,37 @@ const estilos = `
     box-sizing: border-box;
   }
 
+  /* --- contenedor (logo a la izquierda, tarjeta al lado) --- */
+  .contenedor-auth {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 660px;
+  }
+
   /* --- logo --- */
   .logo-laburar {
-    position: absolute;
-    left: 40px;
-    top: 36px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    flex-shrink: 0;
     cursor: pointer;
     user-select: none;
   }
-  .logo-icono { width: 48px; height: auto; display: block; }
-  .logo-texto { width: 110px; height: auto; display: block; }
+  .logo-icono { width: 64px; height: auto; display: block; }
+  .logo-texto { width: 140px; height: auto; display: block; }
 
   /* --- tarjeta --- */
   .tarjeta-auth {
     background: #a8a8a8;
     border-radius: 18px;
     padding: 32px 38px 32px;
-    width: 100%;
-    max-width: 460px;
+    width: 460px;
+    max-width: 100%;
     max-height: 88vh;
     overflow-y: auto;
     box-sizing: border-box;
@@ -192,10 +203,12 @@ const estilos = `
     text-align: center;
   }
 
-  @media (max-width: 480px) {
-    .logo-laburar { position: static; margin: 0 auto 20px; }
-    .blob-lateral-hombro, .blob-lateral-pelo, .blob-lateral-cara, .punto-lateral, .grilla-puntos { display: none; }
-    .pagina-auth { flex-direction: column; padding-top: 40px; }
+  @media (max-width: 660px) {
+    .contenedor-auth { flex-direction: column; gap: 14px; }
+    .logo-icono { width: 44px; }
+    .logo-texto { width: 96px; }
+    .tarjeta-auth { width: 100%; }
+    .pagina-auth { padding-top: 40px; }
     .fila-dos-auth { flex-direction: column; gap: 0; }
   }
 `;
@@ -203,8 +216,8 @@ const estilos = `
 function LogoLaburar({ onClick }) {
   return (
     <div className="logo-laburar" onClick={onClick}>
-      <img src="../assets/logo-icono.svg" alt="" className="logo-icono" />
-      <img src="../assets/logo-texto.svg" alt="LABURAR" className="logo-texto" />
+      <img src={logoIcono} alt="" className="logo-icono" />
+      <img src={logoTexto} alt="LABURAR" className="logo-texto" />
     </div>
   );
 }
@@ -320,10 +333,11 @@ export default function Paso1() {
     <>
       <style>{estilos}</style>
       <div className="pagina-auth">
-        <LogoLaburar onClick={() => navegar("/")} />
+        <div className="contenedor-auth">
+          <LogoLaburar onClick={() => navegar("/")} />
 
-        <div className="tarjeta-auth">
-          <h1 className="titulo-auth">Registrate en <b>LABURAR</b></h1>
+          <div className="tarjeta-auth">
+            <h1 className="titulo-auth">Registrate en <b>LABURAR</b></h1>
 
           {!registradoConGoogle && (
             <button type="button" className="boton-google" onClick={manejarGoogle}>
@@ -466,6 +480,7 @@ export default function Paso1() {
           >
             {cargando ? "Registrando..." : "Registrarme"}
           </button>
+          </div>
         </div>
       </div>
     </>

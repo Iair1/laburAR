@@ -48,6 +48,26 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
     }
 }
 
+async function trabajosPendientes(id) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            FROM solicitudes s
+            INNER JOIN usuarios u ON u.id = s.contratadorid
+            WHERE s.trabajadorid = $1 AND s.estado = 'pendiente'
+            ORDER BY s.id DESC;
+        `, [id]);
+        return result.rows;
+    } catch(error){
+        console.error("Error al obtener trabajos pendientes:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
+
 async function busqueda(id) {
     const client = new Client(config);
     console.log(id);
@@ -141,6 +161,7 @@ const rechazarSolicitud = async(id, solicitudid) => {
 
 const SolicitudesService = {
     busqueda,
+    trabajosPendientes,
     subirSolicitud,
     borrarSolicitud,
     aceptarSolicitud,

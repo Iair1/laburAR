@@ -3,29 +3,24 @@ import { createContext, useState } from "react";
 export const RegistroContext = createContext();
 
 export const RegistroProvider = ({ children }) => {
-  
+
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [revalidar, setRevalidar] = useState("");
-  const [rol, setRol] = useState("trabajador");
   const [archivo, setArchivo] = useState(null);
 
-  // Nuevos campos requeridos por el backend
   const [dni, setDni] = useState("");
   const [domicilioCalle, setDomicilioCalle] = useState("");
   const [domicilioAltura, setDomicilioAltura] = useState("");
   const [codigoPostal, setCodigoPostal] = useState("");
+  // Requerido por el backend en crearCuenta
+  const [localidad, setLocalidad] = useState("");
 
-  const [tipoTrabajo, setTipoTrabajo] = useState("");
-  const [areaTrabajo, setAreaTrabajo] = useState("");
-  const [cobroPorHora, setCobroPorHora] = useState("");
-  const [tieneMatricula, setTieneMatricula] = useState(false);
-  const [archivoDni, setArchivoDni] = useState(null);
-
-  const [archivoAptitud, setArchivoAptitud] = useState(null);
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  // Se completa solo si el usuario entra con Google: se saltea la
+  // validación de contraseña y se bloquea el campo de correo.
+  const [registradoConGoogle, setRegistradoConGoogle] = useState(false);
 
   const limpiarDatos = () => {
     setNombre("");
@@ -33,62 +28,28 @@ export const RegistroProvider = ({ children }) => {
     setTelefono("");
     setContrasena("");
     setRevalidar("");
-    setRol("trabajador");
     setArchivo(null);
     setDni("");
     setDomicilioCalle("");
     setDomicilioAltura("");
     setCodigoPostal("");
-    setTipoTrabajo("");
-    setAreaTrabajo("");
-    setCobroPorHora("");
-    setTieneMatricula(false);
-    setArchivoDni(null);
-    setArchivoAptitud(null);
-    setAceptaTerminos(false);
+    setLocalidad("");
+    setRegistradoConGoogle(false);
   };
 
   const value = {
-    // Paso 1
-    nombre,
-    setNombre,
-    correo,
-    setCorreo,
-    telefono,
-    setTelefono,
-    contrasena,
-    setContrasena,
-    revalidar,
-    setRevalidar,
-    rol,
-    setRol,
-    archivo,
-    setArchivo,
-    dni,
-    setDni,
-    domicilioCalle,
-    setDomicilioCalle,
-    domicilioAltura,
-    setDomicilioAltura,
-    codigoPostal,
-    setCodigoPostal,
-    // Paso 2
-    tipoTrabajo,
-    setTipoTrabajo,
-    areaTrabajo,
-    setAreaTrabajo,
-    cobroPorHora,
-    setCobroPorHora,
-    tieneMatricula,
-    setTieneMatricula,
-    archivoDni,
-    setArchivoDni,
-    // Paso 3
-    archivoAptitud,
-    setArchivoAptitud,
-    aceptaTerminos,
-    setAceptaTerminos,
-    // Funciones
+    nombre, setNombre,
+    correo, setCorreo,
+    telefono, setTelefono,
+    contrasena, setContrasena,
+    revalidar, setRevalidar,
+    archivo, setArchivo,
+    dni, setDni,
+    domicilioCalle, setDomicilioCalle,
+    domicilioAltura, setDomicilioAltura,
+    codigoPostal, setCodigoPostal,
+    localidad, setLocalidad,
+    registradoConGoogle, setRegistradoConGoogle,
     limpiarDatos,
   };
 

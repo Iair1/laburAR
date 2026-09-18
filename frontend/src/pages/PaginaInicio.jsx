@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import BarraNav from "../componentes/BarraNav";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -9,55 +10,6 @@ const estilos = `
     background: #f5f5f3;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
-
-  .barra-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    height: 56px;
-    background: #e8e8e6;
-    border-bottom: 1px solid #d4d4d0;
-  }
-  .logotipo {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #1a1a1a;
-    cursor: pointer;
-    user-select: none;
-  }
-  .nav-derecha {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-  .enlace-nav {
-    background: none;
-    border: none;
-    padding: 0.4rem 0.75rem;
-    font-size: 0.82rem;
-    color: #333;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-  .enlace-nav:hover { background: #d6d6d3; }
-  .icono-usuario {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    margin-left: 0.5rem;
-  }
-  .icono-usuario img {
-    width: 32px;
-    height: 32px;
-    opacity: 0.65;
-    transition: opacity 0.15s;
-  }
-  .icono-usuario:hover img { opacity: 1; }
 
   .hero-inicio {
     display: flex;
@@ -218,7 +170,6 @@ const estilos = `
     .campo-busqueda { font-size: 0.82rem; }
     .tarjetas-recientes { flex-direction: column; }
     .grilla-categorias { gap: 8px; }
-    .enlace-nav:first-child { display: none; }
   }
 `;
 
@@ -279,12 +230,6 @@ const categorias = [
   },
 ];
 
-const trabajosRecientes = [
-  { id: 1, titulo: "Limpieza de casa", ubicacion: "Acassuso, San Isidro", icono: "🏠" },
-  { id: 2, titulo: "Arreglo de plomería", ubicacion: "Belgrano, CABA", icono: "🔧" },
-  { id: 3, titulo: "Pintar una casa", ubicacion: "Piñeyro, Avellaneda", icono: "🖌️" },
-];
-
 function PaginaInicio() {
   const navegar = useNavigate();
   const [consulta, setConsulta] = useState("");
@@ -308,27 +253,7 @@ function PaginaInicio() {
       <style>{estilos}</style>
 
       <div className="pagina-inicio">
-        <header className="barra-nav">
-          <div className="logotipo" onClick={() => navegar("/")}>laburAR</div>
-          <nav className="nav-derecha">
-            <button className="enlace-nav" onClick={() => navegar("/paso1")}>
-              Registrarme como trabajador
-            </button>
-            <button className="enlace-nav" onClick={() => navegar("/mensajes")}>
-              Bandeja de entrada
-            </button>
-            <button
-              className="icono-usuario"
-              onClick={() => navegar("/login")}
-              aria-label="Iniciar sesión"
-            >
-              <img
-                src="https://cdn-icons-png.flaticon.com/128/310/310869.png"
-                alt="Iniciar sesión"
-              />
-            </button>
-          </nav>
-        </header>
+        <BarraNav />
 
         <main className="hero-inicio">
           <h1 className="eslogan-inicio">slogan</h1>
@@ -362,11 +287,6 @@ function PaginaInicio() {
                 </svg>
               </button>
             </div>
-          </div>
-
-          <div className="seccion-recientes">
-            <p className="etiqueta-recientes">Retomá donde lo dejaste:</p>
-            
           </div>
 
           <div className="seccion-categorias">

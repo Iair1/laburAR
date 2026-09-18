@@ -12,6 +12,7 @@ import Empleos from "./pages/Empleos";
 import PaginaBusqueda from "./pages/PaginaBusqueda";
 import OfrecerServicios from "./pages/OfrecerServicios"
 import SolicitudesRecibidas from "./pages/SolicitudesRecibidas"
+import TrabajosPendientes from "./pages/TrabajosPendientes"
 
 function App() {
   return (

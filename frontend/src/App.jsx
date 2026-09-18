@@ -28,6 +28,7 @@ function App() {
         <Route path="/buscar" element={<PaginaBusqueda />} />
         <Route path="/ofrecer-servicios" element={<OfrecerServicios />} />
         <Route path="/solicitudes-recibidas" element={<SolicitudesRecibidas />} />
+        <Route path="/trabajos-pendientes" element={<TrabajosPendientes />} />
 
       </Routes>
     </RegistroProvider>

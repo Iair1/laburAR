@@ -60,6 +60,8 @@ button:focus-visible,
   justify-content: space-between;
   min-height: 5rem;
   padding: 0.75rem 3.3125rem 0 0.5rem;
+  background: #e8e8e6;
+  border-bottom: 1px solid #d4d4d0;
 }
 
 .brand {
@@ -480,6 +482,8 @@ button:focus-visible,
 .logo-texto-nav { width: 92px; height: auto; display: block; }  
 `
 export default function Laburar() {
+  
+  const navegar = useNavigate();
   // Referencia al elemento desplazable de este componente.
   const carruselRef = useRef(null);
 

@@ -64,6 +64,11 @@ const revisarTerminadas = async(req, res)=>{
     try{
         const result = await SolicitudesService.revisarTerminadas();
         res.status(200).json({ message: "Revisión de solicitudes terminadas exitosa", result });
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const trabajosPendientes = async(req, res)=>{
     const id = req.id;
     try{
@@ -80,7 +85,7 @@ const SolicitudesController = {
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,
-    revisarTerminadas
+    revisarTerminadas,
     trabajosPendientes
 }
 export default SolicitudesController;

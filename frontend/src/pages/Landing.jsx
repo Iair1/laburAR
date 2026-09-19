@@ -55,7 +55,7 @@ button:focus-visible,
 /* Encabezado */
 .site-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   height: 56px;
   padding: 0.75rem 3.3125rem 0 0.5rem;
@@ -69,12 +69,13 @@ button:focus-visible,
     gap: 8px;
     cursor: pointer;
     user-select: none;
+    height: 100%;
 }
 
 .brand img {
   display: block;
   width: 16.1875rem;
-  height: auto;
+  height: 100%;
 }
 
 .account-nav {
@@ -478,9 +479,12 @@ button:focus-visible,
   border-radius: 6px;
   transition: background 0.15s;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.logo-icono-nav { width: 30px; height: auto; display: block; }
-.logo-texto-nav { width: 92px; height: auto; display: block; }  
+.logo-icono-nav { width: 30px; height: 100%; display: block; }
+.logo-texto-nav { width: 92px; height: 100%; display: block; }  
 `
 export default function Laburar() {
   

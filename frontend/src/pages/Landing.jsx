@@ -14,6 +14,14 @@ const estilos = `
   font-size: 16px;
 }
 
+body{
+    background-image: url('../assets/fondo.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    margin: 0;}
+
 * {
   box-sizing: border-box;
 }

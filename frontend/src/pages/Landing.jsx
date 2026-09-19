@@ -48,8 +48,6 @@ button:focus-visible,
   width: 100%;
   max-width: 67.9375rem;
   min-height: 128rem;
-  margin-inline: auto;
-  padding-bottom: 14.8125rem;
 }
 
 /* Encabezado */
@@ -308,14 +306,12 @@ button:focus-visible,
 @media (max-width: 760px) {
   .page {
     min-height: 100vh;
-    padding-bottom: 4rem;
   }
 
   .site-header {
     align-items: center;
     flex-wrap: wrap;
     gap: 1.25rem;
-    padding: 1rem 1.25rem 0;
   }
 
   .brand img {
@@ -330,7 +326,6 @@ button:focus-visible,
   .account-link {
     width: auto;
     min-height: 2.75rem;
-    padding: 0.75rem 1rem;
     font-size: 0.875rem;
   }
 
@@ -473,7 +468,6 @@ button:focus-visible,
 .enlace-nav {
   background: none;
   border: none;
-  padding: 0.4rem 0.75rem;
   font-size: 0.82rem;
   color: #333;
   cursor: pointer;

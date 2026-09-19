@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import BarraNav from "../componentes/BarraNav";
 import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 
@@ -58,16 +57,18 @@ button:focus-visible,
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  min-height: 5rem;
+  height: 56px;
   padding: 0.75rem 3.3125rem 0 0.5rem;
   background: #e8e8e6;
   border-bottom: 1px solid #d4d4d0;
 }
 
 .brand {
-  display: block;
-  flex-shrink: 0;
-  line-height: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
 }
 
 .brand img {
@@ -517,10 +518,10 @@ export default function Laburar() {
     <style>{estilos}</style>
     <div className="page">
       <header className="site-header">
-        <a className="brand" href="#" aria-label="LaburAR, inicio">
+        <div className="brand" aria-label="LaburAR, inicio">
           <img src={logoIcono} alt="" className="logo-icono-nav" />
           <img src={logoTexto} alt="LABURAR" className="logo-texto-nav" />
-        </a>
+        </div>
 
         <nav className="account-nav" aria-label="Acceso a la cuenta">
           {/* Faltan las rutas reales de registro e inicio de sesión. */}

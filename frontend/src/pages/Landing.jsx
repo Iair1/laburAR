@@ -8,22 +8,14 @@ const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  star: #ffa500;
-  focus: #542b19;
+--placeholder: #d9d9d9;
+--star: #ffa500;
+--focus: #542b19;
   font-size: 16px;
 }
 
 * {
   box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  background: var(--background);
-  color: var(--text);
-  font-family: "Inter", Arial, Helvetica, sans-serif;
-  font-weight: 400;
 }
 
 h1, h2, h3, p, figure {

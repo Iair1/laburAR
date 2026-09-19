@@ -68,6 +68,7 @@ const revisarTerminadas = async(req, res)=>{
         res.status(500).json({ message: error.message });
     }
 }
+
 const trabajosPendientes = async(req, res)=>{
     const id = req.id;
     try{

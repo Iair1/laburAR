@@ -56,6 +56,8 @@ button:focus-visible,
   justify-content: space-between;
   height: 56px;
   width: 100%;
+  padding-left: 5%;
+  padding-right: 5%;
   background: #e8e8e6;
   border-bottom: 1px solid #d4d4d0;
 }
@@ -73,7 +75,6 @@ button:focus-visible,
 .account-nav {
   display: flex;
   gap: 1.625rem;
-  margin-top: 0.625rem;
 }
 
 /* Presentación principal */

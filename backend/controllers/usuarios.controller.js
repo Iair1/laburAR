@@ -106,41 +106,13 @@ const buscarTrabajadores=async(req, res)=>{
     }
 }
 
-const estaVerificado = async(req, res)=>{
-    const id = req.id
-    try{
-        const result = await UsuariosService.estaVerificado(id)
-        res.status(201).json(result)
-    }catch(error){
-        console.error("Error en la verificación", error.message);
-        res.status(500).json({ message: error.message });
-    }
-}
-
-const verificarUsuario = async(req, res)=>{
-    const id = req.id
-    const {dniFoto} = req.body
-    if(!dniFoto){
-        return res.status(400).json({ message: "Debe completar todos los campos"});
-    }
-    try{
-        const result = await UsuariosService.verificarUsuario(id, dniFoto)
-        res.status(201).json(result)
-    }catch(error){
-        console.error("Error en la verificación del usuario", error.message);
-        res.status(500).json({ message: error.message });
-    }
-}
-
 const UsuariosController={
     crearCuenta,
     iniciarSesion,
     cambiarDato,
     cambiarContraseña,
     prueba,
-    estaVerificado,
     sip,
-    buscarTrabajadores,
-    verificarUsuario
+    buscarTrabajadores
 }
 export default UsuariosController; 

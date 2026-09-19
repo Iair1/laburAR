@@ -10,6 +10,5 @@ router.post("/subirSolicitud", verifyToken, SolicitudesController.subirSolicitud
 router.delete("/borrarSolicitud", verifyToken, SolicitudesController.borrarSolicitud);
 router.post("/aceptarSolicitud", verifyToken, SolicitudesController.aceptarSolicitud);
 router.post("/rechazarSolicitud", verifyToken, SolicitudesController.rechazarSolicitud);
-router.get("/revisarTerminadas", SolicitudesController.revisarTerminadas);
 
 export default router;

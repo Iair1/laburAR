@@ -12,13 +12,13 @@ import Empleos from "./pages/Empleos";
 import PaginaBusqueda from "./pages/PaginaBusqueda";
 import OfrecerServicios from "./pages/OfrecerServicios"
 import SolicitudesRecibidas from "./pages/SolicitudesRecibidas"
-import Landing from "./pages/Landing";
 import TrabajosPendientes from "./pages/TrabajosPendientes"
 
 function App() {
   return (
     <RegistroProvider>
       <Routes>
+        
         <Route path="/" element={<PaginaInicio />} />
         <Route path="/login" element={<Login />} />
         <Route path="/paso1" element={<Paso1 />} />
@@ -29,7 +29,6 @@ function App() {
         <Route path="/buscar" element={<PaginaBusqueda />} />
         <Route path="/ofrecer-servicios" element={<OfrecerServicios />} />
         <Route path="/solicitudes-recibidas" element={<SolicitudesRecibidas />} />
-        <Route path="/landing" element={<Landing />} />
         <Route path="/trabajos-pendientes" element={<TrabajosPendientes />} />
 
       </Routes>

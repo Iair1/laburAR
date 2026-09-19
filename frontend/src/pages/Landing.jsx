@@ -46,7 +46,6 @@ button:focus-visible,
 
 .page {
   width: 100%;
-  max-width: 67.9375rem;
   min-height: 128rem;
 }
 

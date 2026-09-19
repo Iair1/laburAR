@@ -512,7 +512,7 @@ export default function Laburar() {
       <header className="site-header">
         <a className="brand" href="#" aria-label="LaburAR, inicio">
           {/* Logo recortado de la imagen de referencia proporcionada. */}
-          <img src={logo} alt="LaburAR" width="259" height="68" />
+          <img src={logoIcono} alt="LaburAR" width="259" height="68" />
         </a>
 
         <nav className="account-nav" aria-label="Acceso a la cuenta">

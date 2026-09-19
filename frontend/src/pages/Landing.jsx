@@ -58,7 +58,7 @@ button:focus-visible,
   align-items: center;
   justify-content: space-between;
   height: 56px;
-  padding: 0.75rem 3.3125rem 0 0.5rem;
+  width: 100%;
   background: #e8e8e6;
   border-bottom: 1px solid #d4d4d0;
 }
@@ -66,6 +66,7 @@ button:focus-visible,
 .brand {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     cursor: pointer;
     user-select: none;

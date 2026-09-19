@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
-import logo from "../assets/logo-texto.svg";
+import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 
 const estilos = `
@@ -78,20 +78,6 @@ button:focus-visible,
   display: flex;
   gap: 1.625rem;
   margin-top: 0.625rem;
-}
-
-.account-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 10.4375rem;
-  min-height: 3.5625rem;
-  padding: 0.5rem;
-  background: var(--placeholder);
-  color: var(--text);
-  font-size: 1.3125rem;
-  line-height: 1.25;
-  text-decoration: none;
 }
 
 /* Presentación principal */
@@ -476,7 +462,23 @@ button:focus-visible,
   .account-link {
     flex: 1;
   }
-}`
+}
+  
+
+.enlace-nav {
+  background: none;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  color: #333;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.logo-icono-nav { width: 30px; height: auto; display: block; }
+.logo-texto-nav { width: 92px; height: auto; display: block; }  
+`
 export default function Laburar() {
   // Referencia al elemento desplazable de este componente.
   const carruselRef = useRef(null);
@@ -512,14 +514,18 @@ export default function Laburar() {
     <div className="page">
       <header className="site-header">
         <a className="brand" href="#" aria-label="LaburAR, inicio">
-          {/* Logo recortado de la imagen de referencia proporcionada. */}
-          <img src={logoIcono} alt="LaburAR" width="259" height="68" />
+          <img src={logoIcono} alt="" className="logo-icono-nav" />
+          <img src={logoTexto} alt="LABURAR" className="logo-texto-nav" />
         </a>
 
         <nav className="account-nav" aria-label="Acceso a la cuenta">
           {/* Faltan las rutas reales de registro e inicio de sesión. */}
-          <a className="account-link" href="#registro">Registrarse</a>
-          <a className="account-link" href="#inicio-sesion">Iniciar Sesion</a>
+          <button className="enlace-nav" onClick={() => navegar("/paso1")}>
+            Registrarme
+          </button>
+          <button className="enlace-nav" onClick={() => navegar("/login")}>
+            Iniciar Sesión
+          </button>
         </nav>
       </header>
 

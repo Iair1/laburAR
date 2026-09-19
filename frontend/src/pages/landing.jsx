@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import logo from "../assets/logo-texto.svg";
+import logoIcono from "../assets/logo-icono.svg";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }

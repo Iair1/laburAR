@@ -14,7 +14,7 @@ const estilos = `
   font-size: 16px;
 }
 
-body{
+.page{
     background-image: url('../assets/fondo.png');
     background-size: cover;
     background-position: center;

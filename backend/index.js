@@ -26,7 +26,7 @@ app.use(cors());
 
 app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));
 
-/*
+
 import PruebaChatService from "./services/pruebaChat.service.js"
 const pruebaChat= async(req, res)=>{
     try{
@@ -38,7 +38,7 @@ const pruebaChat= async(req, res)=>{
     }
 }
 app.post("/api/pruebaChat", pruebaChat)
-*/
+
 
 app.use("/api/usuarios", UsuariosRouter);
 app.use("/api/solicitudes", SolicitudesRouter);

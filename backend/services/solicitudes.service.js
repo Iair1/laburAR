@@ -160,13 +160,62 @@ const rechazarSolicitud = async(id, solicitudid) => {
     }
 }
 
+const revisarTerminadas = async() => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+            WITH updated_solicitudes AS (
+                UPDATE solicitudes
+                SET estado = 'terminada'
+                WHERE estado = 'pendiente' AND periodo[2] < CURRENT_DATE
+                RETURNING trabajadorid, contratadorid, solicitud
+            )
+            SELECT 
+                s.trabajadorid, 
+                ut.nombre_completo AS trabajador_nombre,
+                s.contratadorid, 
+                uc.nombre_completo AS contratador_nombre,
+                s.solicitud
+            FROM updated_solicitudes s
+            JOIN usuarios ut ON s.trabajadorid = ut.id
+            JOIN usuarios uc ON s.contratadorid = uc.id;
+        `);
+        let notificaciones=[]
+        for(const trabajo of result.rows){
+            const avisotxtC=`Su tabajo con ${trabajo.trabajador_nombre} sido marcada como terminada por el sistema
+                            Solicitud: ${trabajo.solicitud}
+                            ¿Quieres dejar una reseña?`;
+            const avisoC = await client.query(`
+                INSERT INTO notificaciones (tipo, userid, contenido, otroid)
+                VALUES('solicitudes', $1
+                , $2, $3)`, [trabajo.contratadorid, avisotxtC, trabajo.trabajadorid]);
+
+            const avisotxtT=`Su tabajo con ${trabajo.contratador_nombre} sido marcada como terminada por el sistema
+                            Solicitud: ${trabajo.solicitud}
+                            ¿Quieres dejar una reseña?`;
+            const avisoT = await client.query(`
+                INSERT INTO notificaciones (tipo, userid, contenido, otroid)
+                VALUES('solicitudes', $1
+                , $2, $3)`, [trabajo.trabajadorid, avisotxtT, trabajo.contratadorid]);
+            notificaciones.push({avisoC: avisoC.rows[0], avisoT: avisoT.rows[0]});
+        }
+        return notificaciones;
+    }catch(error) {
+        console.error("Error al revisar solicitudes terminadas:", error.message);
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
 const SolicitudesService = {
     busqueda,
     trabajosPendientes,
     subirSolicitud,
     borrarSolicitud,
     aceptarSolicitud,
-    rechazarSolicitud
+    rechazarSolicitud,
+    revisarTerminadas
 }
 
 export default SolicitudesService;

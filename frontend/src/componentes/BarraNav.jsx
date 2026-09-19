@@ -148,6 +148,9 @@ export default function BarraNav() {
         <nav className="nav-derecha">
           {usuario ? (
             <>
+              <button className="enlace-nav" onClick={() => navegar("/landing")}>
+                A la landing
+              </button>
               <button className="boton-ofrecer" onClick={() => navegar("/ofrecer-servicios")}>
                 Ofrecer servicios
               </button>

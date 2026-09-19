@@ -7,8 +7,16 @@ const estilos = `
 
   .pagina-inicio {
     min-height: 100vh;
-    background: #f5f5f3;
+    
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    
+    background-image: url('../assets/fondo.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    margin: 0;
   }
 
   .hero-inicio {
@@ -78,13 +86,13 @@ const estilos = `
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #888;
+    background: #570101;
     border: none;
     cursor: pointer;
     flex-shrink: 0;
     transition: background 0.15s;
   }
-  .boton-buscar:hover { background: #666; }
+  .boton-buscar:hover { background: #3b1e0d; }
   .boton-buscar svg { width: 18px; height: 18px; color: #fff; }
 
   .seccion-recientes {
@@ -147,7 +155,7 @@ const estilos = `
     min-width: 90px;
     transition: background 0.15s, border-color 0.15s, transform 0.1s;
   }
-  .boton-categoria:hover { background: #f0f0ee; border-color: #aaa; }
+  .boton-categoria:hover { background: #f5eeee; border-color: #570101; }
   .boton-categoria:active { transform: scale(0.97); }
   .icono-categoria {
     display: flex;
@@ -256,7 +264,7 @@ function PaginaInicio() {
         <BarraNav />
 
         <main className="hero-inicio">
-          <h1 className="eslogan-inicio">slogan</h1>
+          <h1 className="eslogan-inicio">LaburAR te ayuda a conectar</h1>
 
           <div className="contenedor-busqueda">
             <div className="barra-busqueda">

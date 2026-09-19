@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import AgendarModal from "../componentes/AgendarModal";
+import PerfilTrabajadorModal from "../componentes/PerfilTrabajadorModal";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { buscarTrabajadores } from "../api";
 
@@ -10,8 +11,16 @@ const estilos = `
 
   .pagina-busqueda {
     min-height: 100vh;
-    background: #f5f5f3;
+    
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    
+    background-image: url('../assets/fondo.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    margin: 0;
   }
 
   .barra-busqueda-superior {
@@ -60,14 +69,14 @@ const estilos = `
     padding: 0 1.1rem;
     border-radius: 999px;
     border: none;
-    background: #888;
+    background: #570101;
     color: #fff;
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s;
   }
-  .boton-buscar-superior:hover { background: #666; }
+  .boton-buscar-superior:hover { background: #3b1e0d; }
   .boton-buscar-superior:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .aviso-login-busqueda {
@@ -89,7 +98,7 @@ const estilos = `
     flex-wrap: wrap;
   }
   .boton-login-aviso {
-    background: #1a2332;
+    background: #570101;
     color: #fff;
     border: none;
     padding: 8px 14px;
@@ -114,7 +123,7 @@ const estilos = `
     flex-shrink: 0;
     background: #fff;
     border: 1px solid #ddd;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 1.25rem;
     position: sticky;
     top: 1.25rem;
@@ -125,6 +134,15 @@ const estilos = `
     color: #1a1a1a;
     margin-bottom: 1rem;
   }
+  .tarjeta-resumen-filtro {
+    background: #f2eae7;
+    border: 1px solid #e6d9d4;
+    border-radius: 10px;
+    padding: 0.85rem 0.9rem;
+    margin-bottom: 1.2rem;
+  }
+  .nombre-resumen-filtro { font-size: 0.88rem; font-weight: 700; color: #1a1a1a; }
+  .precio-resumen-filtro { font-size: 0.78rem; color: #570101; font-weight: 700; margin-top: 2px; }
   .grupo-filtro { margin-bottom: 1.4rem; }
   .grupo-filtro:last-child { margin-bottom: 0; }
   .etiqueta-filtro {
@@ -146,7 +164,7 @@ const estilos = `
     font-size: 0.82rem;
     outline: none;
   }
-  .fila-precio input[type="number"]:focus { border-color: #999; }
+  .fila-precio input[type="number"]:focus { border-color: #570101; }
   .guion-precio { color: #999; font-size: 0.8rem; }
   .select-filtro {
     width: 100%;
@@ -159,9 +177,39 @@ const estilos = `
     background: #fff;
     outline: none;
   }
-  .select-filtro:focus { border-color: #999; }
-  .opciones-estrellas { display: flex; flex-direction: column; gap: 6px; }
-  .opcion-estrella {
+  .select-filtro:focus { border-color: #570101; }
+
+  .grilla-fecha-filtro {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .chip-fecha-filtro {
+    border: 1.5px solid #ddd;
+    background: #fff;
+    color: #444;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 8px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .chip-fecha-filtro.activo { background: #570101; border-color: #570101; color: #fff; }
+  .campo-fecha-manual { margin-top: 8px; }
+  .campo-fecha-manual input[type="date"] {
+    width: 100%;
+    height: 34px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    padding: 0 8px;
+    font-size: 0.8rem;
+    outline: none;
+  }
+
+  .opciones-radio-filtro { display: flex; flex-direction: column; gap: 6px; }
+  .opcion-radio-filtro {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -169,7 +217,8 @@ const estilos = `
     color: #333;
     cursor: pointer;
   }
-  .opcion-estrella input { accent-color: #555; cursor: pointer; }
+  .opcion-radio-filtro input { accent-color: #570101; cursor: pointer; }
+
   .boton-limpiar-filtros {
     margin-top: 1.4rem;
     width: 100%;
@@ -267,8 +316,8 @@ const estilos = `
   }
   .boton-ver-perfil { background: #fff; border: 1px solid #ccc; color: #333; }
   .boton-ver-perfil:hover { background: #f0f0ee; }
-  .boton-agendar { background: #1a2332; color: #fff; }
-  .boton-agendar:hover { background: #0f1621; }
+  .boton-agendar { background: #570101; color: #fff; }
+  .boton-agendar:hover { background: #3b1e0d; }
 
   .sin-resultados, .estado-carga, .estado-error {
     text-align: center;
@@ -283,7 +332,7 @@ const estilos = `
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    background: #1a2332;
+    background: #570101;
     color: #fff;
     padding: 10px 18px;
     border-radius: 8px;
@@ -334,6 +383,7 @@ function mapearTrabajador(u) {
     aptitudesEspecificas: u.aptitudes_especificas || [],
     trabajos: u.trabajos || [],
     etiquetaCategoria: aptitudes[0] || "Servicios generales",
+    verificado: Boolean(u.verificado),
   };
 }
 
@@ -361,7 +411,10 @@ function PaginaBusqueda() {
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
   const [filtroZona, setFiltroZona] = useState(zonaInicial);
-  const [filtroCalificacion, setFiltroCalificacion] = useState(0);
+  const [ordenCalificacion, setOrdenCalificacion] = useState(""); // "" | "mayor" | "menor"
+  const [filtroFecha, setFiltroFecha] = useState(""); // "" | "hoy" | "semana" | "3dias" | "manual"
+  const [fechaManual, setFechaManual] = useState("");
+  const [filtroHorario, setFiltroHorario] = useState([]); // visual, ver nota en manejarHorario
   const [toast, setToast] = useState("");
 
   const [trabajadoresCrudos, setTrabajadoresCrudos] = useState([]);
@@ -369,6 +422,7 @@ function PaginaBusqueda() {
   const [error, setError] = useState("");
 
   const [trabajadorParaAgendar, setTrabajadorParaAgendar] = useState(null);
+  const [trabajadorParaVer, setTrabajadorParaVer] = useState(null);
 
   const buscar = useCallback(async (zona) => {
     if (!usuario) return;
@@ -418,7 +472,10 @@ function PaginaBusqueda() {
     setPrecioMin("");
     setPrecioMax("");
     setFiltroZona("");
-    setFiltroCalificacion(0);
+    setOrdenCalificacion("");
+    setFiltroFecha("");
+    setFechaManual("");
+    setFiltroHorario([]);
     setConsulta("");
   };
 
@@ -430,14 +487,48 @@ function PaginaBusqueda() {
     setTrabajadorParaAgendar(t);
   };
 
+  const manejarVerPerfilClick = (t) => {
+    setTrabajadorParaVer(t);
+  };
+
+  const manejarAgendarDesdePerfil = (t) => {
+    setTrabajadorParaVer(null);
+    manejarAgendarClick(t);
+  };
+
   const manejarSolicitudEnviada = (t) => {
     setTrabajadorParaAgendar(null);
     setToast(`Le mandaste una solicitud a ${t.nombre} 🙌`);
     setTimeout(() => setToast(""), 3000);
   };
 
+  // "disponibilidad" viene tal cual de la API (los mismos días que el
+  // trabajador eligió en "Ofrecer servicios"). Si no tiene ese dato, no
+  // filtramos por fecha para no ocultar trabajadores por error.
+  const ABREV_DIAS_SEMANA = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const fechaDesdeInput = (str) => {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const fechaCoincide = (t) => {
+    if (!filtroFecha) return true;
+    if (!Array.isArray(t.disponibilidad) || t.disponibilidad.length === 0) return true;
+    if (filtroFecha === "semana") return t.disponibilidad.length > 0;
+    let objetivo;
+    if (filtroFecha === "hoy") objetivo = new Date();
+    else if (filtroFecha === "3dias") {
+      objetivo = new Date();
+      objetivo.setDate(objetivo.getDate() + 3);
+    } else if (filtroFecha === "manual" && fechaManual) {
+      objetivo = fechaDesdeInput(fechaManual);
+    } else {
+      return true;
+    }
+    return t.disponibilidad.includes(ABREV_DIAS_SEMANA[objetivo.getDay()]);
+  };
+
   const resultados = useMemo(() => {
-    return trabajadores.filter((t) => {
+    const filtrados = trabajadores.filter((t) => {
       const textoBusqueda = consulta.trim().toLowerCase();
       const textoCoincide =
         !textoBusqueda ||
@@ -448,11 +539,18 @@ function PaginaBusqueda() {
       const categoriaCoincide = !filtroCategoria || t.aptitudes.includes(filtroCategoria);
       const minCoincide = !precioMin || t.precio == null || t.precio >= Number(precioMin);
       const maxCoincide = !precioMax || t.precio == null || t.precio <= Number(precioMax);
-      const calificacionCoincide = t.calificacion >= filtroCalificacion;
 
-      return textoCoincide && categoriaCoincide && minCoincide && maxCoincide && calificacionCoincide;
+      return textoCoincide && categoriaCoincide && minCoincide && maxCoincide && fechaCoincide(t);
     });
-  }, [trabajadores, consulta, filtroCategoria, precioMin, precioMax, filtroCalificacion]);
+
+    if (ordenCalificacion === "mayor") {
+      return [...filtrados].sort((a, b) => b.calificacion - a.calificacion);
+    }
+    if (ordenCalificacion === "menor") {
+      return [...filtrados].sort((a, b) => a.calificacion - b.calificacion);
+    }
+    return filtrados;
+  }, [trabajadores, consulta, filtroCategoria, precioMin, precioMax, ordenCalificacion, filtroFecha, fechaManual]);
 
   return (
     <>
@@ -504,6 +602,19 @@ function PaginaBusqueda() {
           <aside className="panel-filtros">
             <p className="titulo-filtros">Filtros</p>
 
+            {filtroCategoria && (
+              <div className="tarjeta-resumen-filtro">
+                <div className="nombre-resumen-filtro">{filtroCategoria}</div>
+                {(precioMin || precioMax) && (
+                  <div className="precio-resumen-filtro">
+                    {precioMin ? `$${Number(precioMin).toLocaleString("es-AR")}` : "$0"}
+                    {" – "}
+                    {precioMax ? `$${Number(precioMax).toLocaleString("es-AR")}` : "sin máx."}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grupo-filtro">
               <label className="etiqueta-filtro">Categoría</label>
               <select
@@ -519,7 +630,7 @@ function PaginaBusqueda() {
             </div>
 
             <div className="grupo-filtro">
-              <label className="etiqueta-filtro">Precio por hora</label>
+              <label className="etiqueta-filtro">Precio por hora ($)</label>
               <div className="fila-precio">
                 <input
                   type="number"
@@ -540,17 +651,77 @@ function PaginaBusqueda() {
             </div>
 
             <div className="grupo-filtro">
-              <label className="etiqueta-filtro">Calificación mínima</label>
-              <div className="opciones-estrellas">
-                {[0, 3, 4, 4.5].map((valor) => (
-                  <label key={valor} className="opcion-estrella">
+              <label className="etiqueta-filtro">Fecha</label>
+              <div className="grilla-fecha-filtro">
+                {[
+                  { id: "hoy", etiqueta: "Hoy" },
+                  { id: "semana", etiqueta: "Esta Semana" },
+                  { id: "3dias", etiqueta: "En 3 días" },
+                  { id: "manual", etiqueta: "Seleccionar fecha" },
+                ].map((op) => (
+                  <span
+                    key={op.id}
+                    className={`chip-fecha-filtro ${filtroFecha === op.id ? "activo" : ""}`}
+                    onClick={() => setFiltroFecha(filtroFecha === op.id ? "" : op.id)}
+                  >
+                    {op.etiqueta}
+                  </span>
+                ))}
+              </div>
+              {filtroFecha === "manual" && (
+                <div className="campo-fecha-manual">
+                  <input
+                    type="date"
+                    value={fechaManual}
+                    onChange={(e) => setFechaManual(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grupo-filtro">
+              <label className="etiqueta-filtro">Calificación</label>
+              <div className="opciones-radio-filtro">
+                <label className="opcion-radio-filtro">
+                  <input
+                    type="radio"
+                    name="orden-calificacion"
+                    checked={ordenCalificacion === "mayor"}
+                    onChange={() => setOrdenCalificacion(ordenCalificacion === "mayor" ? "" : "mayor")}
+                  />
+                  De mayor a menor
+                </label>
+                <label className="opcion-radio-filtro">
+                  <input
+                    type="radio"
+                    name="orden-calificacion"
+                    checked={ordenCalificacion === "menor"}
+                    onChange={() => setOrdenCalificacion(ordenCalificacion === "menor" ? "" : "menor")}
+                  />
+                  De menor a mayor
+                </label>
+              </div>
+            </div>
+
+            <div className="grupo-filtro">
+              <label className="etiqueta-filtro">Horario de atención</label>
+              <div className="opciones-radio-filtro">
+                {[
+                  { id: "manana", etiqueta: "Mañana (8:00 - 12:00)" },
+                  { id: "tarde", etiqueta: "Tarde (13:00 - 17:00)" },
+                  { id: "noche", etiqueta: "Tarde/Noche (16:00 - 21:30)" },
+                ].map((op) => (
+                  <label className="opcion-radio-filtro" key={op.id}>
                     <input
-                      type="radio"
-                      name="calificacion"
-                      checked={filtroCalificacion === valor}
-                      onChange={() => setFiltroCalificacion(valor)}
+                      type="checkbox"
+                      checked={filtroHorario.includes(op.id)}
+                      onChange={() =>
+                        setFiltroHorario((prev) =>
+                          prev.includes(op.id) ? prev.filter((h) => h !== op.id) : [...prev, op.id]
+                        )
+                      }
                     />
-                    {valor === 0 ? "Cualquiera" : `${valor}+ estrellas`}
+                    {op.etiqueta}
                   </label>
                 ))}
               </div>
@@ -606,7 +777,7 @@ function PaginaBusqueda() {
                             )}
                           </div>
                           <div className="acciones-tarjeta">
-                            <button className="boton-ver-perfil" onClick={() => navegar(`/trabajador/${t.id}`)}>
+                            <button className="boton-ver-perfil" onClick={() => manejarVerPerfilClick(t)}>
                               Ver perfil
                             </button>
                             <button className="boton-agendar" onClick={() => manejarAgendarClick(t)}>
@@ -622,6 +793,14 @@ function PaginaBusqueda() {
             )}
           </div>
         </div>
+
+        {trabajadorParaVer && (
+          <PerfilTrabajadorModal
+            trabajador={trabajadorParaVer}
+            onCerrar={() => setTrabajadorParaVer(null)}
+            onAgendar={manejarAgendarDesdePerfil}
+          />
+        )}
 
         {trabajadorParaAgendar && (
           <AgendarModal

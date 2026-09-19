@@ -281,6 +281,26 @@ export const obtenerSolicitudesRecibidas = async () => {
   }
 };
 
+export const trabajosPendientes = async () => {
+  try {
+    const respuesta = await fetch(`${API_URL_SOLICITUDES}/trabajosPendientes`, {
+      method: "GET",
+      headers: encabezadosAutenticados(),
+    });
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al obtener los trabajos");
+    }
+
+    return resultado.result || [];
+  } catch (error) {
+    console.error("Error en trabajosPendientes:", error);
+    throw error;
+  }
+};
+
 /**
  * El trabajador acepta una solicitud recibida.
  */

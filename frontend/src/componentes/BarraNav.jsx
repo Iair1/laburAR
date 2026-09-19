@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
+import logoIcono from "../assets/logo-icono.svg";
+import logoTexto from "../assets/logo-texto.svg";
 
 const estilos = `
   .barra-nav {
@@ -13,13 +15,14 @@ const estilos = `
     border-bottom: 1px solid #d4d4d0;
   }
   .logotipo {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     cursor: pointer;
     user-select: none;
   }
+  .logo-icono-nav { width: 30px; height: auto; display: block; }
+  .logo-texto-nav { width: 92px; height: auto; display: block; }
   .nav-derecha { display: flex; align-items: center; gap: 0.4rem; }
   .enlace-nav {
     background: none;
@@ -34,7 +37,7 @@ const estilos = `
   }
   .enlace-nav:hover { background: #d6d6d3; }
   .boton-ofrecer {
-    background: #1a2332;
+    background: #570101;
     color: #fff;
     border: none;
     padding: 0.5rem 0.9rem;
@@ -45,7 +48,7 @@ const estilos = `
     white-space: nowrap;
     transition: background 0.15s;
   }
-  .boton-ofrecer:hover { background: #0f1621; }
+  .boton-ofrecer:hover { background: #3b1e0d; }
   .icono-usuario {
     background: none;
     border: none;
@@ -138,7 +141,10 @@ export default function BarraNav() {
     <>
       <style>{estilos}</style>
       <header className="barra-nav">
-        <div className="logotipo" onClick={() => navegar("/")}>laburAR</div>
+        <div className="logotipo" onClick={() => navegar("/")}>
+          <img src={logoIcono} alt="" className="logo-icono-nav" />
+          <img src={logoTexto} alt="LABURAR" className="logo-texto-nav" />
+        </div>
         <nav className="nav-derecha">
           {usuario ? (
             <>
@@ -147,6 +153,9 @@ export default function BarraNav() {
               </button>
               <button className="enlace-nav" onClick={() => navegar("/solicitudes-recibidas")}>
                 Solicitudes recibidas
+              </button>
+              <button className="enlace-nav" onClick={()=> navegar("/trabajos-pendientes")}>
+                Trabajos Pendientes
               </button>
               <button className="enlace-nav" onClick={() => navegar("/mensajes")}>
                 Bandeja de entrada

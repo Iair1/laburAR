@@ -13,6 +13,7 @@ import PaginaBusqueda from "./pages/PaginaBusqueda";
 import OfrecerServicios from "./pages/OfrecerServicios"
 import SolicitudesRecibidas from "./pages/SolicitudesRecibidas"
 import Landing from "./pages/Landing";
+import TrabajosPendientes from "./pages/TrabajosPendientes"
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/ofrecer-servicios" element={<OfrecerServicios />} />
         <Route path="/solicitudes-recibidas" element={<SolicitudesRecibidas />} />
         <Route path="/landing" element={<Landing />} />
+        <Route path="/trabajos-pendientes" element={<TrabajosPendientes />} />
 
       </Routes>
     </RegistroProvider>

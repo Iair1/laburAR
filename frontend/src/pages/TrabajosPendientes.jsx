@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import { obtenerSesionUsuario } from "../sesion";
 import {
-  obtenerSolicitudesRecibidas,
-  aceptarSolicitud,
-  rechazarSolicitud,
+  trabajosPendientes,
 } from "../api";
 
 const estilos = `
@@ -133,7 +131,7 @@ export default function SolicitudesRecibidas() {
     setCargando(true);
     setError("");
     try {
-      const resultado = await obtenerSolicitudesRecibidas();
+      const resultado = await trabajosPendientes();
       setSolicitudes(resultado);
     } catch (err) {
       setError(err.message || "No se pudieron cargar las solicitudes.");
@@ -147,7 +145,7 @@ export default function SolicitudesRecibidas() {
       enProceso ? [...prev, id] : prev.filter((x) => x !== id)
     );
   };
-
+/*
   const manejarAceptar = async (solicitud) => {
     marcarEnProceso(solicitud.id, true);
     try {
@@ -175,24 +173,24 @@ export default function SolicitudesRecibidas() {
       marcarEnProceso(solicitud.id, false);
     }
   };
-
+*/
   return (
     <>
       <style>{estilos}</style>
       <div className="pagina-solicitudes">
         <BarraNav />
         <div className="contenido-solicitudes">
-          <h1 className="titulo-solicitudes">Solicitudes recibidas</h1>
+          <h1 className="titulo-solicitudes">Trabajos Pendientes</h1>
           <p className="subtitulo-solicitudes">
-            Pedidos de cita que te mandaron. Aceptá o rechazá cada uno.
+            Aquí están los trabajos que te faltan por hacer.
           </p>
 
           {cargando ? (
-            <div className="estado-solicitudes">Cargando solicitudes...</div>
+            <div className="estado-solicitudes">Cargando trabajos...</div>
           ) : error ? (
             <div className="estado-solicitudes error">{error}</div>
           ) : solicitudes.length === 0 ? (
-            <div className="estado-solicitudes">Todavía no te llegó ninguna solicitud.</div>
+            <div className="estado-solicitudes">No te falta ningun trabajo.</div>
           ) : (
             <div className="lista-solicitudes">
               {solicitudes.map((s) => (
@@ -216,22 +214,7 @@ export default function SolicitudesRecibidas() {
                       {s.aptitud_especifica && <span className="chip-meta-solicitud">{s.aptitud_especifica}</span>}
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
                     </div>
-                    <div className="acciones-solicitud">
-                      <button
-                        className="boton-aceptar-solicitud"
-                        onClick={() => manejarAceptar(s)}
-                        disabled={idsEnProceso.includes(s.id)}
-                      >
-                        Aceptar
-                      </button>
-                      <button
-                        className="boton-rechazar-solicitud"
-                        onClick={() => manejarRechazar(s)}
-                        disabled={idsEnProceso.includes(s.id)}
-                      >
-                        Rechazar
-                      </button>
-                    </div>
+                   
                   </div>
                 </div>
               ))}

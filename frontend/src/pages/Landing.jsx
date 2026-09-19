@@ -70,12 +70,6 @@ button:focus-visible,
     height: 100%;
 }
 
-.brand img {
-  display: block;
-  width: 16.1875rem;
-  height: 100%;
-}
-
 .account-nav {
   display: flex;
   gap: 1.625rem;

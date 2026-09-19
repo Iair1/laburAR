@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
-import logo from "./assets/logo.png";
+import logo from "../assets/logo-texto.svg";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }

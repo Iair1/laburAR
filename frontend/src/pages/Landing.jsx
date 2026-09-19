@@ -313,10 +313,6 @@ button:focus-visible,
     gap: 1.25rem;
   }
 
-  .brand img {
-    width: clamp(11rem, 40vw, 16.1875rem);
-  }
-
   .account-nav {
     gap: 0.625rem;
     margin-top: 0;
@@ -450,12 +446,9 @@ button:focus-visible,
     align-items: flex-start;
   }
 
-  .brand img {
-    width: 13rem;
-  }
-
   .account-nav {
     width: 100%;
+    justify-content: space-around;
   }
 
   .account-link {
@@ -467,7 +460,7 @@ button:focus-visible,
 .enlace-nav {
   background: none;
   border: none;
-  font-size: 0.82rem;
+  font-size: 1.25rem;
   color: #333;
   cursor: pointer;
   border-radius: 6px;

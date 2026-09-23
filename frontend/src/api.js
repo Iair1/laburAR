@@ -8,6 +8,10 @@ const API_URL = import.meta.env.DEV
 const API_URL_SOLICITUDES = import.meta.env.DEV
   ? "https://laburar-three.vercel.app/api/solicitudes"
   : "/api/solicitudes";
+
+const API_URL_USUARIOS_APTITUTES = import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api/usuarios_aptitudes"
+  : "/api/usuarios_aptitudes";
 /**
  * Convierte un File a base64 (data URL) para poder mandárselo al backend,
  * que espera un string que Cloudinary pueda subir (base64, URL o ruta local).
@@ -372,3 +376,21 @@ export const borrarSolicitud = async (solicitudid) => {
     throw error;
   }
 };
+
+export const nuevaAptitud = async (aptitud, matricula, matricula_numero, matricula_jurisdiccion, matricula_categoria) => {
+  try{
+    const respuesta = await fetch(`${API_URL_USUARIOS_APTITUTES}/nuevaAptitud`, {
+      method: "POST",
+      headers: encabezadosAutenticados(),
+      body: JSON.stringify({ aptitud, matricula, matricula_numero, matricula_jurisdiccion, matricula_categoria }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al crear la aptitud");
+    }
+    return resultado;
+  } catch (error) {
+    console.error("Error en nuevaAptitud:", error);
+    throw error;
+  }
+}

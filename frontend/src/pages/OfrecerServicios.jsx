@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerSesionUsuario, guardarPublicacion, archivoADataURL } from "../sesion";
+import { nuevaAptitud } from "../api";
 
 const estilos = `
   * { box-sizing: border-box; }
@@ -238,7 +239,12 @@ export default function OfrecerServicios() {
         reseñas: 0,
         verificado: true,
       });
-
+      
+        const resultado = await nuevaAptitud(categoria, matriculaURL, null, null, null);
+        if(!resultado.ok){
+          console.error("Error al agregar aptitud:", resultado.message);
+        }
+        
       navegar("/buscar");
     } catch (err) {
       setError("Ocurrió un error al publicar. Probá de nuevo.");

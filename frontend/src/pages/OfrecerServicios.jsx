@@ -241,10 +241,12 @@ export default function OfrecerServicios() {
       });
       
         const resultado = await nuevaAptitud(categoria, matriculaURL, null, null, null);
+        console.log(resultado);
+        console.log(resultado.message)
         if(!resultado.ok){
           console.error("Error al agregar aptitud:", resultado.message);
         }
-        
+
       navegar("/buscar");
     } catch (err) {
       setError("Ocurrió un error al publicar. Probá de nuevo.");

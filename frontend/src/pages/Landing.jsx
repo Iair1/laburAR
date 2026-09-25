@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
+import imagenLanding from "../assets/imagenLanding.png";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -535,7 +536,7 @@ export default function Laburar() {
 
           <div className="image-placeholder hero-image">
             {/* FALTA IMAGEN: agregar el atributo src con la imagen principal. */}
-            <img alt="Trabajador de oficio realizando su trabajo"  src="../assets/imagenLanding.png"/>
+            <img alt="Trabajador de oficio realizando su trabajo"  src={imagenLanding}/>
             <span className="placeholder-label" aria-hidden="true">imagen</span>
           </div>
         </section>

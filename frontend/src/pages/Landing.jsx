@@ -158,15 +158,14 @@ button:focus-visible,
     grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
     margin-top: 2rem;
-
-    background-color: #A4A4A4;
-    border-radius: 13px;
-    border-color: #550000;
 }
 
 .audience {
   position: relative;
   min-height: 24.5rem;
+    background-color: #A4A4A4;
+    border-radius: 13px;
+    border-color: #550000;
 }
 
 .audience h3 {

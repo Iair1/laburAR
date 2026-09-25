@@ -538,13 +538,6 @@ export default function Laburar() {
              {" "}
             <strong>LABURAR</strong> propone centralizar este proceso en un entorno digital accesible, seguro y orientado a la experiencia del usuario, incorporando perfiles verificados, sistema de valoraciones bidireccional, mensajería integrada y filtros inteligentes de búsqueda
           </p>
-            <p>
-              Ayudamos a<br className="desktop-break" />{" "}
-              trabajadores de<br className="desktop-break" />{" "}
-              oficio a contactarse<br className="desktop-break" />{" "}
-              con aquellos que los<br className="desktop-break" />{" "}
-              necesitan
-            </p>
           </div>
 
           <div className="image-placeholder hero-image">
@@ -555,7 +548,7 @@ export default function Laburar() {
         </section>
 
         <section className="benefits" aria-labelledby="benefits-title">
-          <h2 id="benefits-title">laburAR te ayuda a conectar</h2>
+          <h2 id="benefits-title"><strong>laburAR te ayuda a conectar</strong></h2>
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">

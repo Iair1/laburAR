@@ -344,7 +344,7 @@ button:focus-visible,
 
   .hero-image {
     height: auto;
-    aspect-ratio: 471 / 415;
+    aspect-ratio: 915 / 321;
   }
 
   .placeholder-label {
@@ -368,6 +368,10 @@ button:focus-visible,
     grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
     margin-top: 2rem;
+
+    background-color: #A4A4A4;
+    border-radius: 13px;
+    border-color: #550000;
   }
 
   .audience {
@@ -378,6 +382,7 @@ button:focus-visible,
     margin: 0;
     font-size: 1.75rem;
     line-height: 1.25;
+    text-align: center;
   }
 
   .audience ol {
@@ -468,6 +473,10 @@ button:focus-visible,
 }
 .logo-icono-nav { width: 30px; height: 100%; display: block; }
 .logo-texto-nav { width: 92px; height: 100%; display: block; }  
+
+.titulo{
+  text-align: center;
+  }
 `
 export default function Laburar() {
   
@@ -521,10 +530,15 @@ export default function Laburar() {
         </nav>
       </header>
 
+
       <main>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <h1 id="hero-title">LaburAR es muy<br className="desktop-break" />{" "}bueno</h1>
+            <p id="hero-title" className="titulo">
+             <strong>LABURAR</strong> es una plataforma web diseñada para resolver la brecha de comunicación y contratación entre personas que necesitan servicios de oficio —como plomería, electricidad, gasistería, entre otros — y los trabajadores calificados que los proveen.<br className="desktop-break" />
+             {" "}
+            <strong>LABURAR</strong> propone centralizar este proceso en un entorno digital accesible, seguro y orientado a la experiencia del usuario, incorporando perfiles verificados, sistema de valoraciones bidireccional, mensajería integrada y filtros inteligentes de búsqueda
+          </p>
             <p>
               Ayudamos a<br className="desktop-break" />{" "}
               trabajadores de<br className="desktop-break" />{" "}
@@ -546,7 +560,7 @@ export default function Laburar() {
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
-              <h3 id="workers-title">Trabajadores</h3>
+              <h3 id="workers-title"><strong>Trabajadores</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
                 <li>Menos dependencia de<br className="desktop-break" />{" "}recomentaciones boca a boca</li>
@@ -559,7 +573,7 @@ export default function Laburar() {
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
-              <h3 id="clients-title">Contratadores</h3>
+              <h3 id="clients-title"><strong>Contratadores</strong></h3>
               <ol>
                 <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>
                 <li>Menos dependencia de<br className="desktop-break" />{" "}contactos</li>

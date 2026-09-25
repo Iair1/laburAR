@@ -535,7 +535,7 @@ export default function Laburar() {
 
           <div className="image-placeholder hero-image">
             {/* FALTA IMAGEN: agregar el atributo src con la imagen principal. */}
-            <img alt="Trabajador de oficio realizando su trabajo" />
+            <img alt="Trabajador de oficio realizando su trabajo"  src="../assets/imagenLanding.png"/>
             <span className="placeholder-label" aria-hidden="true">imagen</span>
           </div>
         </section>

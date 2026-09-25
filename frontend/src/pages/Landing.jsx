@@ -155,9 +155,7 @@ button:focus-visible,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 0.5rem;
-    grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
-    margin-top: 2rem;
 }
 
 .audience {

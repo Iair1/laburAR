@@ -196,30 +196,6 @@ button:focus-visible,
   margin-right: 1.125rem;
 }
 
-.stars {
-  position: absolute;
-  top: 21rem;
-  right: 2.9375rem;
-  display: flex;
-  gap: 0.4rem;
-  width: max-content;
-}
-
-.audience-clients .stars {
-  right: 1.3125rem;
-}
-
-.stars span {
-  display: block;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: var(--star);
-  clip-path: polygon(
-    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
-    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
-  );
-}
-
 /* Carrusel: tres tarjetas y parte de la cuarta, como en la referencia */
 .carousel {
   margin-top: 5.875rem;
@@ -557,9 +533,7 @@ export default function Laburar() {
                 <li>Puedes buscar un nuevo<br className="desktop-break" />{" "}contacto cuando aquellos que<br className="desktop-break" />{" "}tienes no te llaman.</li>
               </ol>
               {/* Estrellas decorativas presentes en la referencia. */}
-              <div className="stars" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
+
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
@@ -569,9 +543,6 @@ export default function Laburar() {
                 <li>Menos dependencia de<br className="desktop-break" />{" "}contactos</li>
                 <li>Puedes contratar cualquier tipo<br className="desktop-break" />{" "}de servicio desde la comodidad<br className="desktop-break" />{" "}de tu casa</li>
               </ol>
-              <div className="stars" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </article>
           </div>
         </section>

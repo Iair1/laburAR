@@ -152,15 +152,16 @@ button:focus-visible,
 }
 
 .audiences {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 0.5rem;
-    gap: 2.5rem;
+  display: flex;
+  justify-content: space-around;
+  align items: center;
+
 }
 
 .audience {
   position: relative;
   min-height: 24.5rem;
+  min-width: 20.5rem;
     background-color: #A4A4A4;
     border-radius: 13px;
     border-color: #550000;

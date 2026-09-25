@@ -155,6 +155,13 @@ button:focus-visible,
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 0.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+    margin-top: 2rem;
+
+    background-color: #A4A4A4;
+    border-radius: 13px;
+    border-color: #550000;
 }
 
 .audience {
@@ -364,15 +371,7 @@ button:focus-visible,
     line-height: 1.18;
   }
 
-  .audiences {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2.5rem;
-    margin-top: 2rem;
-
-    background-color: #A4A4A4;
-    border-radius: 13px;
-    border-color: #550000;
-  }
+ 
 
   .audience {
     min-height: 0;

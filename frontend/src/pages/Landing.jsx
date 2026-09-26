@@ -109,7 +109,6 @@ button:focus-visible,
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--placeholder);
 }
 
 .image-placeholder img {

@@ -118,6 +118,7 @@ button:focus-visible,
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 13px;
 }
 
 /* Las imágenes sin src no muestran el icono de imagen rota. */
@@ -582,7 +583,7 @@ export default function Laburar() {
               <figcaption>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</figcaption>
             </figure>
 
-            <figure className="feature-card">
+            <figure className="feature-card" style={{width: "40.164rem"}}>
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de la cuarta tarjeta. */}
                 <img alt="Otra ventaja de usar LaburAR" src={carrusel[3]} />

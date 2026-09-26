@@ -4,16 +4,12 @@ import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
 
-const carrusel=[]
-try{
-  for(let i = 0; i < 4; i++) {
-    const imagen = await import(`../assets/carrusel_${i}.png`);
-    carrusel.push(imagen.default);
-  }
-}catch(error){
-  console.error("Error por import dinamico", error.message);
-  console.error("Error por import dinamico", error);
-}
+import carrusel0 from "../assets/carrusel/carrusel_0.png";
+import carrusel1 from "../assets/carrusel/carrusel_1.png";
+import carrusel2 from "../assets/carrusel/carrusel_2.png";
+import carrusel3 from "../assets/carrusel/carrusel_3.png";
+
+const carrusel = [carrusel0, carrusel1, carrusel2, carrusel3];
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }

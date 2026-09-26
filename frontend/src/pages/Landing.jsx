@@ -4,6 +4,12 @@ import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
 
+const carrusel=[]
+for(let i = 0; i < 4; i++) {
+  const imagen = await import(`../assets/carrusel_${i}.png`);
+  carrusel.push(imagen.default);
+}
+
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -552,7 +558,7 @@ export default function Laburar() {
             <figure className="feature-card">
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de trabajadores calificados. */}
-                <img alt="Trabajadores calificados" />
+                <img alt="Trabajadores calificados" src={carrusel[0]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               <figcaption>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</figcaption>
@@ -561,7 +567,7 @@ export default function Laburar() {
             <figure className="feature-card">
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de búsqueda de clientes. */}
-                <img alt="Trabajador encontrando nuevos clientes" />
+                <img alt="Trabajador encontrando nuevos clientes" src={carrusel[1]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               <figcaption>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</figcaption>
@@ -570,7 +576,7 @@ export default function Laburar() {
             <figure className="feature-card">
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de nuevos contactos. */}
-                <img alt="Personas contactándose a través de LaburAR" />
+                <img alt="Personas contactándose a través de LaburAR" src={carrusel[2]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               <figcaption>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</figcaption>
@@ -579,7 +585,7 @@ export default function Laburar() {
             <figure className="feature-card">
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de la cuarta tarjeta. */}
-                <img alt="Otra ventaja de usar LaburAR" />
+                <img alt="Otra ventaja de usar LaburAR" src={carrusel[3]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               {/* FALTA TEXTO: la cuarta tarjeta está cortada en la referencia. */}

@@ -5,9 +5,14 @@ import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
 
 const carrusel=[]
-for(let i = 0; i < 4; i++) {
-  const imagen = await import(`../assets/carrusel_${i}.png`);
-  carrusel.push(imagen.default);
+try{
+  for(let i = 0; i < 4; i++) {
+    const imagen = await import(`../assets/carrusel_${i}.png`);
+    carrusel.push(imagen.default);
+  }
+}catch(error){
+  console.error("Error por import dinamico", error.message);
+  console.error("Error por import dinamico", error);
 }
 
 const estilos = `

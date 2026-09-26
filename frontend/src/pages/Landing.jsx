@@ -62,7 +62,7 @@ button:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
+  aspect-ratio: 1921 / 153;
   width: 100%;
   padding-left: 5%;
   padding-right: 5%;
@@ -172,11 +172,15 @@ button:focus-visible,
     background-color: #A4A4A4;
     border-radius: 13px;
     border-color: #550000;
+  opacity: 0.6;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .audience h3 {
   text-align: center;
-  font-size: 2.25rem;
+  font-size: 33px;
   font-weight: 400;
   line-height: 2.875rem;
 }
@@ -443,7 +447,7 @@ button:focus-visible,
   background: none;
   border: none;
   font-size: 1.25rem;
-  color: #333;
+  color: #3B1E0D;
   cursor: pointer;
   border-radius: 6px;
   transition: background 0.15s;
@@ -451,12 +455,15 @@ button:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
+  font-color: white;
+  font-size: 23px;
 }
 .logo-icono-nav { width: 30px; height: 100%; display: block; }
 .logo-texto-nav { width: 92px; height: 100%; display: block; }  
 
 .titulo{
   text-align: center;
+  font size: 33px;
   }
 `
 export default function Laburar() {
@@ -534,7 +541,7 @@ export default function Laburar() {
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
-              <h3 id="workers-title"><strong>Trabajadores</strong></h3>
+              <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
                 <li>Menos dependencia de<br className="desktop-break" />{" "}recomentaciones boca a boca</li>
@@ -545,7 +552,7 @@ export default function Laburar() {
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
-              <h3 id="clients-title"><strong>Contratadores</strong></h3>
+              <h3 id="clients-title"><strong>Contratador@s</strong></h3>
               <ol>
                 <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>
                 <li>Menos dependencia de<br className="desktop-break" />{" "}contactos</li>

@@ -224,6 +224,7 @@ button:focus-visible,
 
 .feature-card {
   width: 17.375rem;
+  flex-shrink: 0;
   min-width: 0;
   scroll-snap-align: start;
 }

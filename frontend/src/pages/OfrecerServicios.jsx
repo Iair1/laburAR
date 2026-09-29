@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerSesionUsuario, guardarPublicacion, archivoADataURL } from "../sesion";
+import fondo from "../assets/fondo.png"; 
 
 const estilos = `
   * { box-sizing: border-box; }
   .pagina-ofrecer {
     min-height: 100vh;
-    background: #f5f5f3;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 2.5rem 1.5rem 4rem;
-    background-image: url('../assets/fondo.png');
+    background-image: url(${fondo});
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 100vh;
-    margin: 0;
+    background-attachment: fixed;
   }
   .contenedor-ofrecer {
     max-width: 640px;

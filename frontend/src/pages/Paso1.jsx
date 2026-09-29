@@ -28,10 +28,10 @@ const estilos = `
     background-position: center;
     background-repeat: no-repeat;
     display: flex;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     justify-content: center;
-    padding: 24px;
-    box-sizing: border-box;
+    padding: 60px 24px;
   }
 
   /* --- contenedor (logo a la izquierda, tarjeta al lado) --- */

@@ -378,7 +378,9 @@ function mapearTrabajador(u) {
     fotoPerfilURL: u.foto_perfil || null,
     avatar: "🛠️",
     descripcion: u.sobre_mi || "",
-    disponibilidad: u.disponibilidad,
+    disponibilidad: Array.isArray(u.disponibilidad) && typeof u.disponibilidad[0] === "boolean"
+    ? ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].filter((_, i) => u.disponibilidad[i])
+    : u.disponibilidad,
     aptitudes,
     aptitudesEspecificas: u.aptitudes_especificas || [],
     trabajos: u.trabajos || [],

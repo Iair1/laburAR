@@ -215,7 +215,7 @@ export default function OfrecerServicios() {
       await cambiarDatos([
         { dato: "localidad", valor: texto(zona) },
         { dato: "cobro_por_hora", valor: Number(precio) },
-        { dato: "disponibilidad", valor: texto(`{${diasDisponibles.join(",")}}`) },
+        { dato: "disponibilidad", valor: texto(`{${DIAS.map((d) => diasDisponibles.includes(d)).join(",")}}`) },
         // Descomentar cuando tu compañero cambie "sombre_ mi" por "sobre_mi" en el controller:
         // { dato: "sobre_mi", valor: texto(descripcion) },
       ]);

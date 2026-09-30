@@ -31,7 +31,7 @@ const cambiarDato = async(req, res)=>{
             "codigo_postal",
             "dni",
             "foto_perfil",
-            "sombre_ mi",
+            "sobre_ mi",
             "cobro_por_hora"
         ]);
         for (const item of inf) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerSesionUsuario, guardarPublicacion, archivoADataURL } from "../sesion";
+import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
+import { cambiarDatos, obtenerMisAptitudes, agregarAptitud } from "../api";
 import fondo from "../assets/fondo.png"; 
 
 const estilos = `
@@ -152,12 +153,6 @@ const ZONAS = [
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-const EMOJI_POR_CATEGORIA = {
-  Electricidad: "⚡", Plomería: "🔧", Jardinería: "🌿", Pintura: "🖌️", Mudanza: "📦",
-  Limpieza: "🧽", Carpintería: "🪚", Albañilería: "🧱", Gasista: "🔥", Piletero: "🏊",
-  Herrería: "⚒️", Cerrajería: "🔑", Informática: "💻", "Aire acondicionado": "❄️", Soldadura: "🔩",
-};
-
 export default function OfrecerServicios() {
   const navegar = useNavigate();
   const usuario = obtenerSesionUsuario();
@@ -212,35 +207,33 @@ export default function OfrecerServicios() {
     setError("");
     setCargando(true);
     try {
-      const [dniURL, matriculaURL] = await Promise.all([
-        archivoADataURL(archivoDni),
-        archivoADataURL(archivoMatricula),
+      // El cambiarDato del back pega el valor directo en el SQL sin comillas,
+      // así que los textos van entre comillas simples (y se escapan las ').
+      const texto = (t) => `'${String(t).replace(/'/g, "''")}'`;
+
+      // 1) Datos del perfil que se ven en la tarjeta
+      await cambiarDatos([
+        { dato: "localidad", valor: texto(zona) },
+        { dato: "cobro_por_hora", valor: Number(precio) },
+        { dato: "disponibilidad", valor: texto(`{${diasDisponibles.join(",")}}`) },
+        // Descomentar cuando tu compañero cambie "sombre_ mi" por "sobre_mi" en el controller:
+        // { dato: "sobre_mi", valor: texto(descripcion) },
       ]);
 
-      guardarPublicacion({
-        id: Date.now(),
-        usuarioId: usuario.id,
-        nombre: usuario.nombre,
-        fotoPerfilURL: usuario.fotoPerfilURL,
-        avatar: EMOJI_POR_CATEGORIA[categoria] || "🛠️",
-        categoria: categoria.toLowerCase(),
-        etiquetaCategoria: categoria,
-        descripcion,
-        zona,
-        precio: Number(precio),
-        experiencia,
-        tieneMatricula,
-        matriculaURL,
-        dniURL,
-        diasDisponibles,
-        calificacion: 0,
-        reseñas: 0,
-        verificado: true,
-      });
+      // 2) La aptitud: sin esto NO aparecés en buscarTrabajadores
+      const mias = await obtenerMisAptitudes();
+      if (!mias.some((a) => a.aptitud === categoria)) {
+        await agregarAptitud(categoria);
+      }
 
       navegar("/buscar");
     } catch (err) {
-      setError("Ocurrió un error al publicar. Probá de nuevo.");
+      if (err.status === 401) {
+        cerrarSesionCompleta();
+        navegar("/login");
+        return;
+      }
+      setError(err.message || "Ocurrió un error al publicar. Probá de nuevo.");
     } finally {
       setCargando(false);
     }

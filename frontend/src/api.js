@@ -372,3 +372,42 @@ export const borrarSolicitud = async (solicitudid) => {
     throw error;
   }
 };
+
+const API_URL_APTITUDES = import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api/usuarios_aptitudes"
+  : "/api/usuarios_aptitudes";
+
+const pedirAutenticado = async (url, method, body) => {
+  const respuesta = await fetch(url, {
+    method,
+    headers: encabezadosAutenticados(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const resultado = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    const error = new Error(resultado.message || "Error en el servidor");
+    error.status = respuesta.status;
+    throw error;
+  }
+  return resultado;
+};
+
+// PUT /api/usuarios/cambiarDato  → body: { inf: [{ dato, valor }] }
+export const cambiarDatos = (inf) =>
+  pedirAutenticado(`${API_URL}/cambiarDato`, "PUT", { inf });
+
+// GET /misAptitudes → { message, result: [{ aptitud, id }] }
+export const obtenerMisAptitudes = async () => {
+  const resultado = await pedirAutenticado(`${API_URL_APTITUDES}/misAptitudes`, "GET");
+  return resultado.result || [];
+};
+
+// POST /nuevaAptitud → body: { aptitud, matricula_* }
+export const agregarAptitud = (aptitud) =>
+  pedirAutenticado(`${API_URL_APTITUDES}/nuevaAptitud`, "POST", {
+    aptitud,
+    matricula_numero: null,
+    matricula_dni: null,
+    matricula_jurisdiccion: null,
+    matricula_categoria: null,
+  });

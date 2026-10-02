@@ -23,7 +23,7 @@ const estilos = `
 }
 
 .page{
-    background-image: url('../assets/fondo.png');
+    background-image: url('../assets/fondoLanding.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

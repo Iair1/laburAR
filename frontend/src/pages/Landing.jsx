@@ -168,19 +168,25 @@ button:focus-visible,
 
 .audience {
   position: relative;
-  aspect-ratio: 730/747;
-  width: 30.02%;
-    background-color: #A4A4A4;
-    border-radius: 13px;
-    border-color: #550000;
-  opacity: 0.6;
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.audience, .audience div{
+  aspect-ratio: 730/747;
+  width: 30.02vw;
+}
+
+.audience div{
+  background-color: #A4A4A4;
+  opacity: 0.6;
+  position: absolute;
+    border-radius: 13px;
+    border-color: #550000;
   border-width: 3px;
   border-style: solid;
 }
-
 
 .audience h3 {
   text-align: center;
@@ -546,6 +552,7 @@ export default function Laburar() {
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
+              <div></div>
               <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
@@ -557,6 +564,7 @@ export default function Laburar() {
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
+              <div></div>
               <h3 id="clients-title"><strong>Contratador@s</strong></h3>
               <ol>
                 <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>

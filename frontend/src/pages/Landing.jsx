@@ -177,6 +177,11 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   justify-content: center;
+  border-width: 3px;
+}
+
+.audience *{
+  opacity: 1.0;
 }
 
 .audience h3 {

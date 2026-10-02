@@ -264,7 +264,7 @@ button:focus-visible,
   justify-content: center;
   align-items: center;
   width: 8.7vw;
-  aspect-ratio: 1/2;
+  aspect-ratio: 1/1;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -605,10 +605,10 @@ export default function Laburar() {
 
           <div className="carousel-controls" aria-label="Controles del carrusel">
             <button className="carousel-button" type="button" data-direction="-1" onClick={() => moverCarrusel(-1)} aria-label="Ver tarjeta anterior" aria-controls="feature-cards">
-              <img src={imagenFlecha} alt="" />
+              <img src={imagenFlecha} alt="" style={{transform: "scaleX(-1)"}}/>
             </button>
             <button className="carousel-button" type="button" data-direction="1" onClick={() => moverCarrusel(1)} aria-label="Ver tarjeta siguiente" aria-controls="feature-cards">
-              <img src={imagenFlecha} alt="" style={{transform: "scaleX(-1)"}}/>
+              <img src={imagenFlecha} alt="" />
             </button>
           </div>
         </section>

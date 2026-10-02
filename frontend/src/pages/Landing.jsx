@@ -269,6 +269,7 @@ button:focus-visible,
   border: 0;
   border-radius: 50%;
   cursor: pointer;
+  background-color: #A4A4A4;
 }
 
 .carousel-button:hover {
@@ -279,7 +280,7 @@ button:focus-visible,
   transform: scale(0.96);
 }
 
-.carousel > img{
+.carousel img{
     width: 0.33%;
     height: 0.33%;
 }

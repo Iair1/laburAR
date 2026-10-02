@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
+import imagenFlecha from "../assets/flechaBoton.png"
 import fondoLanding from "../assets/fondoLanding.png";
 
 import carrusel0 from "../assets/carrusel/carrusel_0.png";
@@ -32,6 +33,7 @@ const estilos = `
 --focus: #542b19;
   font-size: 16px;
 }
+
 
 body{
   background-image: none;
@@ -186,25 +188,29 @@ button:focus-visible,
 
 .audience {
   position: relative;
-  width: 38vw;
-  aspect-ratio: 730 / 746;
-    border-radius: 13px;
-    border-color: #550000;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
   align-items: center;
 }
 
-.grisTraslucido {
-  position: absolute;
-  width: 38vw;
-  aspect-ratio: 730 / 746;
+.audience, .audience div{
+  aspect-ratio: 730/747;
+  width: 30.02vw;
+}
+
+.audience div{
   background-color: #A4A4A4;
-  border-radius: 13px;
   opacity: 0.6;
+  position: absolute;
+    border-radius: 13px;
+    border-color: #550000;
+  border-width: 3px;
+  border-style: solid;
   z-index: 1;
 }
+
+
 
 .audience h3, .audience ol{
   z-index: 2;}
@@ -214,6 +220,7 @@ button:focus-visible,
   font-size: 33px;
   font-weight: 400;
   line-height: 2.875rem;
+  z-index: 2;
 }
 
 
@@ -224,12 +231,9 @@ button:focus-visible,
   padding-left: 2.0625rem;
   font-size: 1.6875rem;
   line-height: 2.09375rem;
+  z-index: 2;
 }
 
-.audience-clients ol {
-  margin-left: 1.1875rem;
-  margin-right: 1.125rem;
-}
 
 /* Carrusel: tres tarjetas y parte de la cuarta, como en la referencia */
 .carousel {
@@ -262,7 +266,7 @@ button:focus-visible,
   height: 21.875rem;
 }
 
-.feature-card figcaption {
+.feature-card strong {
   margin-top: 0.5rem;
   font-size: 1.4375rem;
   line-height: 1.6875rem;
@@ -283,20 +287,16 @@ button:focus-visible,
 }
 
 .carousel-button {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 6.5rem;
-  height: 6rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 8.7vw;
+  aspect-ratio: 1/1;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--placeholder);
-  color: #ffffff;
-  font-size: 3.375rem;
-  font-weight: 900;
-  line-height: 1;
   cursor: pointer;
+  background-color: #A4A4A4;
 }
 
 .carousel-button:hover {
@@ -305,6 +305,11 @@ button:focus-visible,
 
 .carousel-button:active {
   transform: scale(0.96);
+}
+
+.carousel-button img{
+    width: 33%;
+    height: 33%;
 }
 
 /* Mantiene las proporciones de la referencia en pantallas medianas. */
@@ -432,7 +437,7 @@ button:focus-visible,
     aspect-ratio: 278 / 350;
   }
 
-  .feature-card figcaption {
+  .feature-card strong {
     font-size: 1.125rem;
     line-height: 1.4;
   }
@@ -569,24 +574,24 @@ export default function Laburar() {
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
-              <div className="grisTraslucido"></div>
+              <div></div>
               <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
-                <li>Menos dependencia de<br className="desktop-break" />{" "}recomentaciones boca a boca</li>
-                <li>Puedes buscar un nuevo<br className="desktop-break" />{" "}contacto cuando aquellos que<br className="desktop-break" />{" "}tienes no te llaman.</li>
+                <li>Menos dependencia de recomentaciones boca a boca</li>
+                <li>Puedes buscar un nuevo contacto cuando aquellos que tienes no te llaman.</li>
               </ol>
               {/* Estrellas decorativas presentes en la referencia. */}
 
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
-              <div className="grisTraslucido"></div>
+              <div></div>
               <h3 id="clients-title"><strong>Contratador@s</strong></h3>
               <ol>
-                <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>
-                <li>Menos dependencia de<br className="desktop-break" />{" "}contactos</li>
-                <li>Puedes contratar cualquier tipo<br className="desktop-break" />{" "}de servicio desde la comodidad<br className="desktop-break" />{" "}de tu casa</li>
+                <li>Servicio de chateo desde la aplicacion</li>
+                <li>Menos dependencia de contactos</li>
+                <li>Puedes contratar cualquier tipo de servicio desde la comodidad de tu casa</li>
               </ol>
             </article>
           </div>
@@ -600,7 +605,7 @@ export default function Laburar() {
                 <img alt="Trabajadores calificados" src={carrusel[0]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</figcaption>
+              <strong>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</strong>
             </figure>
 
             <figure className="feature-card">
@@ -609,7 +614,7 @@ export default function Laburar() {
                 <img alt="Trabajador encontrando nuevos clientes" src={carrusel[1]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</figcaption>
+              <strong>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</strong>
             </figure>
 
             <figure className="feature-card">
@@ -618,7 +623,7 @@ export default function Laburar() {
                 <img alt="Personas contactándose a través de LaburAR" src={carrusel[2]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</figcaption>
+              <strong>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</strong>
             </figure>
 
             <figure className="feature-card" style={{width: "40.164rem"}}>
@@ -628,16 +633,16 @@ export default function Laburar() {
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               {/* FALTA TEXTO: la cuarta tarjeta está cortada en la referencia. */}
-              <figcaption className="caption-pending">No ...</figcaption>
+              <strong className="caption-pending">No necesitas  nada mas</strong>
             </figure>
           </div>
 
           <div className="carousel-controls" aria-label="Controles del carrusel">
             <button className="carousel-button" type="button" data-direction="-1" onClick={() => moverCarrusel(-1)} aria-label="Ver tarjeta anterior" aria-controls="feature-cards">
-              <span aria-hidden="true">&lt;</span>
+              <img src={imagenFlecha} alt="" style={{transform: "scaleX(-1)"}}/>
             </button>
             <button className="carousel-button" type="button" data-direction="1" onClick={() => moverCarrusel(1)} aria-label="Ver tarjeta siguiente" aria-controls="feature-cards">
-              <span aria-hidden="true">&gt;</span>
+              <img src={imagenFlecha} alt="" />
             </button>
           </div>
         </section>

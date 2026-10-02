@@ -281,8 +281,8 @@ button:focus-visible,
 }
 
 .carousel-button img{
-    width: 0.33%;
-    height: 0.33%;
+    width: 33%;
+    height: 33%;
 }
 
 /* Mantiene las proporciones de la referencia en pantallas medianas. */

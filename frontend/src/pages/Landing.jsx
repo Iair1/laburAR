@@ -170,7 +170,8 @@ button:focus-visible,
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-around;
+  align-items: center;
 }
 
 .audience, .audience div{
@@ -186,6 +187,7 @@ button:focus-visible,
     border-color: #550000;
   border-width: 3px;
   border-style: solid;
+  z-index: 1;
 }
 
 .audience h3 {
@@ -193,15 +195,9 @@ button:focus-visible,
   font-size: 33px;
   font-weight: 400;
   line-height: 2.875rem;
+  z-index: 2;
 }
 
-.audience-workers h3 {
-  margin-left: 2.375rem;
-}
-
-.audience-clients h3 {
-  margin-right: 4rem;
-}
 
 .audience ol {
   display: grid;
@@ -210,12 +206,9 @@ button:focus-visible,
   padding-left: 2.0625rem;
   font-size: 1.6875rem;
   line-height: 2.09375rem;
+  z-index: 2;
 }
 
-.audience-clients ol {
-  margin-left: 1.1875rem;
-  margin-right: 1.125rem;
-}
 
 /* Carrusel: tres tarjetas y parte de la cuarta, como en la referencia */
 .carousel {

@@ -239,7 +239,7 @@ button:focus-visible,
   height: 21.875rem;
 }
 
-.feature-card figcaption {
+.feature-card strong {
   margin-top: 0.5rem;
   font-size: 1.4375rem;
   line-height: 1.6875rem;
@@ -410,7 +410,7 @@ button:focus-visible,
     aspect-ratio: 278 / 350;
   }
 
-  .feature-card figcaption {
+  .feature-card strong {
     font-size: 1.125rem;
     line-height: 1.4;
   }
@@ -572,7 +572,7 @@ export default function Laburar() {
                 <img alt="Trabajadores calificados" src={carrusel[0]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</figcaption>
+              <strong>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</strong>
             </figure>
 
             <figure className="feature-card">
@@ -581,7 +581,7 @@ export default function Laburar() {
                 <img alt="Trabajador encontrando nuevos clientes" src={carrusel[1]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</figcaption>
+              <strong>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</strong>
             </figure>
 
             <figure className="feature-card">
@@ -590,7 +590,7 @@ export default function Laburar() {
                 <img alt="Personas contactándose a través de LaburAR" src={carrusel[2]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <figcaption>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</figcaption>
+              <strong>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</strong>
             </figure>
 
             <figure className="feature-card" style={{width: "40.164rem"}}>
@@ -600,7 +600,7 @@ export default function Laburar() {
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               {/* FALTA TEXTO: la cuarta tarjeta está cortada en la referencia. */}
-              <figcaption className="caption-pending">No ...</figcaption>
+              <strong className="caption-pending">No necesitas  nada mas</strong>
             </figure>
           </div>
 

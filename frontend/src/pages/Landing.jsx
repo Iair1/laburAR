@@ -22,6 +22,9 @@ const estilos = `
   font-size: 16px;
 }
 
+body{
+background: none;}
+
 .page{
     background-image: url('../assets/fondoLanding.png');
     background-size: cover;

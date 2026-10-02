@@ -168,8 +168,8 @@ button:focus-visible,
 
 .audience {
   position: relative;
-  min-height: 24.5rem;
-  min-width: 20.5rem;
+  aspect-ratio: 730/747;
+  width: 30.02%;
     background-color: #A4A4A4;
     border-radius: 13px;
     border-color: #550000;
@@ -178,11 +178,9 @@ button:focus-visible,
   flex-direction: column;
   justify-content: center;
   border-width: 3px;
+  border-style: solid;
 }
 
-.audience *{
-  opacity: 1.0;
-}
 
 .audience h3 {
   text-align: center;

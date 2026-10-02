@@ -549,8 +549,8 @@ export default function Laburar() {
               <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
-                <li>Menos dependencia de<br className="desktop-break" />{" "}recomentaciones boca a boca</li>
-                <li>Puedes buscar un nuevo<br className="desktop-break" />{" "}contacto cuando aquellos que<br className="desktop-break" />{" "}tienes no te llaman.</li>
+                <li>Menos dependencia de recomentaciones boca a boca</li>
+                <li>Puedes buscar un nuevo contacto cuando aquellos que tienes no te llaman.</li>
               </ol>
               {/* Estrellas decorativas presentes en la referencia. */}
 
@@ -560,9 +560,9 @@ export default function Laburar() {
               <div></div>
               <h3 id="clients-title"><strong>Contratador@s</strong></h3>
               <ol>
-                <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>
-                <li>Menos dependencia de<br className="desktop-break" />{" "}contactos</li>
-                <li>Puedes contratar cualquier tipo<br className="desktop-break" />{" "}de servicio desde la comodidad<br className="desktop-break" />{" "}de tu casa</li>
+                <li>Servicio de chateo desde la aplicacion</li>
+                <li>Menos dependencia de contactos</li>
+                <li>Puedes contratar cualquier tipo de servicio desde la comodidad de tu casa</li>
               </ol>
             </article>
           </div>

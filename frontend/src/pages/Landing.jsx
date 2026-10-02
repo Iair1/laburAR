@@ -608,7 +608,7 @@ export default function Laburar() {
               <img src={imagenFlecha} alt="" />
             </button>
             <button className="carousel-button" type="button" data-direction="1" onClick={() => moverCarrusel(1)} aria-label="Ver tarjeta siguiente" aria-controls="feature-cards">
-              <img src={imagenFlecha} alt="" style={{transform: scaleX(-1)}}/>
+              <img src={imagenFlecha} alt="" style={{transform: "scaleX(-1)"}}/>
             </button>
           </div>
         </section>

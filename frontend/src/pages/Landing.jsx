@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
+import imagenFlecha from "../assets/flechaBoton.png"
 
 import carrusel0 from "../assets/carrusel/carrusel_0.png";
 import carrusel1 from "../assets/carrusel/carrusel_1.png";
@@ -259,19 +260,14 @@ button:focus-visible,
 }
 
 .carousel-button {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 6.5rem;
-  height: 6rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 8.7vw;
+  aspect-ratio: 1/2;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--placeholder);
-  color: #ffffff;
-  font-size: 3.375rem;
-  font-weight: 900;
-  line-height: 1;
   cursor: pointer;
 }
 
@@ -281,6 +277,11 @@ button:focus-visible,
 
 .carousel-button:active {
   transform: scale(0.96);
+}
+
+.carousel > img{
+    width: 0.33%;
+    height: 0.33%;
 }
 
 /* Mantiene las proporciones de la referencia en pantallas medianas. */
@@ -604,10 +605,10 @@ export default function Laburar() {
 
           <div className="carousel-controls" aria-label="Controles del carrusel">
             <button className="carousel-button" type="button" data-direction="-1" onClick={() => moverCarrusel(-1)} aria-label="Ver tarjeta anterior" aria-controls="feature-cards">
-              <span aria-hidden="true">&lt;</span>
+              <img src={imagenFlecha} alt="" />
             </button>
             <button className="carousel-button" type="button" data-direction="1" onClick={() => moverCarrusel(1)} aria-label="Ver tarjeta siguiente" aria-controls="feature-cards">
-              <span aria-hidden="true">&gt;</span>
+              <img src={imagenFlecha} alt="" style={{transform: scaleX(-1)}}/>
             </button>
           </div>
         </section>

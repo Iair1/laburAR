@@ -280,7 +280,7 @@ button:focus-visible,
   transform: scale(0.96);
 }
 
-.carousel img{
+.carousel-button img{
     width: 0.33%;
     height: 0.33%;
 }

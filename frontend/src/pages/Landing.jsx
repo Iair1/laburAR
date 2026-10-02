@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logoTexto from "../assets/logo-texto.svg";
 import logoIcono from "../assets/logo-icono.svg";
 import imagenLanding from "../assets/imagenLanding.png";
+import fondoLanding from "../assets/fondoLanding.png";
 
 import carrusel0 from "../assets/carrusel/carrusel_0.png";
 import carrusel1 from "../assets/carrusel/carrusel_1.png";
@@ -12,6 +13,17 @@ import carrusel3 from "../assets/carrusel/carrusel_3.png";
 const carrusel = [carrusel0, carrusel1, carrusel2, carrusel3];
 
 const estilos = `
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:ital,opsz@0,14..32;1,14..32&display=swap');
+
+.inter-default{
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -21,11 +33,16 @@ const estilos = `
   font-size: 16px;
 }
 
+body{
+  background-image: none;
+}
 .page{
-    background-image: url('../assets/fondo.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+  width: 100vw;
+  background-image: url(${fondoLanding});
+  background-position: top center;
+  background-repeat: no-repeat;
+  background-size: 100%, 100%;
+
     height: 100vh;
     margin: 0;}
 
@@ -62,7 +79,7 @@ button:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  aspect-ratio: 1921 / 153;
+  aspect-ratio: 1920 / 153;
   width: 100%;
   padding-left: 5%;
   padding-right: 5%;
@@ -73,16 +90,19 @@ button:focus-visible,
 .brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    justify-content: space-between;
+    width: 23.65vw;
+    aspect-ratio: 454/119;
+    margin-left:2.76vw;
     cursor: pointer;
     user-select: none;
-    height: 100%;
 }
 
 .account-nav {
   display: flex;
-  gap: 1.625rem;
+  margin-left: 11.46vw;
+  width: 27.29vw;
+  justify-content: space-between;
 }
 
 /* Presentación principal */
@@ -100,8 +120,7 @@ button:focus-visible,
 }
 
 .hero p {
-  font-size: 2.25rem;
-  line-height: 2.71875rem;
+  font-size: 33px;
 }
 
 .image-placeholder {
@@ -167,16 +186,28 @@ button:focus-visible,
 
 .audience {
   position: relative;
-  min-height: 24.5rem;
-  min-width: 20.5rem;
-    background-color: #A4A4A4;
+  width: 38vw;
+  aspect-ratio: 730 / 746;
     border-radius: 13px;
     border-color: #550000;
-  opacity: 0.6;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-around;
+  align-items: center;
 }
+
+.grisTraslucido {
+  position: absolute;
+  width: 38vw;
+  aspect-ratio: 730 / 746;
+  background-color: #A4A4A4;
+  border-radius: 13px;
+  opacity: 0.6;
+  z-index: 1;
+}
+
+.audience h3, .audience ol{
+  z-index: 2;}
 
 .audience h3 {
   text-align: center;
@@ -185,18 +216,11 @@ button:focus-visible,
   line-height: 2.875rem;
 }
 
-.audience-workers h3 {
-  margin-left: 2.375rem;
-}
-
-.audience-clients h3 {
-  margin-right: 4rem;
-}
 
 .audience ol {
   display: grid;
   gap: 2.0625rem;
-  margin: 1rem 1.5rem 0 2.8125rem;
+  margin-bottom: 10%;
   padding-left: 2.0625rem;
   font-size: 1.6875rem;
   line-height: 2.09375rem;
@@ -444,27 +468,31 @@ button:focus-visible,
   
 
 .enlace-nav {
-  background: none;
   border: none;
   font-size: 1.25rem;
-  color: #3B1E0D;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.15s;
+  background-color: #3B1E0D;
+  color: white;
+  border-radius: 47px;
   white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-color: white;
   font-size: 23px;
+  width: 12.24vw;
+  aspect-ratio: 235 / 85;
 }
-.logo-icono-nav { width: 30px; height: 100%; display: block; }
-.logo-texto-nav { width: 92px; height: 100%; display: block; }  
+.logo-icono-nav { height: 100%; display: block; }
+.logo-texto-nav { height: 35%; display: block; }  
 
 .titulo{
   text-align: center;
-  font size: 33px;
+  font-size: 33px;
+  font-family: "Inter", sans-serif;
   }
+
+.negrita{
+  font-family: "Archivo Black";
+}
 `
 export default function Laburar() {
   
@@ -523,9 +551,9 @@ export default function Laburar() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <p id="hero-title" className="titulo">
-             <strong>LABURAR</strong> es una plataforma web diseñada para resolver la brecha de comunicación y contratación entre personas que necesitan servicios de oficio —como plomería, electricidad, gasistería, entre otros — y los trabajadores calificados que los proveen.<br className="desktop-break" />
+             <strong className="negrita">LABURAR</strong> es una plataforma web diseñada para resolver la brecha de comunicación y contratación entre personas que necesitan servicios de oficio —como plomería, electricidad, gasistería, entre otros — y los trabajadores calificados que los proveen.<br className="desktop-break" />
              {" "}
-            <strong>LABURAR</strong> propone centralizar este proceso en un entorno digital accesible, seguro y orientado a la experiencia del usuario, incorporando perfiles verificados, sistema de valoraciones bidireccional, mensajería integrada y filtros inteligentes de búsqueda
+            <strong className="negrita">LABURAR</strong> propone centralizar este proceso en un entorno digital accesible, seguro y orientado a la experiencia del usuario, incorporando perfiles verificados, sistema de valoraciones bidireccional, mensajería integrada y filtros inteligentes de búsqueda
           </p>
           </div>
 
@@ -541,6 +569,7 @@ export default function Laburar() {
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
+              <div className="grisTraslucido"></div>
               <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
@@ -552,6 +581,7 @@ export default function Laburar() {
             </article>
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
+              <div className="grisTraslucido"></div>
               <h3 id="clients-title"><strong>Contratador@s</strong></h3>
               <ol>
                 <li>Servicio de chateo desde la<br className="desktop-break" />{" "}aplicacion</li>

@@ -11,10 +11,15 @@ import carrusel1 from "../assets/carrusel/carrusel_1.png";
 import carrusel2 from "../assets/carrusel/carrusel_2.png";
 import carrusel3 from "../assets/carrusel/carrusel_3.png";
 
+import instagram from "../assets/iconos-contacto/instagram.png";
+import tiktok from "../assets/iconos-contacto/tiktok.png";
+import gmail from "../assets/iconos-contacto/gmail.png";
+
 const carrusel = [carrusel0, carrusel1, carrusel2, carrusel3];
 
 const estilos = `
 
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:ital,opsz@0,14..32;1,14..32&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:ital,opsz@0,14..32;1,14..32&display=swap');
 
 .inter-default{
@@ -27,13 +32,6 @@ const estilos = `
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
---placeholder: #d9d9d9;
---star: #ffa500;
---focus: #542b19;
-  font-size: 16px;
-}
-
 
 body{
   background-image: none;
@@ -41,12 +39,10 @@ body{
 .page{
   width: 100vw;
   background-image: url(${fondoLanding});
-  background-position: top center;
   background-repeat: no-repeat;
-  background-size: 100%, 100%;
-
-    height: 100vh;
-    margin: 0;}
+  background-size: 100% 100%;
+  background-attachment: scroll;
+  margin: 0;}
 
 * {
   box-sizing: border-box;
@@ -109,10 +105,13 @@ button:focus-visible,
 
 /* Presentación principal */
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 29.4375rem;
-  gap: 3.625rem;
-  margin: 3.6875rem 4.5rem 0 2.375rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 3%;
+  padding-top: 5%;
+  padding-bottom: 0;
 }
 
 .hero h1 {
@@ -122,7 +121,7 @@ button:focus-visible,
 }
 
 .hero p {
-  font-size: 33px;
+  font-size: 24px;
 }
 
 .image-placeholder {
@@ -139,7 +138,6 @@ button:focus-visible,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 13px;
 }
 
 /* Las imágenes sin src no muestran el icono de imagen rota. */
@@ -159,7 +157,7 @@ button:focus-visible,
 }
 
 .hero-image {
-  width: 100%;
+  width: 48vw;
   height: 25.9375rem;
 }
 
@@ -173,8 +171,9 @@ button:focus-visible,
 }
 
 .benefits h2 {
+  font-family: "Archivo Black", sans-serif;
   text-align: center;
-  font-size: 3.375rem;
+  font-size: 38px;
   font-weight: 400;
   line-height: 4.25rem;
 }
@@ -182,7 +181,8 @@ button:focus-visible,
 .audiences {
   display: flex;
   justify-content: space-around;
-  align items: center;
+  align-items: center;
+  margin-top: 5%;
 
 }
 
@@ -190,13 +190,10 @@ button:focus-visible,
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
+  justify-content: space-evenly;
   align-items: center;
-}
-
-.audience, .audience div{
-  aspect-ratio: 730/747;
   width: 30.02vw;
+  min-height: 31.66vw;
 }
 
 .audience div{
@@ -208,29 +205,33 @@ button:focus-visible,
   border-width: 3px;
   border-style: solid;
   z-index: 1;
+
+  inset: 0;
 }
 
 
 
 .audience h3, .audience ol{
+  padding: 0;
   z-index: 2;}
 
 .audience h3 {
   text-align: center;
-  font-size: 33px;
+  font-size: 23px;
   font-weight: 400;
   line-height: 2.875rem;
+  font-family: "Archivo Black", sans-serif;
   z-index: 2;
 }
 
 
 .audience ol {
   display: grid;
-  gap: 2.0625rem;
-  margin-bottom: 10%;
-  padding-left: 2.0625rem;
-  font-size: 1.6875rem;
+  gap: 1.5rem;
+  width: 88%;
+  font-size: 27px;
   line-height: 2.09375rem;
+  list-style-position: inside;
   z-index: 2;
 }
 
@@ -255,7 +256,8 @@ button:focus-visible,
 }
 
 .feature-card {
-  width: 17.375rem;
+  width: 25.57vw;
+  aspect-ratio: 491 / 785;
   flex-shrink: 0;
   min-width: 0;
   scroll-snap-align: start;
@@ -263,14 +265,16 @@ button:focus-visible,
 
 .card-image {
   width: 100%;
-  height: 21.875rem;
+  aspect-ratio: 491 / 617;
 }
 
 .feature-card strong {
+  display: block;
   margin-top: 0.5rem;
-  font-size: 1.4375rem;
+  font-size: 25.5px;
   line-height: 1.6875rem;
   text-align: center;
+  font-family: "Archivo Black", sans-serif;
 }
 
 .feature-card .caption-pending {
@@ -282,8 +286,7 @@ button:focus-visible,
   display: flex;
   justify-content: center;
   gap: 7rem;
-  margin-top: 4.6875rem;
-  padding-right: 3.25rem;
+  margin-top: 1.5rem;
 }
 
 .carousel-button {
@@ -311,170 +314,12 @@ button:focus-visible,
     width: 33%;
     height: 33%;
 }
-
-/* Mantiene las proporciones de la referencia en pantallas medianas. */
-@media (min-width: 761px) and (max-width: 1086px) {
-  :root {
-    font-size: calc(100vw / 67.9375);
-  }
-}
-
-/* En celular, los bloques pasan a una columna y el carrusel admite swipe. */
-@media (max-width: 760px) {
-  .page {
-    min-height: 100vh;
-  }
-
-  .site-header {
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-  }
-
-  .account-nav {
-    gap: 0.625rem;
-    margin-top: 0;
-  }
-
-  .account-link {
-    width: auto;
-    min-height: 2.75rem;
-    font-size: 0.875rem;
-  }
-
-  .hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
-    margin: 2.5rem 1.25rem 0;
-  }
-
-  .hero h1 {
-    font-size: clamp(2.25rem, 7vw, 3.5rem);
-    line-height: 1.15;
-  }
-
-  .hero p {
-    max-width: 38ch;
-    margin-top: 1rem;
-    font-size: clamp(1.25rem, 4.5vw, 1.75rem);
-    line-height: 1.4;
-  }
-
-  .desktop-break {
-    display: none;
-  }
-
-  .hero-image {
-    height: auto;
-    aspect-ratio: 915 / 321;
-  }
-
-  .placeholder-label {
-    font-size: clamp(2rem, 7vw, 3.5rem);
-  }
-
-  .hero-image .placeholder-label {
-    transform: none;
-  }
-
-  .benefits {
-    margin: 3.5rem 1.25rem 0;
-  }
-
-  .benefits h2 {
-    font-size: clamp(1.875rem, 6vw, 2.75rem);
-    line-height: 1.18;
-  }
-
- 
-
-  .audience {
-    min-height: 0;
-  }
-
-  .audience h3 {
-    margin: 0;
-    font-size: 1.75rem;
-    line-height: 1.25;
-    text-align: center;
-  }
-
-  .audience ol {
-    gap: 1rem;
-    margin: 1.25rem 0 0 0.5rem;
-    padding-left: 1.5rem;
-    font-size: 1.125rem;
-    line-height: 1.5;
-  }
-
-  .stars {
-    position: static;
-    gap: 0.25rem;
-    margin: 1rem 0 0 auto;
-  }
-
-  .stars span {
-    width: 1.75rem;
-    height: 1.75rem;
-  }
-
-  .carousel {
-    margin-top: 3.5rem;
-  }
-
-  .carousel-track {
-    gap: 1.25rem;
-    padding-inline: 1.25rem;
-    scroll-padding-left: 1.25rem;
-  }
-
-  .feature-card {
-    flex-basis: min(17.375rem, calc(100vw - 4rem));
-  }
-
-  .card-image {
-    height: auto;
-    aspect-ratio: 278 / 350;
-  }
-
-  .feature-card strong {
-    font-size: 1.125rem;
-    line-height: 1.4;
-  }
-
-  .carousel-controls {
-    gap: 3rem;
-    margin-top: 2rem;
-    padding-right: 0;
-  }
-
-  .carousel-button {
-    width: 4rem;
-    height: 4rem;
-    font-size: 2.25rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .site-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .account-nav {
-    width: 100%;
-    justify-content: space-around;
-  }
-
-  .account-link {
-    flex: 1;
-  }
-}
   
 
 .enlace-nav {
   border: none;
   font-size: 1.25rem;
+  font-family: "Inter", sans-serif;
   background-color: #3B1E0D;
   color: white;
   border-radius: 47px;
@@ -493,10 +338,72 @@ button:focus-visible,
   text-align: center;
   font-size: 33px;
   font-family: "Inter", sans-serif;
+  width: 39.375vw;
   }
 
 .negrita{
   font-family: "Archivo Black";
+}
+
+footer{
+  width: 100%;
+  height: 45vh;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.contacto{
+width: 31.09vw;
+}
+
+.contacto strong{
+  font-size: 30px;
+  color: #550000;
+  font-family: "Archivo Black";
+}
+
+.contacto ul{
+  padding-left: 1.759vw;
+  }
+
+.contacto ul li{
+display: flex;
+justify-content: flex-start;
+align-items: center;
+line-height: 4.629vh;
+font-family: "Inter", sans-serif;
+font-size: 29px;
+}
+.contacto ul li img{
+  width: 1.72vw;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.logoPieDePagina{
+  width: 16.4%;
+  height: 27.96vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logoIconoPieDePagina{
+  width: 75.24%;
+  height: auto;
+}
+.logoTextoPieDePagina{
+  width: 100%;
+  height: auto;
+}
+
+footer div{
+  width: 31.09vw;}
+
+a{
+  text-decoration: none;
+  color: #000000;
 }
 `
 export default function Laburar() {
@@ -570,12 +477,12 @@ export default function Laburar() {
         </section>
 
         <section className="benefits" aria-labelledby="benefits-title">
-          <h2 id="benefits-title"><strong>laburAR te ayuda a conectar</strong></h2>
+          <h2 id="benefits-title"><strong>LABURAR TE AYUDA A CONECTAR</strong></h2>
 
           <div className="audiences">
             <article className="audience audience-workers" aria-labelledby="workers-title">
               <div></div>
-              <h3 id="workers-title"><strong>Trabajador@s</strong></h3>
+              <h3 id="workers-title"><strong>TRABAJADOR@S</strong></h3>
               <ol>
                 <li>Red extensa de empleadores</li>
                 <li>Menos dependencia de recomentaciones boca a boca</li>
@@ -587,7 +494,7 @@ export default function Laburar() {
 
             <article className="audience audience-clients" aria-labelledby="clients-title">
               <div></div>
-              <h3 id="clients-title"><strong>Contratador@s</strong></h3>
+              <h3 id="clients-title"><strong>CONTRATADOR@S</strong></h3>
               <ol>
                 <li>Servicio de chateo desde la aplicacion</li>
                 <li>Menos dependencia de contactos</li>
@@ -605,7 +512,7 @@ export default function Laburar() {
                 <img alt="Trabajadores calificados" src={carrusel[0]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <strong>Encuentra trabajadores<br className="desktop-break" />{" "}calificados</strong>
+              <strong>ENCUENTRA TRABAJADORES CALIFICADOS</strong>
             </figure>
 
             <figure className="feature-card">
@@ -614,7 +521,7 @@ export default function Laburar() {
                 <img alt="Trabajador encontrando nuevos clientes" src={carrusel[1]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <strong>Consigue cliente aun en<br className="desktop-break" />{" "}las peores epocas</strong>
+              <strong>ENCUENTRA CLIENTES AUN EN LAS PEORES ÉPOCAS</strong>
             </figure>
 
             <figure className="feature-card">
@@ -623,17 +530,17 @@ export default function Laburar() {
                 <img alt="Personas contactándose a través de LaburAR" src={carrusel[2]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
-              <strong>No dependas de que te<br className="desktop-break" />{" "}pasen un contacto</strong>
+              <strong>NO DEPENDAS DE CONTACTOS</strong>
             </figure>
 
-            <figure className="feature-card" style={{width: "40.164rem"}}>
+            <figure className="feature-card">
               <div className="image-placeholder card-image">
                 {/* FALTA IMAGEN: agregar src con la imagen de la cuarta tarjeta. */}
                 <img alt="Otra ventaja de usar LaburAR" src={carrusel[3]} />
                 <span className="placeholder-label" aria-hidden="true">imagen</span>
               </div>
               {/* FALTA TEXTO: la cuarta tarjeta está cortada en la referencia. */}
-              <strong className="caption-pending">No necesitas  nada mas</strong>
+              <strong className="caption-pending">NO NECESITAS NADA MÁS</strong>
             </figure>
           </div>
 
@@ -646,6 +553,35 @@ export default function Laburar() {
             </button>
           </div>
         </section>
+
+        <footer>
+          <section className="contacto" aria-labelledby="contacto-title"> 
+            <strong>CONTACTANOS</strong>
+            <ul>
+              <li>
+                <img src={instagram} alt="Instagram" />
+                <p>@laburar</p>
+              </li>
+              <li>
+                <img src={tiktok} alt="TikTok" />
+                <p>laburAR</p>
+              </li>
+              <li>
+                <img src={gmail} alt="Gmail" />
+                <p>laburAR@gmail.com</p>
+              </li>
+              <li>
+                <img src={logoIcono} alt="LaburAR" />
+                <a href="https://laburarp.vercel.app">https://laburarp.vercel.app</a>
+              </li>
+            </ul>
+          </section>
+          <section className="logoPieDePagina">
+            <img src={logoIcono} alt="LaburAR" className="logoIconoPieDePagina" />
+            <img src={logoTexto} alt="LaburAR" className="logoTextoPieDePagina" />
+          </section>
+          <div></div>
+        </footer>
       </main>
     </div>
     </>

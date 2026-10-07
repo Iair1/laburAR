@@ -68,6 +68,26 @@ async function trabajosPendientes(id) {
     }
 }
 
+async function serviciosPendientes(id) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            FROM solicitudes s
+            INNER JOIN usuarios u ON u.id = s.trabajadorid
+            WHERE s.contratadorid = $1 AND s.estado = 'pendiente'
+            ORDER BY s.id DESC;
+        `, [id]);
+        return result.rows;
+    } catch(error){
+        console.error("Error al obtener trabajos pendientes:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
+
 async function busqueda(id) {
     const client = new Client(config);
     console.log(id);
@@ -125,7 +145,7 @@ const aceptarSolicitud = async(id, solicitudid) => {
                         Periodo: ${result.rows[0].periodo}`;
         const aviso = await client.query(`
             INSERT INTO notificaciones (tipo, userid, contenido)
-            VALUES('solicitudes', $1
+            VALUES('solicitud-aceptada', $1
             , $2)`, [result.rows[0].contratadorid, avisotxt]);
         return{solicitud: result.rows[0], aviso: aviso.rows[0]};
     } catch(error) {
@@ -149,7 +169,7 @@ const rechazarSolicitud = async(id, solicitudid) => {
                         Periodo: ${result.rows[0].periodo}`;
         const aviso = await client.query(`
             INSERT INTO notificaciones (tipo, userid, contenido)
-            VALUES('solicitudes', $1
+            VALUES('solicitud-rechazada', $1
             , $2)`, [result.rows[0].contratadorid, avisotxt]);
         return{solicitud: result.rows[0], aviso: aviso.rows[0]};
     } catch(error) {
@@ -160,13 +180,51 @@ const rechazarSolicitud = async(id, solicitudid) => {
     }
 }
 
+const cancelarTrabajo = async(id, solicitudid) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+            UPDATE solicitudes s
+            SET estado = 'cancelado'
+            FROM usuarios u
+            WHERE (s.contratadorid = $1 OR s.trabajadorid = $1) AND s.id = $2 AND s.estado = 'pendiente'
+            AND u.id = CASE WHEN s.contratadorid = $1 THEN s.contratadorid ELSE s.trabajadorid END
+            RETURNING s.*, u.nombre_completo`, [id, solicitudid]);
+        if(result.rowCount === 0) {
+            throw new Error("La solicitud que desea cancelar no existe o no le pertenece a este usuario");
+        }
+        let otro = result.rows[0].contratadorid
+        if(result.rows[0].contratadorid === id){
+            otro = result.rows[0].trabajadorid
+        }
+        const avisotxt=`El trabajo ha sido cancelado por el usuario
+                        Solicitud: ${result.rows[0].solicitud}
+                        Periodo: ${result.rows[0].periodo}
+                        Usuario que cancela: ${result.rows[0].nombre_completo}`;
+        const aviso = await client.query(`
+            INSERT INTO notificaciones (tipo, userid, contenido, otroid)
+            VALUES('trabajo-cancelado', $1, $2, $3)`, 
+            [otro, avisotxt, result.rows[0].id]);
+        return result.rows[0];
+    } catch(error) {
+        console.error("Error al cancelar el trabajo:", error);
+        throw error;
+    } finally {
+        await client.end();
+    }
+}
+        
+
 const SolicitudesService = {
     busqueda,
     trabajosPendientes,
     subirSolicitud,
     borrarSolicitud,
     aceptarSolicitud,
-    rechazarSolicitud
+    rechazarSolicitud,
+    serviciosPendientes,
+    cancelarTrabajo
 }
 
 export default SolicitudesService;

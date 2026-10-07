@@ -68,12 +68,48 @@ const trabajosPendientes = async(req, res)=>{
         res.status(500).json({ message: error.message });
     }
 }
+const serviciosPendientes = async(req, res)=>{
+    const id = req.id;
+    try{
+        const result = await SolicitudesService.serviciosPendientes(id);
+        res.status(201).json({ message: "Busqueda exitosa", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
+/*const terminarTrabajo = async(req, res)=>{
+    const id = req.id;
+    const { solicitudid } = req.body;
+    try{
+        const result = await SolicitudesService.terminarTrabajo(id, solicitudid);
+        res.status(201).json({ message: result.message, resultado: result.resultado});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}*/
+const cancelarTrabajo = async(req, res)=>{
+    const id = req.id;
+    const { solicitudid } = req.body;
+    if(!solicitudid) {
+        return res.status(400).json({ message: "Debe completar todos los campos"});
+    }
+    try{
+        const result = await SolicitudesService.cancelarTrabajo(id, solicitudid);
+        res.status(201).json({ message: "Cancelacion exitosa", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const SolicitudesController = {
     busqueda,
     subirSolicitud,
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,
-    trabajosPendientes
+    trabajosPendientes,
+    serviciosPendientes,
+    cancelarTrabajo,
 }
 export default SolicitudesController;

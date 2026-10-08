@@ -48,6 +48,26 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
     }
 }
 
+async function misSolicitudes(id) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            FROM solicitudes s
+            INNER JOIN usuarios u ON u.id = s.trabajadorid
+            WHERE s.contratadorid = $1 AND s.estado = 'por revisar'
+            ORDER BY s.id DESC;
+        `, [id]);
+        return result.rows;
+    } catch(error){
+        console.error("Error al obtener trabajos solicitudes:", error);
+        throw error;
+    } finally{
+        await client.end();
+    }
+}
+
 async function trabajosPendientes(id) {
     const client = new Client(config);
     try{
@@ -218,6 +238,7 @@ const cancelarTrabajo = async(id, solicitudid) => {
 
 const SolicitudesService = {
     busqueda,
+    misSolicitudes,
     trabajosPendientes,
     subirSolicitud,
     borrarSolicitud,

@@ -5,6 +5,7 @@ import {verifyToken} from "../auth.middleware.js";
 const router = Router();
 
 router.get("/busqueda", verifyToken, SolicitudesController.busqueda);
+router.get("/misSolicitudes", verifyToken, SolicitudesController.misSolicitudes);
 router.get("/trabajosPendientes", verifyToken, SolicitudesController.trabajosPendientes);
 router.get("/serviciosPendientes", verifyToken, SolicitudesController.serviciosPendientes);
 router.post("/subirSolicitud", verifyToken, SolicitudesController.subirSolicitud);

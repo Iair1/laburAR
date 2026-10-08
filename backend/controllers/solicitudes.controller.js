@@ -59,6 +59,15 @@ const busqueda = async(req, res)=>{
         res.status(500).json({ message: error.message });
     }
 }
+const misSolicitudes = async(req, res)=>{
+    const id = req.id;
+    try{
+        const result = await SolicitudesService.misSolicitudes(id);
+        res.status(201).json({ message: "Busqueda exitosa", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
 const trabajosPendientes = async(req, res)=>{
     const id = req.id;
     try{
@@ -111,5 +120,6 @@ const SolicitudesController = {
     trabajosPendientes,
     serviciosPendientes,
     cancelarTrabajo,
+    misSolicitudes
 }
 export default SolicitudesController;

@@ -111,6 +111,15 @@ const cancelarTrabajo = async(req, res)=>{
     }
 }
 
+const revisarTerminadas = async(req, res)=>{
+    try{
+        const result = await SolicitudesService.revisarTerminadas();
+        res.status(200).json({ message: "Revisión de solicitudes terminadas exitosa", result });
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const SolicitudesController = {
     busqueda,
     subirSolicitud,
@@ -120,6 +129,7 @@ const SolicitudesController = {
     trabajosPendientes,
     serviciosPendientes,
     cancelarTrabajo,
-    misSolicitudes
+    misSolicitudes,
+    revisarTerminadas
 }
 export default SolicitudesController;

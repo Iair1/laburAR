@@ -13,6 +13,8 @@ router.delete("/borrarSolicitud", verifyToken, SolicitudesController.borrarSolic
 router.post("/aceptarSolicitud", verifyToken, SolicitudesController.aceptarSolicitud);
 router.post("/rechazarSolicitud", verifyToken, SolicitudesController.rechazarSolicitud);
 router.put("/cancelarTrabajo", verifyToken, SolicitudesController.cancelarTrabajo);
+
+router.get("/revisarTerminadas", SolicitudesController.revisarTerminadas);
 //router.put("/terminarTrabajo", verifyToken, SolicitudesController.terminarTrabajo);
 
 export default router;

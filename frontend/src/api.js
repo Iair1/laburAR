@@ -411,3 +411,38 @@ export const agregarAptitud = (aptitud) =>
     matricula_jurisdiccion: null,
     matricula_categoria: null,
   });
+
+/* ============================================================
+ * GOOGLE
+ * ============================================================ */
+
+/**
+ * Manda el "credential" (id_token) que devuelve Google al backend para que
+ * lo verifique y devuelva el token de LaburAR, igual que iniciarSesion.
+ *
+ * ⚠️ El backend todavía NO tiene esta ruta. Hay que crear
+ * POST /api/usuarios/iniciarSesionGoogle  body: { credential }
+ * que verifique el id_token con Google (google-auth-library), busque/cree el
+ * usuario por correo y responda { token, notificaciones } como iniciarSesion.
+ */
+export const iniciarSesionConGoogle = async (credential) => {
+  const respuesta = await fetch(`${API_URL}/iniciarSesionGoogle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential }),
+  });
+
+  const resultado = await respuesta.json().catch(() => ({}));
+
+  if (!respuesta.ok) {
+    const error = new Error(resultado.message || "Error al iniciar sesión con Google");
+    error.status = respuesta.status;
+    throw error;
+  }
+
+  if (resultado.token) {
+    localStorage.setItem("token", resultado.token);
+  }
+
+  return resultado;
+};

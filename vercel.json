@@ -26,7 +26,7 @@
   "crons": [
     {
       "path": "/api/solicitudes/revisarTerminadas",
-      "schedule": "0 0 * * *"
+      "schedule": "0 0 */2 * *"
     }
   ]
 }

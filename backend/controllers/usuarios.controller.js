@@ -18,10 +18,11 @@ const cambiarDato = async(req, res)=>{
     try{
         const id = req.id;
         const {inf} = req.body;
-        if(!inf){
+        if(!Array.isArray(inf) || inf.length === 0){
             return res.status(400).json({ message: "Debe completar todos los campos"});
         }
-        console.log(inf);
+        // No logueamos la foto (es un base64 enorme)
+        console.log(inf.map((item) => item.dato === "foto_perfil" ? { dato: item.dato, valor: "[imagen]" } : item));
         const allowed = new Set([
             "disponibilidad",
             "nombre_completo",
@@ -31,7 +32,7 @@ const cambiarDato = async(req, res)=>{
             "codigo_postal",
             "dni",
             "foto_perfil",
-            "sombre_ mi",
+            "sobre_mi",
             "cobro_por_hora"
         ]);
         for (const item of inf) {
@@ -86,7 +87,7 @@ const iniciarSesion = async (req, res) => {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
         const result = await UsuariosService.iniciarSesion(nombre_completo, contraseña);
-        res.status(200).json({ token: result.token, notificaciones: result.notificaciones });
+        res.status(200).json({ token: result.token, notificaciones: result.notificaciones, usuario: result.usuario });
     }
     catch(error){
         console.error("Error al iniciar sesion:", error);

@@ -21,7 +21,9 @@ import TrabajosRouter from "./routers/trabajos.router.js"
 */
 
 const app = express();
-app.use(express.json());
+// 5mb: las fotos (perfil, DNI) viajan en base64 y el límite por defecto (100kb) no alcanza.
+// Vercel igual corta los requests de más de 4.5mb.
+app.use(express.json({ limit: "5mb" }));
 app.use(cors());
 
 app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));

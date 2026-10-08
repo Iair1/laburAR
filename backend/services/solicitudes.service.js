@@ -159,7 +159,7 @@ const rechazarSolicitud = async(id, solicitudid) => {
         await client.end();
     }
 }
-
+/*
 const revisarTerminadas = async() => {
     const client = new Client(config);
     try {
@@ -208,6 +208,7 @@ const revisarTerminadas = async() => {
         await client.end();
     }
 }
+    */
 const SolicitudesService = {
     busqueda,
     trabajosPendientes,
@@ -215,7 +216,7 @@ const SolicitudesService = {
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,
-    revisarTerminadas
+    //revisarTerminadas
 }
 
 export default SolicitudesService;

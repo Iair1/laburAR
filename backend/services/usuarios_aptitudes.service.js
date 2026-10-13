@@ -60,12 +60,13 @@ async function misAptitudes(id) {
     try{
         await client.connect();
         // Si el servicio todavía no tiene precio/descripción propios (servicios viejos),
-        // se muestran los del usuario.
+        // se muestran los del usuario. Van como texto (::text) para que funcione sea
+        // cual sea el tipo de usuarios.cobro_por_hora; el front los convierte a número.
         const result = columnasServicio
             ? await client.query(`
                 SELECT DISTINCT ON (a.aptitud) a.aptitud, a.id,
-                    COALESCE(ua.cobro_por_hora, u.cobro_por_hora) AS cobro_por_hora,
-                    COALESCE(ua.descripcion, u.sobre_mi) AS descripcion,
+                    COALESCE(ua.cobro_por_hora::text, NULLIF(u.cobro_por_hora::text, '')) AS cobro_por_hora,
+                    COALESCE(ua.descripcion, u.sobre_mi::text) AS descripcion,
                     ua.anios_experiencia
                 FROM aptitudes a
                 INNER JOIN usuarios_aptitudes ua ON a.id = ua.aptitudid

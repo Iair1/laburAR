@@ -174,12 +174,14 @@ const buscarTrabajadores = async(id, zonas)=>{
     const columnasServicio = await asegurarColumnasServicio();
     // Cada servicio con su precio/descripción/experiencia. Los servicios viejos que no
     // tienen datos propios usan el precio y el "sobre mí" del usuario.
+    // Se comparan como texto (::text) para que funcione sea cual sea el tipo de
+    // usuarios.cobro_por_hora; el front los convierte a número.
     const servicios = columnasServicio
         ? `COALESCE(JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
                 'aptitudid', a.id,
                 'aptitud', a.aptitud,
-                'cobro_por_hora', COALESCE(ua.cobro_por_hora, u.cobro_por_hora),
-                'descripcion', COALESCE(ua.descripcion, u.sobre_mi),
+                'cobro_por_hora', COALESCE(ua.cobro_por_hora::text, NULLIF(u.cobro_por_hora::text, '')),
+                'descripcion', COALESCE(ua.descripcion, u.sobre_mi::text),
                 'anios_experiencia', ua.anios_experiencia
             )) FILTER (WHERE a.id IS NOT NULL), '[]'::jsonb) AS servicios,`
         : "";

@@ -495,6 +495,46 @@ const Iconos = {
 };
 
 // Traduce lo que devuelve /usuarios/buscarTrabajadores al formato que usa la tarjeta
+// Cada servicio que ofrece el trabajador, con su precio/descripción/experiencia.
+// Si el backend todavía no manda "servicios", se arman con los datos del usuario (como antes).
+function mapearServicios(u, aptitudes) {
+  const precioUsuario = u.cobro_por_hora != null ? Number(u.cobro_por_hora) : null;
+  const lista = Array.isArray(u.servicios) && u.servicios.length > 0
+    ? u.servicios.map((sv) => ({
+        aptitudid: sv.aptitudid ?? null,
+        aptitud: sv.aptitud,
+        precio: sv.cobro_por_hora != null ? Number(sv.cobro_por_hora) : null,
+        descripcion: sv.descripcion || "",
+        aniosExperiencia: sv.anios_experiencia ?? null,
+      }))
+    : aptitudes.map((a) => ({
+        aptitudid: null,
+        aptitud: a,
+        precio: precioUsuario,
+        descripcion: u.sobre_mi || "",
+        aniosExperiencia: null,
+      }));
+  return lista.sort((a, b) => a.aptitud.localeCompare(b.aptitud, "es"));
+}
+
+// Qué servicio y precio mostrar en la tarjeta: el de la categoría filtrada,
+// el único que tiene, o "desde" el más barato si ofrece varios.
+function vistaDeServicio(t, categoria) {
+  const servicios = t.servicios || [];
+  const elegido = categoria
+    ? servicios.find((sv) => sv.aptitud === categoria)
+    : servicios.length === 1 ? servicios[0] : null;
+  if (elegido) {
+    return { servicioActual: elegido, precio: elegido.precio, precioDesde: false, etiquetaCategoria: elegido.aptitud };
+  }
+  const precios = servicios.map((sv) => sv.precio).filter((p) => p != null && p > 0);
+  const masBarato = precios.length ? Math.min(...precios) : t.precio;
+  const etiqueta = servicios.length > 1
+    ? `${servicios[0].aptitud} +${servicios.length - 1}`
+    : t.etiquetaCategoria;
+  return { servicioActual: null, precio: masBarato ?? null, precioDesde: servicios.length > 1, etiquetaCategoria: etiqueta };
+}
+
 function mapearTrabajador(u) {
   const aptitudes = u.aptitudes || [];
   return {
@@ -513,6 +553,7 @@ function mapearTrabajador(u) {
     trabajos: u.trabajos || [],
     etiquetaCategoria: aptitudes[0] || "Servicios generales",
     verificado: Boolean(u.verificado),
+    servicios: mapearServicios(u, aptitudes),
   };
 }
 
@@ -824,7 +865,7 @@ function PaginaBusqueda() {
 
     const filtrados = trabajadores.filter((t) => {
       const textoTrabajador = normalizarTexto(
-        [t.nombre, ...t.aptitudes, ...t.aptitudesEspecificas, ...t.trabajos, t.descripcion].join(" ")
+        [t.nombre, ...t.aptitudes, ...t.aptitudesEspecificas, ...t.trabajos, t.descripcion, ...t.servicios.map((sv) => sv.descripcion)].join(" ")
       );
       const textoCoincide =
         !textoBusqueda ||
@@ -832,11 +873,20 @@ function PaginaBusqueda() {
         palabras.some((p) => textoTrabajador.includes(p));
 
       const categoriaCoincide = !filtroCategoria || t.aptitudes.includes(filtroCategoria);
-      const minCoincide = !precioMin || t.precio == null || t.precio >= Number(precioMin);
-      const maxCoincide = !precioMax || t.precio == null || t.precio <= Number(precioMax);
+      // El precio se compara con el del servicio filtrado (o con cualquiera de sus servicios)
+      const serviciosAComparar = filtroCategoria
+        ? t.servicios.filter((sv) => sv.aptitud === filtroCategoria)
+        : t.servicios;
+      const precioCoincide = (precio) =>
+        precio == null ||
+        ((!precioMin || precio >= Number(precioMin)) && (!precioMax || precio <= Number(precioMax)));
+      const preciosCoinciden =
+        (!precioMin && !precioMax) ||
+        serviciosAComparar.length === 0 ||
+        serviciosAComparar.some((sv) => precioCoincide(sv.precio));
 
-      return textoCoincide && categoriaCoincide && minCoincide && maxCoincide && fechaCoincide(t);
-    });
+      return textoCoincide && categoriaCoincide && preciosCoinciden && fechaCoincide(t);
+    }).map((t) => ({ ...t, ...vistaDeServicio(t, filtroCategoria) }));
 
     if (ordenCalificacion === "mayor") {
       return [...filtrados].sort((a, b) => b.calificacion - a.calificacion);
@@ -849,10 +899,13 @@ function PaginaBusqueda() {
   }, [trabajadores, consulta, filtroCategoria, precioMin, precioMax, ordenCalificacion, filtroFecha, fechaManual]);
 
   const precioPromedio = useMemo(() => {
-    const precios = resultados.map((t) => t.precio).filter((p) => p != null && !Number.isNaN(p) && p > 0);
+    const precios = resultados
+      .flatMap((t) => (filtroCategoria ? t.servicios.filter((sv) => sv.aptitud === filtroCategoria) : t.servicios))
+      .map((sv) => sv.precio)
+      .filter((p) => p != null && !Number.isNaN(p) && p > 0);
     if (precios.length === 0) return null;
     return Math.round(precios.reduce((a, b) => a + b, 0) / precios.length);
-  }, [resultados]);
+  }, [resultados, filtroCategoria]);
 
   const solicitudesFiltradas = useMemo(() => {
     const textoBusqueda = normalizarTexto(consulta.trim());
@@ -1046,7 +1099,9 @@ function PaginaBusqueda() {
                   <ul className="lista-meta-tarjeta">
                     <li className="item-meta-tarjeta">
                       {Iconos.precio}
-                      {t.precio != null ? `$${t.precio.toLocaleString("es-AR")} / hora` : "Consultar precio"}
+                      {t.precio != null
+                        ? `${t.precioDesde ? "Desde " : ""}$${t.precio.toLocaleString("es-AR")} / hora`
+                        : "Consultar precio"}
                     </li>
                     {disponibilidad && (
                       <li className="item-meta-tarjeta">{Iconos.calendario}{disponibilidad}</li>

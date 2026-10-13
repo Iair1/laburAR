@@ -107,6 +107,16 @@ const buscarTrabajadores=async(req, res)=>{
     }
 }
 
+const miPerfil = async(req, res)=>{
+    try{
+        const result = await UsuariosService.miPerfil(req.id)
+        res.status(200).json({ message: "Perfil obtenido", result })
+    }catch(error){
+        console.error("Error al obtener el perfil", error);
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const UsuariosController={
     crearCuenta,
     iniciarSesion,
@@ -114,6 +124,7 @@ const UsuariosController={
     cambiarContraseña,
     prueba,
     sip,
-    buscarTrabajadores
+    buscarTrabajadores,
+    miPerfil
 }
 export default UsuariosController; 

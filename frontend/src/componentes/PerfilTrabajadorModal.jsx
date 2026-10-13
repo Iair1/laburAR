@@ -141,6 +141,18 @@ const estilos = `
     padding: 0 0 0 4px;
   }
 
+  .lista-servicios-perfil { display: flex; flex-direction: column; gap: 8px; }
+  .item-servicio-perfil {
+    border: 1px solid #e3d3d3;
+    background: #fcf8f8;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .cabecera-servicio-perfil { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+  .nombre-servicio-perfil { font-size: 0.86rem; font-weight: 700; color: #1a1a1a; }
+  .precio-servicio-perfil { font-size: 0.82rem; font-weight: 700; color: #570101; white-space: nowrap; }
+  .experiencia-servicio-perfil { font-size: 0.72rem; color: #666; margin-bottom: 4px; }
+
   .lista-chips-perfil { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip-perfil {
     font-size: 0.74rem;
@@ -213,7 +225,10 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
 
   if (!trabajador) return null;
 
-  const descripcion = trabajador.descripcion || "";
+  const servicios = trabajador.servicios || [];
+  // Antes la descripción del servicio se guardaba en el "sobre mí" del usuario.
+  // Si los servicios ya tienen su propia descripción, no mostramos ese texto viejo.
+  const descripcion = servicios.some((sv) => sv.descripcion) ? "" : trabajador.descripcion || "";
   const descripcionLarga = descripcion.length > LIMITE_DESCRIPCION;
   const descripcionMostrada =
     descripcionLarga && !descripcionExpandida
@@ -223,7 +238,12 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
   const habilidades =
     trabajador.aptitudesEspecificas && trabajador.aptitudesEspecificas.length > 0
       ? trabajador.aptitudesEspecificas
-      : trabajador.aptitudes || [];
+      : servicios.length > 0 ? [] : trabajador.aptitudes || [];
+
+  // El servicio que se estaba mirando (por el filtro de categoría) va primero
+  const serviciosOrdenados = trabajador.servicioActual
+    ? [trabajador.servicioActual, ...servicios.filter((sv) => sv.aptitud !== trabajador.servicioActual.aptitud)]
+    : servicios;
 
   return (
     <>
@@ -269,6 +289,7 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
             </div>
             {trabajador.precio != null && (
               <div className="precio-perfil">
+                {trabajador.precioDesde && <span>Desde </span>}
                 ${trabajador.precio.toLocaleString("es-AR")}<span>/hr</span>
               </div>
             )}
@@ -294,6 +315,30 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
                   </button>
                 )}
               </p>
+            </div>
+          )}
+
+          {serviciosOrdenados.length > 0 && (
+            <div className="seccion-perfil">
+              <p className="titulo-seccion-perfil">Servicios</p>
+              <div className="lista-servicios-perfil">
+                {serviciosOrdenados.map((sv) => (
+                  <div className="item-servicio-perfil" key={sv.aptitud}>
+                    <div className="cabecera-servicio-perfil">
+                      <span className="nombre-servicio-perfil">{sv.aptitud}</span>
+                      <span className="precio-servicio-perfil">
+                        {sv.precio != null ? `$${sv.precio.toLocaleString("es-AR")}/hr` : "Consultar precio"}
+                      </span>
+                    </div>
+                    {sv.aniosExperiencia != null && (
+                      <div className="experiencia-servicio-perfil">
+                        {sv.aniosExperiencia} {Number(sv.aniosExperiencia) === 1 ? "año" : "años"} de experiencia
+                      </div>
+                    )}
+                    {sv.descripcion && <p className="texto-seccion-perfil">{sv.descripcion}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

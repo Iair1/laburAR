@@ -3,6 +3,7 @@ import pkg from "pg";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {v2 as cloudinary} from "cloudinary";
+import { asegurarColumnasServicio } from "../esquema.js";
 const {Client} = pkg;
 
 
@@ -170,12 +171,28 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
 }
 
 const buscarTrabajadores = async(id, zonas)=>{
+    const columnasServicio = await asegurarColumnasServicio();
+    // Cada servicio con su precio/descripción/experiencia. Los servicios viejos que no
+    // tienen datos propios usan el precio y el "sobre mí" del usuario.
+    // Se comparan como texto (::text) para que funcione sea cual sea el tipo de
+    // usuarios.cobro_por_hora; el front los convierte a número.
+    const servicios = columnasServicio
+        ? `COALESCE(JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+                'aptitudid', a.id,
+                'aptitud', a.aptitud,
+                'cobro_por_hora', COALESCE(ua.cobro_por_hora::text, NULLIF(u.cobro_por_hora::text, '')),
+                'descripcion', COALESCE(ua.descripcion, u.sobre_mi::text),
+                'anios_experiencia', ua.anios_experiencia
+            )) FILTER (WHERE a.id IS NOT NULL), '[]'::jsonb) AS servicios,`
+        : "";
     const client = new Client(config);
     console.log(zonas)
     try{
         await client.connect();
         const result = await client.query(`
             SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora,
+
+            ${servicios}
 
             ARRAY_AGG(DISTINCT a.aptitud)
                 FILTER (WHERE a.aptitud IS NOT NULL) AS aptitudes,
@@ -226,6 +243,24 @@ const buscarClientes = async(id)=>{
     }
 }*/
 
+// Datos del usuario logueado (para mostrar y editar su perfil)
+const miPerfil = async(id)=>{
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT id, nombre_completo, foto_perfil, localidad, disponibilidad, cobro_por_hora, sobre_mi
+            FROM usuarios WHERE id = $1
+        `, [id]);
+        if(result.rowCount === 0){
+            throw new Error("Usuario no encontrado");
+        }
+        return result.rows[0];
+    }finally{
+        await client.end();
+    }
+}
+
 const UsuariosService={
     crearCuenta, 
     iniciarSesion,
@@ -233,6 +268,7 @@ const UsuariosService={
     prueba,
     sip,
     cambiarContraseña,
-    buscarTrabajadores
+    buscarTrabajadores,
+    miPerfil
 }
 export default UsuariosService;

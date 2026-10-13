@@ -417,21 +417,45 @@ export const subirFotoPerfil = async (archivo) => {
   return resultado?.result?.foto_perfil || null;
 };
 
-// GET /misAptitudes → { message, result: [{ aptitud, id }] }
+/* ============================================================
+ * MIS SERVICIOS (cada aptitud que ofrece el usuario = un servicio)
+ * ============================================================ */
+
+// GET /misAptitudes → { message, result: [{ aptitud, id, cobro_por_hora, descripcion, anios_experiencia }] }
 export const obtenerMisAptitudes = async () => {
   const resultado = await pedirAutenticado(`${API_URL_APTITUDES}/misAptitudes`, "GET");
   return resultado.result || [];
 };
 
-// POST /nuevaAptitud → body: { aptitud, matricula_* }
-export const agregarAptitud = (aptitud) =>
+// POST /nuevaAptitud → body: { aptitud, matricula_*, cobro_por_hora?, descripcion?, anios_experiencia? }
+export const agregarAptitud = (aptitud, datosServicio = {}) =>
   pedirAutenticado(`${API_URL_APTITUDES}/nuevaAptitud`, "POST", {
     aptitud,
     matricula_numero: null,
     matricula_dni: null,
     matricula_jurisdiccion: null,
     matricula_categoria: null,
+    ...datosServicio,
   });
+
+// PUT /editarAptitud → body: { aptitud, cobro_por_hora, descripcion, anios_experiencia }
+export const editarServicio = (aptitud, { cobro_por_hora, descripcion, anios_experiencia }) =>
+  pedirAutenticado(`${API_URL_APTITUDES}/editarAptitud`, "PUT", {
+    aptitud,
+    cobro_por_hora,
+    descripcion,
+    anios_experiencia,
+  });
+
+// DELETE /eliminarAptitud → body: { aptitud }
+export const eliminarServicio = (aptitud) =>
+  pedirAutenticado(`${API_URL_APTITUDES}/eliminarAptitud`, "DELETE", { aptitud });
+
+// GET /usuarios/miPerfil → { result: { id, nombre_completo, foto_perfil, localidad, disponibilidad, ... } }
+export const obtenerMiPerfil = async () => {
+  const resultado = await pedirAutenticado(`${API_URL}/miPerfil`, "GET");
+  return resultado.result || null;
+};
 
 /* ============================================================
  * GOOGLE

@@ -269,6 +269,13 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
   const [horario, setHorario] = useState("");
 
   const [localidad, setLocalidad] = useState(trabajador?.zona || "");
+  // Servicios del trabajador que se pueden pedir (los que el backend identifica con aptitudid)
+  const serviciosPedibles = (trabajador?.servicios || []).filter((sv) => sv.aptitudid != null);
+  const [servicioElegido, setServicioElegido] = useState(() => {
+    const preferido = trabajador?.servicioActual?.aptitudid;
+    if (preferido != null) return String(preferido);
+    return serviciosPedibles.length === 1 ? String(serviciosPedibles[0].aptitudid) : "";
+  });
   const [diasSeleccionados, setDiasSeleccionados] = useState([]);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -330,6 +337,10 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
   };
 
   const manejarEnviar = async () => {
+    if (serviciosPedibles.length > 1 && !servicioElegido) {
+      setError("Elegí qué servicio necesitás.");
+      return;
+    }
     if (!descripcion.trim() || !periodoInicio || !periodoFin || !localidad.trim()) {
       setError("Completá la descripción, el período (elegí dos días en el calendario) y la localidad.");
       return;
@@ -348,6 +359,7 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
         periodo: [periodoInicio, periodoFin],
         localidad: localidad.trim(),
         diassemana: DIAS.map((dia) => diasSeleccionados.includes(dia)),
+        ...(servicioElegido ? { aptitudid: Number(servicioElegido) } : {}),
       });
       onEnviada?.(trabajador);
     } catch (err) {
@@ -455,6 +467,20 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
               ))}
             </select>
           </div>
+
+          {serviciosPedibles.length > 1 && (
+            <div className="campo-agendar">
+              <label className="etiqueta-agendar">¿Qué servicio necesitás?</label>
+              <select className="select-agendar" value={servicioElegido} onChange={(e) => setServicioElegido(e.target.value)}>
+                <option value="">Elegí un servicio</option>
+                {serviciosPedibles.map((sv) => (
+                  <option key={sv.aptitudid} value={String(sv.aptitudid)}>
+                    {sv.aptitud}{sv.precio != null ? ` · $${sv.precio.toLocaleString("es-AR")}/hr` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="campo-agendar">
             <label className="etiqueta-agendar">¿Qué necesitás?</label>

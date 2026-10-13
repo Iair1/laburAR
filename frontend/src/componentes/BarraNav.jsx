@@ -515,6 +515,9 @@ export default function BarraNav({ centro = null }) {
                     <button className="menu-avatar-item" onClick={() => ir("/mensajes")}>
                       Bandeja de entrada
                     </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/mis-servicios")}>
+                      Mis servicios
+                    </button>
                     <button className="menu-avatar-item" onClick={() => ir("/ofrecer-servicios")}>
                       Ofrecer servicios
                     </button>

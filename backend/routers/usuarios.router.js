@@ -11,5 +11,6 @@ router.post("/iniciarSesion", UsuariosController.iniciarSesion);
 router.put("/cambiarDato", verifyToken, UsuariosController.cambiarDato);
 router.put("/cambiarContrasena", verifyToken, UsuariosController.cambiarContraseña);
 router.post("/buscarTrabajadores", verifyToken, UsuariosController.buscarTrabajadores)
+router.get("/miPerfil", verifyToken, UsuariosController.miPerfil)
 
 export default router;

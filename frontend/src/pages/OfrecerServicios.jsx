@@ -5,6 +5,8 @@ import {
   cambiarDatos,
   obtenerMisAptitudes,
   agregarAptitud,
+  editarServicio,
+  obtenerMiPerfil,
   subirFotoPerfil,
   TIPOS_FOTO_PERFIL,
 } from "../api";
@@ -216,6 +218,26 @@ export default function OfrecerServicios() {
     if (!usuario) navegar("/login");
   }, [usuario, navegar]);
 
+  // Zona y días son de la persona (valen para todos sus servicios): si ya los
+  // tiene guardados, los precargamos para no pisarlos sin querer.
+  const hayUsuario = Boolean(usuario);
+  useEffect(() => {
+    if (!hayUsuario) return;
+    let cancelado = false;
+    obtenerMiPerfil()
+      .then((perfil) => {
+        if (cancelado || !perfil) return;
+        if (ZONAS.includes(perfil.localidad)) setZona((z) => z || perfil.localidad);
+        if (Array.isArray(perfil.disponibilidad) && perfil.disponibilidad.some(Boolean)) {
+          setDiasDisponibles((d) => (d.length ? d : DIAS.filter((_, i) => perfil.disponibilidad[i])));
+        }
+      })
+      .catch(() => {}); // si falla, el formulario arranca vacío como antes
+    return () => {
+      cancelado = true;
+    };
+  }, [hayUsuario]);
+
   if (!usuario) return null;
 
   const fotoActual = usuario.fotoPerfilURL || null;
@@ -247,6 +269,10 @@ export default function OfrecerServicios() {
       setError("Ingresá un precio válido.");
       return;
     }
+    if (!Number.isInteger(Number(experiencia)) || Number(experiencia) < 0) {
+      setError("Los años de experiencia tienen que ser un número entero.");
+      return;
+    }
     if (!fotoActual && !fotoNueva) {
       setError("Subí una foto de perfil: es lo que va a aparecer en tu tarjeta y genera más confianza.");
       return;
@@ -263,19 +289,25 @@ export default function OfrecerServicios() {
     setError("");
     setCargando(true);
     try {
-      // 1) Datos del perfil que se ven en la tarjeta
+      // 1) Zona y días: son de la persona, valen para todos sus servicios
       // (el backend los manda como parámetros al SQL, así que van tal cual)
       await cambiarDatos([
         { dato: "localidad", valor: zona },
-        { dato: "cobro_por_hora", valor: Number(precio) },
         { dato: "disponibilidad", valor: `{${DIAS.map((d) => diasDisponibles.includes(d)).join(",")}}` },
-        { dato: "sobre_mi", valor: descripcion },
       ]);
 
-      // 2) La aptitud: sin esto NO aparecés en buscarTrabajadores
+      // 2) El servicio, con su propio precio, descripción y experiencia.
+      // Sin esto NO aparecés en buscarTrabajadores. Si ya ofrecía esa categoría, se actualiza.
+      const datosServicio = {
+        cobro_por_hora: Number(precio),
+        descripcion: descripcion.trim(),
+        anios_experiencia: Number(experiencia),
+      };
       const mias = await obtenerMisAptitudes();
-      if (!mias.some((a) => a.aptitud === categoria)) {
-        await agregarAptitud(categoria);
+      if (mias.some((a) => a.aptitud === categoria)) {
+        await editarServicio(categoria, datosServicio);
+      } else {
+        await agregarAptitud(categoria, datosServicio);
       }
 
       // 3) La foto de perfil (si eligió una nueva). Se sube a Cloudinary y se guarda en la base.
@@ -293,7 +325,7 @@ export default function OfrecerServicios() {
         }
       }
 
-      navegar("/buscar");
+      navegar(`/mis-servicios?publicado=${encodeURIComponent(categoria)}`);
     } catch (err) {
       if (err.status === 401) {
         cerrarSesionCompleta();
@@ -410,6 +442,9 @@ export default function OfrecerServicios() {
 
             <div className="campo">
               <label className="etiqueta-campo">Disponibilidad</label>
+              <p className="ayuda-seccion" style={{ marginBottom: "0.6rem" }}>
+                La zona y los días valen para todos tus servicios.
+              </p>
               <div className="chips-dias">
                 {DIAS.map((dia) => (
                   <span

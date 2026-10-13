@@ -38,21 +38,37 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 })
 
+// Antes el front mandaba los textos ya entre comillas simples ('CABA') porque
+// el valor se pegaba directo en el SQL. Ahora va como parámetro ($2, $3...),
+// así que si llega en ese formato viejo le sacamos las comillas.
+function sacarComillasViejas(valor) {
+    if (typeof valor === "string" && valor.length >= 2 && valor.startsWith("'") && valor.endsWith("'")) {
+        return valor.slice(1, -1).replace(/''/g, "'");
+    }
+    return valor;
+}
+
 async function cambiarDato(id, inf) {
     const client = new Client(config);
     await client.connect();
     try{
-        let a = ""
+        // Los nombres de columna ya vienen validados por el controller (lista "allowed"),
+        // y los valores van como parámetros para evitar inyección SQL.
+        const columnas = [];
+        const valores = [id];
         for(let i = 0; i < inf.length; i++){
+            let valor = sacarComillasViejas(inf[i].valor);
             if(inf[i].dato==="foto_perfil"){
-                inf[i].valor = await subirImagen(inf[i].valor);
+                valor = await subirImagen(valor);
             }
-            a = a + `${inf[i].dato} = ${inf[i].valor}, `;
+            valores.push(valor);
+            columnas.push(`${inf[i].dato} = $${valores.length}`);
         }
-        a = a.slice(0, -2);
-        console.log(a);
-        const result = await client.query(`UPDATE usuarios SET ${a} WHERE id = $1`, [id]);
-        return result;
+        const result = await client.query(
+            `UPDATE usuarios SET ${columnas.join(", ")} WHERE id = $1 RETURNING id, nombre_completo, foto_perfil`,
+            valores
+        );
+        return result.rows[0];
     } catch(error){
         console.error("Error al cambiar dato:", error);
         throw error;
@@ -62,16 +78,19 @@ async function cambiarDato(id, inf) {
 }
 
 async function subirImagen(imagen) {
-    if(imagen){
-        const result = await cloudinary.uploader.upload(imagen)
-        console.log(result)
-        const url = cloudinary.url(result.publicid, {
-            transformation: [
-                { width: 150, height: 150}
-            ]
-        })
-        return url;
-    }
+    if(!imagen) return null;
+    const result = await cloudinary.uploader.upload(imagen);
+    // Ojo: Cloudinary devuelve "public_id" (antes se leía "publicid", que no
+    // existe, y por eso la foto se guardaba como NULL en la base).
+    // crop "fill" + gravity "face" recorta un cuadrado centrado en la cara sin deformarla.
+    const url = cloudinary.url(result.public_id, {
+        secure: true,
+        version: result.version,
+        transformation: [
+            { width: 300, height: 300, crop: "fill", gravity: "face" }
+        ]
+    });
+    return url;
 }
 
 const sip= async()=>{
@@ -107,7 +126,7 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = await subirImagen(foto_perfil);
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, nombre_completo, dni",
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, nombre_completo, dni, foto_perfil",
             [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora]
         );
         return result.rows[0];
@@ -136,7 +155,13 @@ const iniciarSesion = async (nombre_completo, contraseña) => {
         { expiresIn: "3h" }
         );
         const notificaciones= await client.query("SELECT * FROM notificaciones WHERE userid = $1", [dbUser.id]);
-        return {token, notificaciones: notificaciones.rows};
+        // Datos públicos del usuario para que el front muestre su nombre y foto
+        const usuario = {
+            id: dbUser.id,
+            nombre_completo: dbUser.nombre_completo,
+            foto_perfil: dbUser.foto_perfil,
+        };
+        return {token, notificaciones: notificaciones.rows, usuario};
     } catch (error) {
         throw error;
     } finally {

@@ -22,6 +22,13 @@ export function obtenerSesionUsuario() {
   return datos ? JSON.parse(datos) : null;
 }
 
+// Actualiza solo la foto de la sesión (ej: después de cambiarla) y avisa a la barra.
+export function actualizarFotoSesion(fotoPerfilURL) {
+  const usuario = obtenerSesionUsuario();
+  if (!usuario) return;
+  guardarSesionUsuario({ ...usuario, fotoPerfilURL: fotoPerfilURL || null });
+}
+
 export function cerrarSesionCompleta() {
   localStorage.removeItem(CLAVE_SESION);
   localStorage.removeItem("token");

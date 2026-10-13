@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
-import { cambiarDatos, obtenerMisAptitudes, agregarAptitud } from "../api";
+import { obtenerSesionUsuario, cerrarSesionCompleta, actualizarFotoSesion } from "../sesion";
+import {
+  cambiarDatos,
+  obtenerMisAptitudes,
+  agregarAptitud,
+  subirFotoPerfil,
+  TIPOS_FOTO_PERFIL,
+} from "../api";
+import Avatar from "../componentes/Avatar";
 import fondo from "../assets/fondo.png"; 
 
 const estilos = `
@@ -120,6 +127,23 @@ const estilos = `
     padding: 12px 14px; font-size: 0.78rem; color: #33507a; margin-bottom: 1.1rem;
   }
 
+  .fila-foto { display: flex; align-items: center; gap: 18px; }
+  .acciones-foto { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .boton-elegir-foto {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1.5px solid #570101;
+    background: #fff;
+    color: #570101;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .boton-elegir-foto:hover { background: #f6eeee; }
+  .texto-foto { font-size: 0.74rem; color: #888; }
+  .texto-foto.nueva { color: #2e7d32; font-weight: 600; }
+
   .error-form { font-size: 0.82rem; color: #d0341a; font-weight: 600; text-align: center; margin-bottom: 10px; }
 
   .boton-publicar {
@@ -172,6 +196,20 @@ export default function OfrecerServicios() {
 
   const refMatricula = useRef(null);
   const refDni = useRef(null);
+  const refFoto = useRef(null);
+
+  // Foto de perfil: la que ya tiene guardada y, si elige otra, la nueva + su vista previa
+  const [fotoNueva, setFotoNueva] = useState(null);
+  const [previewFoto, setPreviewFoto] = useState(null);
+  useEffect(() => {
+    if (!fotoNueva) {
+      setPreviewFoto(null);
+      return;
+    }
+    const url = URL.createObjectURL(fotoNueva);
+    setPreviewFoto(url);
+    return () => URL.revokeObjectURL(url);
+  }, [fotoNueva]);
 
   // Sin sesión no se puede ofrecer servicios
   useEffect(() => {
@@ -179,6 +217,20 @@ export default function OfrecerServicios() {
   }, [usuario, navegar]);
 
   if (!usuario) return null;
+
+  const fotoActual = usuario.fotoPerfilURL || null;
+
+  const manejarFoto = (e) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    if (!TIPOS_FOTO_PERFIL.includes(archivo.type)) {
+      setError("La foto tiene que ser una imagen JPG, PNG o WEBP.");
+      return;
+    }
+    setError("");
+    setFotoNueva(archivo);
+  };
 
   const alternarDia = (dia) => {
     setDiasDisponibles((prev) =>
@@ -195,6 +247,10 @@ export default function OfrecerServicios() {
       setError("Ingresá un precio válido.");
       return;
     }
+    if (!fotoActual && !fotoNueva) {
+      setError("Subí una foto de perfil: es lo que va a aparecer en tu tarjeta y genera más confianza.");
+      return;
+    }
     if (!archivoDni) {
       setError("Subí tu DNI para verificar tu identidad. Es lo que le da confianza a los clientes.");
       return;
@@ -207,23 +263,34 @@ export default function OfrecerServicios() {
     setError("");
     setCargando(true);
     try {
-      // El cambiarDato del back pega el valor directo en el SQL sin comillas,
-      // así que los textos van entre comillas simples (y se escapan las ').
-      const texto = (t) => `'${String(t).replace(/'/g, "''")}'`;
-
       // 1) Datos del perfil que se ven en la tarjeta
+      // (el backend los manda como parámetros al SQL, así que van tal cual)
       await cambiarDatos([
-        { dato: "localidad", valor: texto(zona) },
+        { dato: "localidad", valor: zona },
         { dato: "cobro_por_hora", valor: Number(precio) },
-        { dato: "disponibilidad", valor: texto(`{${DIAS.map((d) => diasDisponibles.includes(d)).join(",")}}`) },
-        // Descomentar cuando tu compañero cambie "sombre_ mi" por "sobre_mi" en el controller:
-        // { dato: "sobre_mi", valor: texto(descripcion) },
+        { dato: "disponibilidad", valor: `{${DIAS.map((d) => diasDisponibles.includes(d)).join(",")}}` },
+        { dato: "sobre_mi", valor: descripcion },
       ]);
 
       // 2) La aptitud: sin esto NO aparecés en buscarTrabajadores
       const mias = await obtenerMisAptitudes();
       if (!mias.some((a) => a.aptitud === categoria)) {
         await agregarAptitud(categoria);
+      }
+
+      // 3) La foto de perfil (si eligió una nueva). Se sube a Cloudinary y se guarda en la base.
+      if (fotoNueva) {
+        try {
+          const url = await subirFotoPerfil(fotoNueva);
+          actualizarFotoSesion(url);
+          setFotoNueva(null);
+        } catch (errFoto) {
+          if (errFoto.status === 401) throw errFoto;
+          setError(
+            `Tu servicio se publicó, pero no pudimos guardar la foto (${errFoto.message || "error"}). Probá subirla de nuevo.`
+          );
+          return;
+        }
       }
 
       navegar("/buscar");
@@ -257,6 +324,29 @@ export default function OfrecerServicios() {
               Verificamos tu identidad con el DNI que subas acá. Los clientes van a ver una
               insignia de "perfil verificado" en tu tarjeta.
             </span>
+          </div>
+
+          <div className="tarjeta-form">
+            <p className="titulo-seccion">Tu foto de perfil</p>
+            <p className="ayuda-seccion">Es la foto que va a aparecer en tu tarjeta y en tu perfil.</p>
+            <div className="fila-foto">
+              <Avatar src={previewFoto || fotoActual} nombre={usuario.nombre} tamano={88} />
+              <div className="acciones-foto">
+                <button type="button" className="boton-elegir-foto" onClick={() => refFoto.current?.click()}>
+                  {fotoActual || fotoNueva ? "Cambiar foto" : "Subir foto"}
+                </button>
+                <span className={`texto-foto ${fotoNueva ? "nueva" : ""}`}>
+                  {fotoNueva ? `✓ ${fotoNueva.name} (se guarda al publicar)` : "JPG, PNG o WEBP"}
+                </span>
+                <input
+                  ref={refFoto}
+                  type="file"
+                  accept={TIPOS_FOTO_PERFIL.join(",")}
+                  style={{ display: "none" }}
+                  onChange={manejarFoto}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="tarjeta-form">

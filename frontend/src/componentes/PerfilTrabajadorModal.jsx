@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Avatar from "./Avatar";
 
 const estilos = `
   .fondo-modal-perfil {
@@ -54,6 +55,7 @@ const estilos = `
     font-size: 1.8rem;
   }
   .avatar-perfil img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-perfil .avatar-laburar { font-size: 1.4rem; }
   .nombre-perfil { font-size: 1rem; font-weight: 600; color: #1a1a1a; }
   .calificacion-perfil { display: flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #1a1a1a; margin-top: 2px; }
   .estrellas-perfil { display: inline-flex; gap: 1px; }
@@ -239,11 +241,7 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
           <div className="encabezado-perfil">
             <div className="fila-identidad-perfil">
               <div className="avatar-perfil">
-                {trabajador.fotoPerfilURL ? (
-                  <img src={trabajador.fotoPerfilURL} alt={trabajador.nombre} />
-                ) : (
-                  trabajador.avatar || "🛠️"
-                )}
+                <Avatar src={trabajador.fotoPerfilURL} nombre={trabajador.nombre} />
               </div>
               <div>
                 <div className="nombre-perfil">{trabajador.nombre}</div>

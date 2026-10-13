@@ -7,11 +7,12 @@ import {
   obtenerNotificacionesLeidas,
   marcarNotificacionesLeidas,
   claveNotificacion,
+  actualizarFotoSesion,
 } from "../sesion";
+import { subirFotoPerfil, TIPOS_FOTO_PERFIL } from "../api";
+import Avatar from "./Avatar";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
-
-const AVATAR_POR_DEFECTO = "https://cdn-icons-png.flaticon.com/128/149/149071.png";
 
 const estilos = `
   .barra-nav {
@@ -174,16 +175,7 @@ const estilos = `
     transition: background 0.15s;
   }
   .boton-usuario:hover { background: rgba(255,255,255,0.35); }
-  .avatar-usuario {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #555;
-    display: block;
-    font-size: 0;
-    color: transparent;
-  }
+  .avatar-usuario { box-shadow: 0 0 0 1.5px rgba(255,255,255,0.75); }
   .nombre-boton-usuario {
     font-size: 0.8rem;
     font-weight: 600;
@@ -197,14 +189,31 @@ const estilos = `
   .flecha-usuario { width: 10px; height: 10px; color: #1a1a1a; transition: transform 0.15s; }
   .flecha-usuario.abierta { transform: rotate(180deg); }
 
-  .menu-avatar { min-width: 210px; padding: 6px; }
+  .menu-avatar { min-width: 230px; padding: 6px; }
+  .menu-avatar-cabecera { display: flex; align-items: center; gap: 10px; padding: 8px 10px 6px; }
+  .menu-avatar-datos { min-width: 0; }
   .menu-avatar-nombre {
     font-size: 0.82rem;
     font-weight: 700;
     color: #1a1a1a;
-    padding: 8px 10px 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .menu-avatar-correo { font-size: 0.72rem; color: #888; padding: 0 10px 8px; }
+  .menu-avatar-correo { font-size: 0.72rem; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .boton-cambiar-foto {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-top: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #570101;
+    cursor: pointer;
+  }
+  .boton-cambiar-foto:hover { text-decoration: underline; }
+  .boton-cambiar-foto:disabled { color: #999; cursor: wait; text-decoration: none; }
+  .error-foto-menu { font-size: 0.7rem; color: #b3261e; padding: 0 10px 6px; }
   .menu-avatar-separador { height: 1px; background: #efefed; margin: 4px 0; }
   .menu-avatar-item {
     display: block;
@@ -315,6 +324,9 @@ export default function BarraNav({ centro = null }) {
 
   const referenciaMenu = useRef(null);
   const referenciaCampana = useRef(null);
+  const referenciaInputFoto = useRef(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [errorFoto, setErrorFoto] = useState("");
 
   useEffect(() => {
     const actualizarSesion = () => setUsuario(obtenerSesionUsuario());
@@ -350,6 +362,27 @@ export default function BarraNav({ centro = null }) {
   const ir = (ruta) => {
     setMenuAbierto(false);
     navegar(ruta);
+  };
+
+  const manejarCambioFoto = async (e) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = ""; // permite volver a elegir la misma foto
+    if (!archivo) return;
+    setErrorFoto("");
+    setSubiendoFoto(true);
+    try {
+      const url = await subirFotoPerfil(archivo);
+      actualizarFotoSesion(url);
+    } catch (err) {
+      if (err.status === 401) {
+        cerrarSesionCompleta();
+        navegar("/login");
+        return;
+      }
+      setErrorFoto(err.message || "No se pudo cambiar la foto. Probá de nuevo.");
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const manejarCerrarSesion = () => {
@@ -431,18 +464,41 @@ export default function BarraNav({ centro = null }) {
                   aria-haspopup="menu"
                   aria-expanded={menuAbierto}
                 >
-                  <img
+                  <Avatar
                     className="avatar-usuario"
-                    src={usuario.fotoPerfilURL || AVATAR_POR_DEFECTO}
-                    alt=""
+                    src={usuario.fotoPerfilURL}
+                    nombre={usuario.nombre}
+                    tamano={30}
                   />
                   <span className="nombre-boton-usuario">{primerNombre}</span>
                   <IconoFlecha abierta={menuAbierto} />
                 </button>
                 {menuAbierto && (
                   <div className="panel-desplegable menu-avatar" role="menu">
-                    <div className="menu-avatar-nombre">{usuario.nombre}</div>
-                    {usuario.correo && <div className="menu-avatar-correo">{usuario.correo}</div>}
+                    <div className="menu-avatar-cabecera">
+                      <Avatar src={usuario.fotoPerfilURL} nombre={usuario.nombre} tamano={44} />
+                      <div className="menu-avatar-datos">
+                        <div className="menu-avatar-nombre">{usuario.nombre}</div>
+                        {usuario.correo && <div className="menu-avatar-correo">{usuario.correo}</div>}
+                        <button
+                          className="boton-cambiar-foto"
+                          onClick={() => referenciaInputFoto.current?.click()}
+                          disabled={subiendoFoto}
+                        >
+                          {subiendoFoto
+                            ? "Subiendo foto..."
+                            : usuario.fotoPerfilURL ? "Cambiar foto de perfil" : "Agregar foto de perfil"}
+                        </button>
+                        <input
+                          ref={referenciaInputFoto}
+                          type="file"
+                          accept={TIPOS_FOTO_PERFIL.join(",")}
+                          style={{ display: "none" }}
+                          onChange={manejarCambioFoto}
+                        />
+                      </div>
+                    </div>
+                    {errorFoto && <div className="error-foto-menu">{errorFoto}</div>}
                     <div className="menu-avatar-separador" />
                     <button className="menu-avatar-item" onClick={() => ir("/buscar")}>
                       Buscar trabajadores

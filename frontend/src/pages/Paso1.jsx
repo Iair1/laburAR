@@ -4,7 +4,6 @@ import { RegistroContext } from "../context/RegistroContext";
 import { registrarUsuario } from "../api";
 import {
   guardarSesionUsuario,
-  archivoADataURL,
   iniciarSesionConGoogleSimulado,
 } from "../sesion";
 import logoIcono from "../assets/logo-icono.svg";
@@ -309,12 +308,13 @@ export default function Paso1() {
         ? { id: `google_${Date.now()}` }
         : await registrarUsuario(datosCompletos);
 
+      // El backend sube la foto a Cloudinary y devuelve la URL guardada en la base.
       const fotoPerfilURL = registradoConGoogle
         ? "https://cdn-icons-png.flaticon.com/128/281/281764.png"
-        : await archivoADataURL(archivo);
+        : respuesta?.usuario?.foto_perfil || null;
 
       guardarSesionUsuario({
-        id: respuesta?.id ?? Date.now(),
+        id: respuesta?.usuario?.id ?? respuesta?.id ?? Date.now(),
         nombre,
         correo,
         fotoPerfilURL,

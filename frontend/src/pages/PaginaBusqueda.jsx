@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
+import Avatar from "../componentes/Avatar";
 import AgendarModal from "../componentes/AgendarModal";
 import PerfilTrabajadorModal from "../componentes/PerfilTrabajadorModal";
 import { obtenerSesionUsuario, cerrarSesionCompleta, agregarAlHistorial } from "../sesion";
@@ -11,8 +12,6 @@ import {
   rechazarSolicitud,
 } from "../api";
 import { ZONAS, normalizarTexto } from "../constantes";
-
-const AVATAR_POR_DEFECTO = "https://cdn-icons-png.flaticon.com/128/149/149071.png";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -327,6 +326,7 @@ const estilos = `
     font-size: 2rem;
   }
   .imagen-trabajador img { width: 100%; height: 100%; object-fit: cover; font-size: 0; color: transparent; }
+  .imagen-trabajador .avatar-laburar { font-size: 1.5rem; }
   .identidad-trabajador { min-width: 0; }
   .nombre-trabajador {
     display: block;
@@ -504,7 +504,6 @@ function mapearTrabajador(u) {
     precio: u.cobro_por_hora != null ? Number(u.cobro_por_hora) : null,
     calificacion: u.puntuacion_trabajador != null ? Number(u.puntuacion_trabajador) : 0,
     fotoPerfilURL: u.foto_perfil || null,
-    avatar: "🛠️",
     descripcion: u.sobre_mi || "",
     disponibilidad: Array.isArray(u.disponibilidad) && typeof u.disponibilidad[0] === "boolean"
     ? ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].filter((_, i) => u.disponibilidad[i])
@@ -1030,7 +1029,7 @@ function PaginaBusqueda() {
                 <div className="tarjeta-trabajador" key={t.id}>
                   <div className="cabecera-tarjeta">
                     <div className="imagen-trabajador">
-                      {t.fotoPerfilURL ? <img src={t.fotoPerfilURL} alt={t.nombre} /> : t.avatar}
+                      <Avatar src={t.fotoPerfilURL} nombre={t.nombre} />
                     </div>
                     <div className="identidad-trabajador">
                       <span className="nombre-trabajador" title={t.nombre}>{t.nombre}</span>
@@ -1103,7 +1102,7 @@ function PaginaBusqueda() {
                 <div className="tarjeta-trabajador" key={s.id}>
                   <div className="cabecera-tarjeta">
                     <div className="imagen-trabajador">
-                      <img src={s.foto_perfil || AVATAR_POR_DEFECTO} alt={s.nombre_completo} />
+                      <Avatar src={s.foto_perfil} nombre={s.nombre_completo} />
                     </div>
                     <div className="identidad-trabajador">
                       <span className="nombre-trabajador" title={s.nombre_completo}>{s.nombre_completo}</span>

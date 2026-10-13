@@ -20,8 +20,10 @@ const API_URL_SOLICITUDES = import.meta.env.DEV
  */
 const LADO_MAXIMO_PX = 800; // suficiente para foto de perfil o verificar un DNI
 const CALIDAD_JPEG = 0.7;
+// La foto de perfil se ve como mucho a ~150px: con 600px sobra y pesa poco.
+const LADO_MAXIMO_FOTO_PERFIL = 600;
 
-const archivoABase64 = (archivo) => {
+const archivoABase64 = (archivo, ladoMaximo = LADO_MAXIMO_PX) => {
   return new Promise((resolve, reject) => {
     if (!archivo) {
       resolve(null);
@@ -44,13 +46,13 @@ const archivoABase64 = (archivo) => {
         let { width, height } = img;
 
         // Redimensionar manteniendo la proporción si excede el lado máximo
-        if (width > LADO_MAXIMO_PX || height > LADO_MAXIMO_PX) {
+        if (width > ladoMaximo || height > ladoMaximo) {
           if (width > height) {
-            height = Math.round((height * LADO_MAXIMO_PX) / width);
-            width = LADO_MAXIMO_PX;
+            height = Math.round((height * ladoMaximo) / width);
+            width = ladoMaximo;
           } else {
-            width = Math.round((width * LADO_MAXIMO_PX) / height);
-            height = LADO_MAXIMO_PX;
+            width = Math.round((width * ladoMaximo) / height);
+            height = ladoMaximo;
           }
         }
 
@@ -83,7 +85,7 @@ export const registrarUsuario = async (datosUsuario) => {
   try {
     // convertimos las 3 fotos (File) a base64 (comprimidas si son imágenes) antes de armar el body
     const [fotoBase64, fotoDniBase64, fotoAptitudBase64] = await Promise.all([
-      archivoABase64(datosUsuario.archivo),
+      archivoABase64(datosUsuario.archivo, LADO_MAXIMO_FOTO_PERFIL),
       archivoABase64(datosUsuario.archivoDni),
       archivoABase64(datosUsuario.archivoAptitud),
     ]);
@@ -393,8 +395,27 @@ const pedirAutenticado = async (url, method, body) => {
 };
 
 // PUT /api/usuarios/cambiarDato  → body: { inf: [{ dato, valor }] }
+// Los valores van tal cual (el backend los pasa como parámetros al SQL).
+// Responde { message, result: { id, nombre_completo, foto_perfil } }
 export const cambiarDatos = (inf) =>
   pedirAutenticado(`${API_URL}/cambiarDato`, "PUT", { inf });
+
+export const TIPOS_FOTO_PERFIL = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Sube una foto de perfil nueva: la comprime, el backend la sube a Cloudinary
+ * y guarda la URL en usuarios.foto_perfil.
+ * @param {File} archivo - imagen elegida por el usuario
+ * @returns {Promise<string|null>} - URL de la foto guardada
+ */
+export const subirFotoPerfil = async (archivo) => {
+  if (!archivo || !TIPOS_FOTO_PERFIL.includes(archivo.type)) {
+    throw new Error("Elegí una imagen JPG, PNG o WEBP.");
+  }
+  const fotoBase64 = await archivoABase64(archivo, LADO_MAXIMO_FOTO_PERFIL);
+  const resultado = await cambiarDatos([{ dato: "foto_perfil", valor: fotoBase64 }]);
+  return resultado?.result?.foto_perfil || null;
+};
 
 // GET /misAptitudes → { message, result: [{ aptitud, id }] }
 export const obtenerMisAptitudes = async () => {

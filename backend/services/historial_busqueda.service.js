@@ -7,10 +7,12 @@ async function miHistorial(id){
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT DISTINCT ON (busqueda) *
-            FROM historial_busqueda
-            WHERE userid = $1
-            ORDER BY busqueda, id DESC
+            SELECT * FROM(
+                SELECT DISTINCT ON (busqueda) *
+                FROM historial_busqueda
+                WHERE userid = $1
+                ORDER BY busqueda, id DESC
+            ) ORDER BY id DESC
         `, [id]);
         return result.rows;
     } catch(error){

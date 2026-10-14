@@ -12,6 +12,7 @@ import Aptitudes_EspecificasRouter from "./routers/aptitudes_especificas.router.
 import MensajesRouter from "./routers/mensajes.router.js"
 import HistorialBusquedaRouter from "./routers/historial_busqueda.router.js"
 import HistorialRouter from "./routers/historial.router.js"
+import ReseñaRouter from "./routers/reseña.router.js"
 
 
 
@@ -54,6 +55,7 @@ app.use("/api/aptitudes_especificas", Aptitudes_EspecificasRouter);
 app.use("/api/mensajes", MensajesRouter);
 app.use("/api/historial_busqueda", HistorialBusquedaRouter);
 app.use("/api/historial", HistorialRouter);
+app.use("/api/reseñas", ReseñaRouter);
 /*
 app.use("/api/tdr", TdrRouter);
 app.use("/api/trabajos", TrabajosRouter);

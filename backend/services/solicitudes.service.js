@@ -35,6 +35,9 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
     const client = new Client(config);
     try {
         await client.connect();
+        if(diassemana = [false, false, false, false, false, false, false]){
+            diassemana = [true, true, true, true, true, true, true];
+        }
         const result = await client.query(
             "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
             [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid]
@@ -114,7 +117,7 @@ async function busqueda(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
+            SELECT s.id, s.solicitud, s.periodo, s.diassemana, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
@@ -152,11 +155,19 @@ async function busqueda(id) {
     }
 }
 
-const aceptarSolicitud = async(id, solicitudid) => {
+const aceptarSolicitud = async(id, solicitudid, dia) => {
     const client = new Client(config);
     try {
         await client.connect();
-        const result = await client.query("UPDATE solicitudes SET estado = 'pendiente' WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
+        let result = null;
+        if(!dia){
+              result = await client.query("UPDATE solicitudes SET estado = 'pendiente' WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
+        } else { //esto es una medida temporal hasta que el front haga lo del día
+              result = await client.query("UPDATE solicitudes SET estado = 'pendiente', periodo = ARRAY[$3, $3] WHERE trabajadorid = $1 AND id = $2 AND $3 > periodo[1] AND $3 < periodo[2] AND diassemana[(EXTRACT(DOW FROM $3)-1)%7::int + 1] = TRUE RETURNING *", [id, solicitudid, dia]);
+            if(result.rowCount === 0) {
+                throw new Error("El día seleccionado no es válido");
+            }
+        }
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea aceptar no existe o no le pertenece a este usuario");
         }

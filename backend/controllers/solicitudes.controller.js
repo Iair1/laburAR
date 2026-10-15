@@ -30,9 +30,12 @@ const subirSolicitud = async(req, res)=>{
 
 const aceptarSolicitud = async(req, res)=>{
     const id = req.id;
-    const { solicitudid } = req.body;
+    const { solicitudid, dia } = req.body;
+    if(!solicitudid /*|| !dia*/) {
+        return res.status(400).json({ message: "Debe completar todos los campos"});
+    }
     try{
-        const result = await SolicitudesService.aceptarSolicitud(id, solicitudid);
+        const result = await SolicitudesService.aceptarSolicitud(id, solicitudid, dia);
         res.status(200).json({ message: "Solicitud aceptada exitosamente", result });
     } catch(error){
         res.status(500).json({ message: error.message });

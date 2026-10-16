@@ -31,7 +31,7 @@ const subirSolicitud = async(req, res)=>{
 const aceptarSolicitud = async(req, res)=>{
     const id = req.id;
     const { solicitudid, dia } = req.body;
-    if(!solicitudid /*|| !dia*/) {
+    if(!solicitudid /*|| !dia #lo descomento cuando agregue la funcion al front*/) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
     try{
@@ -123,9 +123,37 @@ const revisarTerminadas = async(req, res)=>{
     }
 }
 
+
+
+//puede que lo saque
+const subirSolicitudAA = async(req, res)=>{
+    const id = req.id;
+    const { solicitud, aptitudid, aptitud_especificaid, trabajoid, dia,} = req.body;
+    if(!solicitud || !aptitudid, !dia) {
+        return res.status(400).json({ message: "Debe completar todos los campos"});
+    }
+    try{
+        const result = await SolicitudesService.subirSolicitudAA(id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia);
+        res.status(201).json({ message: "Solicitud subida exitosamente", result });
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+const busquedaAA = async(req, res)=>{
+    const id = req.id;
+    try{
+        const result = await SolicitudesService.busquedaAA(id);
+        res.status(201).json({ message: "Busqueda exitosa", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const SolicitudesController = {
     busqueda,
+    busquedaAA,
     subirSolicitud,
+    subirSolicitudAA,
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,

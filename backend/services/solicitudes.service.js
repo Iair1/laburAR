@@ -297,11 +297,78 @@ const revisarTerminadas = async() => {
     }
 }
 
+//puede que la saque
+async function subirSolicitudAA(id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia, localidad, direccion) {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(
+            "INSERT INTO solicitudes (contratadorid, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia, localidad, direccion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *",
+            [id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia , localidad, direccion]
+        );
+        return result.rows[0];
+    }catch(error){
+        console.error("Error en la busqueda:", error);
+        throw error;
+    }finally{
+        await client.end();
+    }
+}
+async function busquedaAA(id) {
+    const client = new Client(config);
+    console.log(id);
+    try {
+        await client.connect();
+        const sUtiles = await client.query(`
+            SELECT s.id, s.solicitud, s.dia, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador
+                (
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_aptitudes ua
+                        WHERE ua.userid = $1 AND ua.aptitudid = s.aptitudid AND s.aptitudid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_aptitudes_especificas uae
+                        WHERE uae.userid = $1 AND uae.aptitud_especificaid = s.aptitud_especificaid AND s.aptitud_especificaid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                    + CASE WHEN EXISTS (
+                        SELECT 1 FROM usuarios_tdr ut
+                        WHERE ut.userid = $1 AND ut.trabajoid = s.trabajoid AND s.trabajoid IS NOT NULL
+                    ) THEN 1 ELSE 0 END
+                ) AS coincidencias
+            FROM solicitudesAA s
+            INNER JOIN usuarios u
+                ON u.id = $1 AND u.id=s.trabajadorid
+            LEFT JOIN aptitudes a
+                ON a.id = s.aptitudid
+            LEFT JOIN aptitudes_especificas ae
+                ON ae.id = s.aptitud_especificaid
+            LEFT JOIN tdr t
+                ON t.id = s.trabajoid
+            INNER JOIN usuarios uc
+                ON uc.id = s.contratadorid
+            WHERE s.estado = 'por revisar'           
+            ORDER BY coincidencias DESC;`, [id]);
+
+        return sUtiles.rows
+    }catch(error){
+        console.error("Error en la busqueda:", error);
+        throw error;
+    }finally{
+        await client.end();
+    }
+}
+
+
+
+
+
 const SolicitudesService = {
     busqueda,
+    busquedaAA,
     misSolicitudes,
     trabajosPendientes,
     subirSolicitud,
+    subirSolicitudAA,
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,

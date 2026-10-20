@@ -126,19 +126,7 @@ const revisarTerminadas = async(req, res)=>{
 
 
 //puede que lo saque
-const subirSolicitudAA = async(req, res)=>{
-    const id = req.id;
-    const { solicitud, aptitudid, aptitud_especificaid, trabajoid, dia,} = req.body;
-    if(!solicitud || !aptitudid, !dia) {
-        return res.status(400).json({ message: "Debe completar todos los campos"});
-    }
-    try{
-        const result = await SolicitudesService.subirSolicitudAA(id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia);
-        res.status(201).json({ message: "Solicitud subida exitosamente", result });
-    } catch(error){
-        res.status(500).json({ message: error.message });
-    }
-}
+
 const busquedaAA = async(req, res)=>{
     const id = req.id;
     try{
@@ -153,7 +141,6 @@ const SolicitudesController = {
     busqueda,
     busquedaAA,
     subirSolicitud,
-    subirSolicitudAA,
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,

@@ -31,7 +31,7 @@ async function borrarSolicitud(id, solicitudid) {
     }
 }
 
-async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid) {
+async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida) {
     const client = new Client(config);
     try {
         await client.connect();
@@ -39,8 +39,8 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
             diassemana = [true, true, true, true, true, true, true];
         }
         const result = await client.query(
-            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
-            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid]
+            "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
+            [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida]
         );
         return result.rows[0];
     }catch(error){
@@ -159,17 +159,25 @@ const aceptarSolicitud = async(id, solicitudid, dia) => {
     const client = new Client(config);
     try {
         await client.connect();
-        let result = null;
-        if(!dia){
+        
+        const result = await client.query(`UPDATE solicitudes 
+            SET estado = 'pendiente',
+                trabajadorid = $1, 
+                periodo = ARRAY[$3, $3]
+            WHERE id = $2 
+             AND (dirigida = FALSE OR ($3 >= periodo[1] AND $3 <= periodo[2] AND diassemana[(EXTRACT(DOW FROM $3)-1)%7::int + 1]= TRUE AND trabajadorid = $1) )
+             AND (dirigida = TRUE OR periodo[1] = $3 AND periodo[2] = $3)
+             RETURNING *` , [id, solicitudid, dia])
+        /*if(!dia){
               result = await client.query("UPDATE solicitudes SET estado = 'pendiente' WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
         } else { //esto es una medida temporal hasta que el front haga lo del día
               result = await client.query("UPDATE solicitudes SET estado = 'pendiente', periodo = ARRAY[$3, $3] WHERE trabajadorid = $1 AND id = $2 AND $3 > periodo[1] AND $3 < periodo[2] AND diassemana[(EXTRACT(DOW FROM $3)-1)%7::int + 1] = TRUE RETURNING *", [id, solicitudid, dia]);
             if(result.rowCount === 0) {
                 throw new Error("El día seleccionado no es válido");
             }
-        }
+        }*/
         if(result.rowCount === 0) {
-            throw new Error("La solicitud que desea aceptar no existe o no le pertenece a este usuario");
+            throw new Error("La solicitud que desea aceptar no existe, no le pertenece a este usuario, o no coincide con las fechas propuestas por el usuario.-");
         }
         const avisotxt=`Su solicitud ha sido aceptada por el trabajador
                         Solicitud: ${result.rows[0].solicitud}
@@ -298,29 +306,14 @@ const revisarTerminadas = async() => {
 }
 
 //puede que la saque
-async function subirSolicitudAA(id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia, localidad, direccion) {
-    const client = new Client(config);
-    try {
-        await client.connect();
-        const result = await client.query(
-            "INSERT INTO solicitudes (contratadorid, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia, localidad, direccion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *",
-            [id, solicitud, aptitudid, aptitud_especificaid, trabajoid, dia , localidad, direccion]
-        );
-        return result.rows[0];
-    }catch(error){
-        console.error("Error en la busqueda:", error);
-        throw error;
-    }finally{
-        await client.end();
-    }
-}
+
 async function busquedaAA(id) {
     const client = new Client(config);
     console.log(id);
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.dia, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador
+            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
@@ -335,9 +328,7 @@ async function busquedaAA(id) {
                         WHERE ut.userid = $1 AND ut.trabajoid = s.trabajoid AND s.trabajoid IS NOT NULL
                     ) THEN 1 ELSE 0 END
                 ) AS coincidencias
-            FROM solicitudesAA s
-            INNER JOIN usuarios u
-                ON u.id = $1 AND u.id=s.trabajadorid
+            FROM solicitudes s
             LEFT JOIN aptitudes a
                 ON a.id = s.aptitudid
             LEFT JOIN aptitudes_especificas ae
@@ -346,7 +337,7 @@ async function busquedaAA(id) {
                 ON t.id = s.trabajoid
             INNER JOIN usuarios uc
                 ON uc.id = s.contratadorid
-            WHERE s.estado = 'por revisar'           
+            WHERE s.estado = 'por revisar' AND s.dirigida = FALSE     
             ORDER BY coincidencias DESC;`, [id]);
 
         return sUtiles.rows
@@ -368,7 +359,6 @@ const SolicitudesService = {
     misSolicitudes,
     trabajosPendientes,
     subirSolicitud,
-    subirSolicitudAA,
     borrarSolicitud,
     aceptarSolicitud,
     rechazarSolicitud,

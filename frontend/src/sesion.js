@@ -163,3 +163,51 @@ export function leerPayloadJWT(token) {
     return null;
   }
 }
+
+// --- Notificaciones locales (problemas y presupuestos en "modo local") ---
+// Se guardan por usuario y NO se borran al cerrar sesión: si un trabajador le
+// manda un presupuesto a un cliente, el cliente la ve la próxima vez que entra.
+const CLAVE_NOTIFICACIONES_LOCALES = "laburar_notificaciones_locales";
+
+function leerNotificacionesLocales() {
+  return leerJSON(CLAVE_NOTIFICACIONES_LOCALES, {});
+}
+
+export function agregarNotificacionLocal(userid, { contenido, enlace = null, tipo = "problemas" }) {
+  if (userid === undefined || userid === null) return;
+  const todas = leerNotificacionesLocales();
+  const clave = String(userid);
+  const nueva = {
+    id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    tipo,
+    contenido,
+    enlace,
+    fecha: new Date().toISOString(),
+    leida: false,
+  };
+  todas[clave] = [...(todas[clave] || []), nueva].slice(-50);
+  try {
+    localStorage.setItem(CLAVE_NOTIFICACIONES_LOCALES, JSON.stringify(todas));
+  } catch {
+    // sin espacio: la notificación no es crítica
+  }
+  window.dispatchEvent(new Event("laburar-notificaciones-cambio"));
+}
+
+export function obtenerNotificacionesLocales() {
+  const usuario = obtenerSesionUsuario();
+  if (!usuario) return [];
+  return leerNotificacionesLocales()[String(usuario.id)] || [];
+}
+
+export function marcarNotificacionesLocalesLeidas() {
+  const usuario = obtenerSesionUsuario();
+  if (!usuario) return;
+  const todas = leerNotificacionesLocales();
+  const clave = String(usuario.id);
+  if (!todas[clave]?.some((n) => !n.leida)) return;
+  todas[clave] = todas[clave].map((n) => ({ ...n, leida: true }));
+  localStorage.setItem(CLAVE_NOTIFICACIONES_LOCALES, JSON.stringify(todas));
+  window.dispatchEvent(new Event("laburar-notificaciones-cambio"));
+}
+

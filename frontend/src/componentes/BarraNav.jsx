@@ -8,6 +8,8 @@ import {
   marcarNotificacionesLeidas,
   claveNotificacion,
   actualizarFotoSesion,
+  obtenerNotificacionesLocales,
+  marcarNotificacionesLocalesLeidas,
 } from "../sesion";
 import { subirFotoPerfil, TIPOS_FOTO_PERFIL } from "../api";
 import Avatar from "./Avatar";
@@ -144,6 +146,8 @@ const estilos = `
   }
   .item-notificacion + .item-notificacion { border-top: 1px solid #f3f3f1; }
   .item-notificacion.no-leida { background: #f8efef; }
+  .item-notificacion.con-enlace { cursor: pointer; }
+  .item-notificacion.con-enlace:hover { background: #f4eeee; }
   .punto-notificacion {
     width: 8px;
     height: 8px;
@@ -229,6 +233,7 @@ const estilos = `
   }
   .menu-avatar-item:hover { background: #f4eeee; }
   .menu-avatar-item.salir { color: #b3261e; }
+  .menu-avatar-item.destacado { color: #570101; font-weight: 700; }
 
   .boton-iniciar-sesion-nav {
     background: #570101;
@@ -268,6 +273,17 @@ function IconoFlecha({ abierta }) {
       <path d="M0 2.5h10L5 8.5z" />
     </svg>
   );
+}
+
+// Las del backend (llegan al iniciar sesión) + las locales de problemas/presupuestos
+function todasLasNotificaciones() {
+  return [...obtenerNotificaciones(), ...obtenerNotificacionesLocales()];
+}
+function todasLasLeidas() {
+  return [
+    ...obtenerNotificacionesLeidas(),
+    ...obtenerNotificacionesLocales().filter((n) => n.leida).map((n) => n.id),
+  ];
 }
 
 function formatearFechaNotificacion(n) {
@@ -317,8 +333,8 @@ export default function BarraNav({ centro = null }) {
   const [usuario, setUsuario] = useState(obtenerSesionUsuario());
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [campanaAbierta, setCampanaAbierta] = useState(false);
-  const [notificaciones, setNotificaciones] = useState(obtenerNotificaciones());
-  const [leidas, setLeidas] = useState(obtenerNotificacionesLeidas());
+  const [notificaciones, setNotificaciones] = useState(todasLasNotificaciones);
+  const [leidas, setLeidas] = useState(todasLasLeidas);
   // Las que estaban sin leer al abrir la campana (para resaltarlas mientras está abierta)
   const [noLeidasAlAbrir, setNoLeidasAlAbrir] = useState([]);
 
@@ -329,16 +345,25 @@ export default function BarraNav({ centro = null }) {
   const [errorFoto, setErrorFoto] = useState("");
 
   useEffect(() => {
-    const actualizarSesion = () => setUsuario(obtenerSesionUsuario());
     const actualizarNotificaciones = () => {
-      setNotificaciones(obtenerNotificaciones());
-      setLeidas(obtenerNotificacionesLeidas());
+      setNotificaciones(todasLasNotificaciones());
+      setLeidas(todasLasLeidas());
+    };
+    const actualizarSesion = () => {
+      setUsuario(obtenerSesionUsuario());
+      actualizarNotificaciones();
+    };
+    // Si en otra pestaña llega una notificación local, la mostramos acá también
+    const actualizarDesdeOtraPestana = (e) => {
+      if (!e.key || e.key.startsWith("laburar_notificaciones")) actualizarNotificaciones();
     };
     window.addEventListener("laburar-sesion-cambio", actualizarSesion);
     window.addEventListener("laburar-notificaciones-cambio", actualizarNotificaciones);
+    window.addEventListener("storage", actualizarDesdeOtraPestana);
     return () => {
       window.removeEventListener("laburar-sesion-cambio", actualizarSesion);
       window.removeEventListener("laburar-notificaciones-cambio", actualizarNotificaciones);
+      window.removeEventListener("storage", actualizarDesdeOtraPestana);
     };
   }, []);
 
@@ -353,7 +378,10 @@ export default function BarraNav({ centro = null }) {
   const alternarCampana = () => {
     if (!campanaAbierta) {
       setNoLeidasAlAbrir(clavesNotificaciones.filter((c) => !leidas.includes(c)));
-      if (cantidadNoLeidas > 0) marcarNotificacionesLeidas(clavesNotificaciones);
+      if (cantidadNoLeidas > 0) {
+        marcarNotificacionesLeidas(clavesNotificaciones);
+        marcarNotificacionesLocalesLeidas();
+      }
     }
     setCampanaAbierta((prev) => !prev);
     setMenuAbierto(false);
@@ -438,7 +466,9 @@ export default function BarraNav({ centro = null }) {
                           return (
                             <div
                               key={clave}
-                              className={`item-notificacion ${noLeidasAlAbrir.includes(clave) ? "no-leida" : ""}`}
+                              className={`item-notificacion ${noLeidasAlAbrir.includes(clave) ? "no-leida" : ""} ${n.enlace ? "con-enlace" : ""}`}
+                              onClick={n.enlace ? () => { setCampanaAbierta(false); navegar(n.enlace); } : undefined}
+                              role={n.enlace ? "link" : undefined}
                             >
                               <span className="punto-notificacion" />
                               <div>
@@ -499,6 +529,19 @@ export default function BarraNav({ centro = null }) {
                       </div>
                     </div>
                     {errorFoto && <div className="error-foto-menu">{errorFoto}</div>}
+                    <div className="menu-avatar-separador" />
+                    <button className="menu-avatar-item destacado" onClick={() => ir("/subir-problema")}>
+                      + Subir un problema
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/mis-problemas")}>
+                      Mis problemas
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/problemas")}>
+                      Problemas publicados
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/problemas?vista=presupuestos")}>
+                      Mis presupuestos
+                    </button>
                     <div className="menu-avatar-separador" />
                     <button className="menu-avatar-item" onClick={() => ir("/buscar")}>
                       Buscar trabajadores

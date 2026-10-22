@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { RegistroProvider } from "./context/RegistroContext";
 
 
@@ -14,6 +14,9 @@ import OfrecerServicios from "./pages/OfrecerServicios"
 import SolicitudesRecibidas from "./pages/SolicitudesRecibidas"
 import TrabajosPendientes from "./pages/TrabajosPendientes"
 import MisServicios from "./pages/MisServicios"
+import SubirProblema from "./pages/SubirProblema"
+import Problemas from "./pages/Problemas"
+import MisProblemas from "./pages/MisProblemas"
 
 function App() {
   return (
@@ -32,6 +35,10 @@ function App() {
         <Route path="/solicitudes-recibidas" element={<SolicitudesRecibidas />} />
         <Route path="/trabajos-pendientes" element={<TrabajosPendientes />} />
         <Route path="/mis-servicios" element={<MisServicios />} />
+        <Route path="/subir-problema" element={<SubirProblema />} />
+        <Route path="/problemas" element={<Problemas />} />
+        <Route path="/mis-problemas" element={<MisProblemas />} />
+        <Route path="/mis-presupuestos" element={<Navigate to="/problemas?vista=presupuestos" replace />} />
 
       </Routes>
     </RegistroProvider>

@@ -23,7 +23,7 @@ const CALIDAD_JPEG = 0.7;
 // La foto de perfil se ve como mucho a ~150px: con 600px sobra y pesa poco.
 const LADO_MAXIMO_FOTO_PERFIL = 600;
 
-const archivoABase64 = (archivo, ladoMaximo = LADO_MAXIMO_PX) => {
+const archivoABase64 = (archivo, ladoMaximo = LADO_MAXIMO_PX, calidad = CALIDAD_JPEG) => {
   return new Promise((resolve, reject) => {
     if (!archivo) {
       resolve(null);
@@ -63,7 +63,7 @@ const archivoABase64 = (archivo, ladoMaximo = LADO_MAXIMO_PX) => {
         ctx.drawImage(img, 0, 0, width, height);
 
         // Re-exportamos como JPEG comprimido (más liviano que PNG)
-        const dataUrlComprimido = canvas.toDataURL("image/jpeg", CALIDAD_JPEG);
+        const dataUrlComprimido = canvas.toDataURL("image/jpeg", calidad);
         resolve(dataUrlComprimido);
       };
       img.onerror = reject;
@@ -491,3 +491,18 @@ export const iniciarSesionConGoogle = async (credential) => {
 
   return resultado;
 };
+
+
+/* ============================================================
+ * UTILIDADES PARA OTRAS PANTALLAS (problemas y presupuestos)
+ * ============================================================ */
+
+// Comprime una imagen (File) y la devuelve como data URL JPEG.
+export const comprimirImagen = (archivo, ladoMaximo = LADO_MAXIMO_PX, calidad = CALIDAD_JPEG) =>
+  archivoABase64(archivo, ladoMaximo, calidad);
+
+const API_BASE = import.meta.env.DEV ? "https://laburar-three.vercel.app/api" : "/api";
+
+// Pedido autenticado a cualquier ruta del backend. Ej: pedirAPI("/solicitudes/busquedaAA", "GET")
+export const pedirAPI = (ruta, method = "GET", body) => pedirAutenticado(`${API_BASE}${ruta}`, method, body);
+

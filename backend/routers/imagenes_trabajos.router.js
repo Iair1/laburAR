@@ -4,9 +4,9 @@ import {verifyToken} from "../auth.middleware.js";
 
 const router = Router()
 
-router.post("/subirImagen", verifyToken,  ImagenesTrabajosController.subirImagen)
+router.post("/subirImagen", verifyToken,  ImagenesTrabajosController.subirImagenTrabajo)
 router.delete("/eliminarImagen", verifyToken, ImagenesTrabajosController.eliminarImagen)
 router.get("/misImagenes", verifyToken, ImagenesTrabajosController.misImagenes)
-router.update("/cambiarDescripcion", verifyToken, ImagenesTrabajosController.cambiarDescripcion)
+router.put("/cambiarDescripcion", verifyToken, ImagenesTrabajosController.cambiarDescripcion)
 
 export default router;

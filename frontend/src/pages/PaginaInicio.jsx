@@ -239,7 +239,57 @@ const estilos = `
     white-space: nowrap;
   }
 
+  /* --- subir un problema (nuevo) --- */
+  .seccion-subir-problema {
+    margin-top: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+  .separador-o {
+    display: flex; align-items: center; gap: 10px; font-size: 0.78rem; font-weight: 600; color: #555;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .separador-o::before, .separador-o::after { content: ""; width: 60px; height: 1px; background: #bbb; }
+  .boton-subir-problema-inicio {
+    display: inline-flex; align-items: center; gap: 10px; background: #570101; color: #fff; border: none;
+    border-radius: 999px; padding: 14px 30px; font-size: 1rem; font-weight: 800; letter-spacing: 0.03em;
+    text-transform: uppercase; cursor: pointer; font-family: inherit;
+    box-shadow: 0 6px 18px rgba(87,1,1,0.28); transition: background 0.15s, transform 0.1s;
+  }
+  .boton-subir-problema-inicio:hover { background: #3b1e0d; transform: translateY(-1px); }
+  .boton-subir-problema-inicio svg { width: 20px; height: 20px; }
+  .texto-subir-problema { font-size: 0.82rem; color: #333; max-width: 420px; }
+
+  .seccion-como-funciona { margin-top: 3rem; width: 100%; max-width: 960px; text-align: center; }
+  .titulo-como-funciona { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; color: #111; margin-bottom: 1.1rem; }
+  .pasos-como-funciona { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .paso-como-funciona {
+    background: #fff; border: 1px solid #9e7d7d; border-radius: 14px; padding: 18px 16px; text-align: left;
+  }
+  .numero-paso {
+    width: 30px; height: 30px; border-radius: 50%; background: #7a2a2a; color: #fff; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; margin-bottom: 8px;
+  }
+  .paso-como-funciona h3 { font-size: 0.95rem; color: #1a1a1a; margin-bottom: 4px; }
+  .paso-como-funciona p { font-size: 0.8rem; color: #555; line-height: 1.45; }
+  .banda-trabajadores {
+    margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+    background: #3b1e0d; color: #fff; border-radius: 14px; padding: 16px 20px; text-align: left;
+  }
+  .banda-trabajadores strong { display: block; font-size: 1rem; }
+  .banda-trabajadores span { font-size: 0.82rem; opacity: 0.85; }
+  .boton-banda {
+    background: #fff; color: #3b1e0d; border: none; border-radius: 999px; padding: 10px 20px; font-weight: 700;
+    font-size: 0.85rem; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .boton-banda:hover { background: #f4eeee; }
+
   @media (max-width: 640px) {
+    .pasos-como-funciona { grid-template-columns: 1fr; }
+    .boton-subir-problema-inicio { padding: 13px 22px; font-size: 0.9rem; }
     .hero-inicio { padding-top: 2.5rem; }
     .barra-busqueda { height: 50px; }
     .boton-barrio { min-width: 0; padding: 0 0.9rem; font-size: 0.78rem; max-width: 120px; }
@@ -323,6 +373,15 @@ function PaginaInicio() {
     navegar(armarRutaBusqueda({ consulta: texto, zona: barrio }));
   };
 
+  // Lo escrito en el buscador y el barrio pasan al formulario de "Subir un problema"
+  const subirProblema = () => {
+    const params = new URLSearchParams();
+    if (consulta.trim()) params.set("descripcion", consulta.trim());
+    if (barrio) params.set("zona", barrio);
+    const query = params.toString();
+    navegar(query ? `/subir-problema?${query}` : "/subir-problema");
+  };
+
   const manejarTecla = (e) => {
     if (e.key === "Enter") manejarBusqueda();
   };
@@ -398,6 +457,19 @@ function PaginaInicio() {
             </div>
           </div>
 
+          <section className="seccion-subir-problema">
+            <span className="separador-o">o</span>
+            <button className="boton-subir-problema-inicio" onClick={subirProblema}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 11l15-6v14L3 13v-2z" /><path d="M7 12.5V18a2 2 0 0 0 2 2h1" />
+              </svg>
+              Subir un problema
+            </button>
+            <p className="texto-subir-problema">
+              Contá qué necesitás arreglar y qué días pueden ir: un trabajador agenda una cita y va a arreglarlo.
+            </p>
+          </section>
+
           {historial.length > 0 && (
             <section className="seccion-recientes">
               <p className="etiqueta-recientes">Retomá donde lo dejaste:</p>
@@ -437,6 +509,34 @@ function PaginaInicio() {
                   <span className="etiqueta-categoria">{cat.etiqueta}</span>
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section className="seccion-como-funciona">
+            <h2 className="titulo-como-funciona">¿Cómo funciona?</h2>
+            <div className="pasos-como-funciona">
+              <div className="paso-como-funciona">
+                <span className="numero-paso">1</span>
+                <h3>Subí tu problema</h3>
+                <p>Contá qué hay que arreglar y elegí entre qué fechas, qué días y en qué horario pueden ir.</p>
+              </div>
+              <div className="paso-como-funciona">
+                <span className="numero-paso">2</span>
+                <h3>Un trabajador agenda una cita</h3>
+                <p>Los trabajadores ven tu problema y uno elige qué día va, dentro de los que pusiste.</p>
+              </div>
+              <div className="paso-como-funciona">
+                <span className="numero-paso">3</span>
+                <h3>Listo</h3>
+                <p>Te avisamos quién va y qué día. Lo ves todo en "Mis problemas".</p>
+              </div>
+            </div>
+            <div className="banda-trabajadores">
+              <div>
+                <strong>¿Sos trabajador?</strong>
+                <span>Encontrá problemas para resolver y agendá una cita para ir a arreglarlos.</span>
+              </div>
+              <button className="boton-banda" onClick={() => navegar("/problemas")}>Ver problemas publicados</button>
             </div>
           </section>
         </main>

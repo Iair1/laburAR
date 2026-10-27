@@ -16,12 +16,18 @@ const borrarSolicitud = async(req, res)=>{
 
 const subirSolicitud = async(req, res)=>{
     const id = req.id;
-    const { solicitud, aptitudid, aptitud_especificaid, trabajoid, periodo, localidad, diassemana, trabajadorid } = req.body;
-    if(!solicitud || !periodo || !localidad || !trabajadorid) {
+    const { solicitud, aptitudid, aptitud, aptitud_especificaid, trabajoid, periodo, localidad, diassemana, trabajadorid, dirigida } = req.body;
+    // dirigida === false → "problema" abierto que ve cualquier trabajador (no lleva trabajadorid).
+    // Si no, es una solicitud a un trabajador puntual, como siempre.
+    const abierta = dirigida === false;
+    if(!solicitud || !periodo || !localidad || (!abierta && !trabajadorid)) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
+    if(!Array.isArray(periodo) || periodo.length !== 2 || !periodo[0] || !periodo[1] || periodo[1] < periodo[0]) {
+        return res.status(400).json({ message: "El período no es válido"});
+    }
     try{
-        const result = await SolicitudesService.subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid);
+        const result = await SolicitudesService.subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, abierta ? null : trabajadorid, !abierta, aptitud);
         res.status(201).json({ message: "Solicitud subida exitosamente", result });
     } catch(error){
         res.status(500).json({ message: error.message });
@@ -137,7 +143,19 @@ const busquedaAA = async(req, res)=>{
     }
 }
 
+// Problemas abiertos (dirigida = false) que publicó el usuario, en cualquier estado
+const misProblemas = async(req, res)=>{
+    const id = req.id;
+    try{
+        const result = await SolicitudesService.misProblemas(id);
+        res.status(200).json({ message: "Busqueda exitosa", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const SolicitudesController = {
+    misProblemas,
     busqueda,
     busquedaAA,
     subirSolicitud,

@@ -69,6 +69,21 @@ const estilos = `
     transition: background 0.15s;
   }
   .boton-ofrecer:hover { background: #570101; }
+  /* "Ver problemas": misma forma que "Ofrecer mi servicio", pero con borde para diferenciarlo */
+  .boton-ver-problemas {
+    background: rgba(255,255,255,0.55);
+    color: #3b1e0d;
+    border: 1px solid #3b1e0d;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .boton-ver-problemas:hover { background: #fff; color: #570101; }
+  .boton-ver-problemas .texto-corto { display: none; }
 
   .contenedor-desplegable { position: relative; }
 
@@ -252,6 +267,9 @@ const estilos = `
   @media (max-width: 520px) {
     .logo-texto-nav { display: none; }
     .boton-ofrecer { padding: 0.4rem 0.7rem; font-size: 0.7rem; }
+    .boton-ver-problemas { padding: 0.4rem 0.7rem; font-size: 0.7rem; }
+    .boton-ver-problemas .texto-largo { display: none; }
+    .boton-ver-problemas .texto-corto { display: inline; }
   }
 `;
 
@@ -408,6 +426,14 @@ export default function BarraNav({ centro = null }) {
         <nav className="nav-derecha">
           {usuario ? (
             <>
+              <button
+                className="boton-ver-problemas"
+                onClick={() => navegar("/problemas")}
+                title="Problemas que publicó la gente para que un trabajador los arregle"
+              >
+                <span className="texto-largo">Ver problemas</span>
+                <span className="texto-corto">Problemas</span>
+              </button>
               <button className="boton-ofrecer" onClick={() => navegar("/ofrecer-servicios")}>
                 Ofrecer mi servicio
               </button>

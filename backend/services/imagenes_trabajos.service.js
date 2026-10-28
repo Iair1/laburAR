@@ -4,8 +4,11 @@ import {v2 as cloudinary} from "cloudinary";
 const {Client} = pkg;
 
 async function subirImagen(imagen) {
+    console.log("ya esdtamos es subiurimagebn")
     if(!imagen) return null;
+    console.log("hay imagne")
     const result = await cloudinary.uploader.upload(imagen);
+    console.log("subidaaa")
     // Ojo: Cloudinary devuelve "public_id" (antes se leía "publicid", que no
     // existe, y por eso la foto se guardaba como NULL en la base).
     // crop "fill" + gravity "face" recorta un cuadrado centrado en la cara sin deformarla.
@@ -21,6 +24,7 @@ async function subirImagen(imagen) {
 
 
 async function subirImagenTrabajo(id, imagen, descripcion) {
+    console.log("CA extra:", process.env.NODE_EXTRA_CA_CERTS);
     console.log("alñ service tambien")
     const client = new Client(config);
     try{
@@ -32,7 +36,7 @@ async function subirImagenTrabajo(id, imagen, descripcion) {
         console.log("terminamos el querry!!!")
         return result.rows[0]
     } catch(error){
-        console.error("Error subir imagen:", error.message);
+        console.error("Error subir imagen:", error?.error?.message ?? error?.message ?? error);
         throw error;
     }finally{
         await client.end();

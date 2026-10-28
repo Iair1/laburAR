@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { iniciarSesion, iniciarSesionConGoogle } from "../api";
 import { guardarSesionUsuario, guardarNotificaciones, leerPayloadJWT } from "../sesion";
 import { GOOGLE_CLIENT_ID, cargarGoogleIdentity } from "../google";
@@ -180,6 +180,10 @@ export default function Login() {
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const navegar = useNavigate();
+  // Si llegó desde una página que pide sesión (ej: /login?volver=/subir-problema), vuelve ahí
+  const [parametros] = useSearchParams();
+  const volver = parametros.get("volver") || "";
+  const destino = volver.startsWith("/") && !volver.startsWith("//") && !volver.includes("\\") ? volver : "/";
 
   // Guarda la sesión con lo que devuelve el backend (token + notificaciones).
   // El token (JWT) trae { userid, nombre_completo }; lo usamos para tener el id real.
@@ -210,7 +214,7 @@ export default function Login() {
       // usamos lo que trae el token o lo que el usuario tipeó.
       guardarSesionDesdeRespuesta(respuesta, { nombre });
 
-      navegar("/");
+      navegar(destino);
     } catch (err) {
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
       console.error("Error:", err);
@@ -239,7 +243,7 @@ export default function Login() {
         correo: perfil.email,
         fotoPerfilURL: perfil.picture,
       });
-      navegar("/");
+      navegar(destino);
     } catch (err) {
       console.error("Error en login con Google:", err);
       if (err.status === 404) {

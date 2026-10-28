@@ -31,12 +31,22 @@ async function borrarSolicitud(id, solicitudid) {
     }
 }
 
-async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida) {
+async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida, aptitud) {
     const client = new Client(config);
     try {
         await client.connect();
-        if(diassemana = [false, false, false, false, false, false, false]){
+        // Si no vienen días (o vienen todos en false), se aceptan todos los días.
+        // (Antes decía "diassemana = [...]", que asigna en vez de comparar y siempre pisaba los días.)
+        if(!Array.isArray(diassemana) || diassemana.length !== 7 || diassemana.every((d) => !d)){
             diassemana = [true, true, true, true, true, true, true];
+        }
+        // La categoría puede venir por nombre (ej: "Plomería"): se busca o se crea, igual que en nuevaAptitud
+        if(!aptitudid && aptitud){
+            const apt = await client.query(`
+                INSERT INTO aptitudes (aptitud) VALUES ($1)
+                ON CONFLICT (aptitud) DO UPDATE SET aptitud = EXCLUDED.aptitud
+                RETURNING id`, [aptitud]);
+            aptitudid = apt.rows[0].id;
         }
         const result = await client.query(
             "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
@@ -47,6 +57,28 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
         console.error("Error en la busqueda:", error);
         throw error;
     }finally{
+        await client.end();
+    }
+}
+
+async function misProblemas(id) {
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            SELECT s.*, a.aptitud,
+                ut.nombre_completo AS trabajador_nombre, ut.foto_perfil AS trabajador_foto, ut.puntuacion_trabajador
+            FROM solicitudes s
+            LEFT JOIN aptitudes a ON a.id = s.aptitudid
+            LEFT JOIN usuarios ut ON ut.id = s.trabajadorid
+            WHERE s.contratadorid = $1 AND s.dirigida = FALSE
+            ORDER BY s.id DESC;
+        `, [id]);
+        return result.rows;
+    } catch(error){
+        console.error("Error al obtener mis problemas:", error);
+        throw error;
+    } finally{
         await client.end();
     }
 }
@@ -155,38 +187,66 @@ async function busqueda(id) {
     }
 }
 
-const aceptarSolicitud = async(id, solicitudid, dia) => {
+const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
     const client = new Client(config);
     try {
         await client.connect();
-        
-        const result = await client.query(`UPDATE solicitudes 
-            SET estado = 'pendiente',
-                trabajadorid = $1, 
-                periodo = ARRAY[$3, $3]
-            WHERE id = $2 
-             AND (dirigida = FALSE OR ($3 >= periodo[1] AND $3 <= periodo[2] AND diassemana[(EXTRACT(DOW FROM $3)-1)%7::int + 1]= TRUE AND trabajadorid = $1) )
-             AND (dirigida = TRUE OR periodo[1] = $3 AND periodo[2] = $3)
-             RETURNING *` , [id, solicitudid, dia])
-        /*if(!dia){
-              result = await client.query("UPDATE solicitudes SET estado = 'pendiente' WHERE trabajadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
-        } else { //esto es una medida temporal hasta que el front haga lo del día
-              result = await client.query("UPDATE solicitudes SET estado = 'pendiente', periodo = ARRAY[$3, $3] WHERE trabajadorid = $1 AND id = $2 AND $3 > periodo[1] AND $3 < periodo[2] AND diassemana[(EXTRACT(DOW FROM $3)-1)%7::int + 1] = TRUE RETURNING *", [id, solicitudid, dia]);
-            if(result.rowCount === 0) {
-                throw new Error("El día seleccionado no es válido");
-            }
-        }*/
+        let result;
+        if(dia){
+            // El trabajador elige un día dentro del período y en los días de la semana pedidos.
+            //  - solicitud dirigida (o vieja, con dirigida en NULL): solo el trabajador al que va dirigida
+            //  - problema abierto (dirigida = false): cualquier trabajador menos el que lo publicó
+            // diassemana va de Lunes [1] a Domingo [7], igual que ISODOW.
+            // Si elige hora, se agrega al texto como "Hora acordada: 10:00 hs" (no hay columna para la hora).
+            result = await client.query(`
+                UPDATE solicitudes
+                SET estado = 'pendiente',
+                    trabajadorid = $1,
+                    periodo = ARRAY[$3::date, $3::date],
+                    solicitud = CASE WHEN $4::text IS NULL THEN solicitud
+                                     ELSE solicitud || E'\nHora acordada: ' || $4::text || ' hs' END
+                WHERE id = $2
+                  AND estado = 'por revisar'
+                  AND $3::date BETWEEN periodo[1] AND periodo[2]
+                  AND COALESCE(diassemana[EXTRACT(ISODOW FROM $3::date)::int], TRUE) = TRUE
+                  AND (
+                        (COALESCE(dirigida, TRUE) = TRUE AND trabajadorid = $1)
+                     OR (dirigida = FALSE AND contratadorid <> $1)
+                  )
+                RETURNING *`, [id, solicitudid, dia, hora]);
+        } else {
+            // Sin día (como lo manda hoy "Aceptar solicitud"): solo solicitudes dirigidas, sin tocar el período
+            result = await client.query(`
+                UPDATE solicitudes SET estado = 'pendiente'
+                WHERE trabajadorid = $1 AND id = $2 AND estado = 'por revisar' AND COALESCE(dirigida, TRUE) = TRUE
+                RETURNING *`, [id, solicitudid]);
+        }
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea aceptar no existe, no le pertenece a este usuario, o no coincide con las fechas propuestas por el usuario.-");
         }
-        const avisotxt=`Su solicitud ha sido aceptada por el trabajador
-                        Solicitud: ${result.rows[0].solicitud}
-                        Periodo: ${result.rows[0].periodo}`;
+        const s = result.rows[0];
+        let avisotxt;
+        if(s.dirigida === false){
+            const trabajador = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
+            const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+            avisotxt=`${trabajador.rows[0]?.nombre_completo || "Un trabajador"} agendó una cita para tu problema
+                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
+                        Problema: ${s.solicitud}`;
+        } else if(dia){
+            const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+            avisotxt=`Su solicitud ha sido aceptada por el trabajador
+                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
+                        Solicitud: ${s.solicitud}`;
+        } else {
+            avisotxt=`Su solicitud ha sido aceptada por el trabajador
+                        Solicitud: ${s.solicitud}
+                        Periodo: ${s.periodo}`;
+        }
         const aviso = await client.query(`
             INSERT INTO notificaciones (tipo, userid, contenido)
             VALUES('solicitud-aceptada', $1
-            , $2)`, [result.rows[0].contratadorid, avisotxt]);
-        return{solicitud: result.rows[0], aviso: aviso.rows[0]};
+            , $2)`, [s.contratadorid, avisotxt]);
+        return{solicitud: s, aviso: aviso.rows[0]};
     } catch(error) {
         console.error("Error al aceptar la solicitud:", error);
         throw error;
@@ -313,7 +373,8 @@ async function busquedaAA(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
+            SELECT s.id, s.solicitud, s.periodo, s.diassemana, s.localidad, s.contratadorid, s.aptitudid,
+                a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
@@ -337,8 +398,10 @@ async function busquedaAA(id) {
                 ON t.id = s.trabajoid
             INNER JOIN usuarios uc
                 ON uc.id = s.contratadorid
-            WHERE s.estado = 'por revisar' AND s.dirigida = FALSE     
-            ORDER BY coincidencias DESC;`, [id]);
+            WHERE s.estado = 'por revisar' AND s.dirigida = FALSE
+              AND s.contratadorid <> $1
+              AND s.periodo[2] >= CURRENT_DATE - 1
+            ORDER BY coincidencias DESC, s.id DESC;`, [id]);
 
         return sUtiles.rows
     }catch(error){
@@ -354,6 +417,7 @@ async function busquedaAA(id) {
 
 
 const SolicitudesService = {
+    misProblemas,
     busqueda,
     busquedaAA,
     misSolicitudes,

@@ -305,13 +305,15 @@ export const trabajosPendientes = async () => {
 
 /**
  * El trabajador acepta una solicitud recibida.
+ * dia ("YYYY-MM-DD") y hora ("HH:MM") son opcionales: los elige el trabajador
+ * dentro del período que mandó el cliente.
  */
-export const aceptarSolicitud = async (solicitudid) => {
+export const aceptarSolicitud = async (solicitudid, dia, hora) => {
   try {
     const respuesta = await fetch(`${API_URL_SOLICITUDES}/aceptarSolicitud`, {
       method: "POST",
       headers: encabezadosAutenticados(),
-      body: JSON.stringify({ solicitudid }),
+      body: JSON.stringify({ solicitudid, ...(dia ? { dia } : {}), ...(dia && hora ? { hora } : {}) }),
     });
 
     const resultado = await respuesta.json();
@@ -456,6 +458,52 @@ export const obtenerMiPerfil = async () => {
   const resultado = await pedirAutenticado(`${API_URL}/miPerfil`, "GET");
   return resultado.result || null;
 };
+
+/* ============================================================
+ * FOTOS DE TRABAJOS HECHOS (router /api/imagenes_trabajos)
+ * Cada foto: { id, userid, imagen (URL de Cloudinary), descripcion }
+ * ============================================================ */
+
+const API_URL_IMAGENES = import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api/imagenes_trabajos"
+  : "/api/imagenes_trabajos";
+
+// Las fotos de trabajos se ven más grandes que la de perfil: 1200px alcanza y pesa poco
+const LADO_MAXIMO_FOTO_TRABAJO = 1200;
+export const TIPOS_FOTO_TRABAJO = ["image/jpeg", "image/png", "image/webp"];
+
+// POST /subirImagen → body: { imagen (base64), descripcion } → { result: { id, imagen, descripcion } }
+export const subirFotoTrabajo = async (archivo, descripcion) => {
+  if (!archivo || !TIPOS_FOTO_TRABAJO.includes(archivo.type)) {
+    throw new Error("Elegí una imagen JPG, PNG o WEBP.");
+  }
+  const imagen = await archivoABase64(archivo, LADO_MAXIMO_FOTO_TRABAJO);
+  const resultado = await pedirAutenticado(`${API_URL_IMAGENES}/subirImagen`, "POST", {
+    imagen,
+    descripcion: descripcion?.trim() || null,
+  });
+  return resultado.result;
+};
+
+// GET /misImagenes → las fotos del usuario logueado
+export const obtenerMisFotosTrabajo = async () => {
+  const resultado = await pedirAutenticado(`${API_URL_IMAGENES}/misImagenes`, "GET");
+  return resultado.result || [];
+};
+
+// GET /imagenesDe/:userid → las fotos de otro usuario (para su perfil)
+export const obtenerFotosTrabajoDe = async (userid) => {
+  const resultado = await pedirAutenticado(`${API_URL_IMAGENES}/imagenesDe/${encodeURIComponent(userid)}`, "GET");
+  return resultado.result || [];
+};
+
+// PUT /cambiarDescripcion → body: { imagen: id, descripcion }
+export const cambiarDescripcionFotoTrabajo = (id, descripcion) =>
+  pedirAutenticado(`${API_URL_IMAGENES}/cambiarDescripcion`, "PUT", { imagen: id, descripcion });
+
+// DELETE /eliminarImagen → body: { imagen: id }
+export const eliminarFotoTrabajo = (id) =>
+  pedirAutenticado(`${API_URL_IMAGENES}/eliminarImagen`, "DELETE", { imagen: id });
 
 /* ============================================================
  * GOOGLE

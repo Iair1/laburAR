@@ -8,12 +8,13 @@ async function subirImagen(imagen) {
     const result = await cloudinary.uploader.upload(imagen);
     // Ojo: Cloudinary devuelve "public_id" (antes se leía "publicid", que no
     // existe, y por eso la foto se guardaba como NULL en la base).
-    // crop "fill" + gravity "face" recorta un cuadrado centrado en la cara sin deformarla.
+    // Son fotos de trabajos (un baño, una pared...), no de caras: no se recortan,
+    // solo se achican si son muy grandes ("limit" mantiene la proporción).
     const url = cloudinary.url(result.public_id, {
         secure: true,
         version: result.version,
         transformation: [
-            { width: 300, height: 300, crop: "fill", gravity: "face" }
+            { width: 1200, height: 1200, crop: "limit", quality: "auto" }
         ]
     });
     return url;
@@ -60,7 +61,7 @@ async function misImagenes(id){
     const client = new Client(config)
     try{
         await client.connect()
-        const result = await client.query("SELECT * FROM imagenes_trabajos WHERE userid=$1", [id])
+        const result = await client.query("SELECT * FROM imagenes_trabajos WHERE userid=$1 ORDER BY id DESC", [id])
         return result.rows
     }catch(error){
         throw error

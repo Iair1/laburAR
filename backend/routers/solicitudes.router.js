@@ -15,6 +15,7 @@ router.post("/rechazarSolicitud", verifyToken, SolicitudesController.rechazarSol
 router.put("/cancelarTrabajo", verifyToken, SolicitudesController.cancelarTrabajo);
 
 router.get("/busquedaAA", verifyToken, SolicitudesController.busquedaAA)
+router.get("/misProblemas", verifyToken, SolicitudesController.misProblemas);
 
 router.get("/revisarTerminadas", SolicitudesController.revisarTerminadas);
 //router.put("/terminarTrabajo", verifyToken, SolicitudesController.terminarTrabajo);

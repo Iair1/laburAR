@@ -13,6 +13,7 @@ import { ZONAS } from "../constantes";
 import { ICONOS_CATEGORIAS } from "../iconosCategorias";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+import MisFotosTrabajos from "../componentes/FotosTrabajos";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -668,6 +669,16 @@ export default function MisServicios() {
                 );
               })}
             </div>
+          )}
+
+          {!cargando && !error && (
+            <MisFotosTrabajos
+              onToast={mostrarToast}
+              onSesionVencida={() => {
+                cerrarSesionCompleta();
+                navegar("/login");
+              }}
+            />
           )}
         </main>
 

@@ -229,6 +229,7 @@ const estilos = `
   }
   .menu-avatar-item:hover { background: #f4eeee; }
   .menu-avatar-item.salir { color: #b3261e; }
+  .menu-avatar-item.destacado { color: #570101; font-weight: 700; }
 
   .boton-iniciar-sesion-nav {
     background: #570101;
@@ -499,6 +500,19 @@ export default function BarraNav({ centro = null }) {
                       </div>
                     </div>
                     {errorFoto && <div className="error-foto-menu">{errorFoto}</div>}
+                    <div className="menu-avatar-separador" />
+                    <button className="menu-avatar-item destacado" onClick={() => ir("/subir-problema")}>
+                      + Subir un problema
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/mis-problemas")}>
+                      Mis problemas
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/problemas")}>
+                      Problemas publicados
+                    </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/problemas?vista=citas")}>
+                      Mis citas
+                    </button>
                     <div className="menu-avatar-separador" />
                     <button className="menu-avatar-item" onClick={() => ir("/buscar")}>
                       Buscar trabajadores

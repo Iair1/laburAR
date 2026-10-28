@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Avatar from "./Avatar";
+import { FotosDelTrabajador } from "./FotosTrabajos";
 
 const estilos = `
   .fondo-modal-perfil {
@@ -363,6 +364,12 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
               </div>
             </div>
           )}
+
+          <FotosDelTrabajador
+            userid={trabajador.id}
+            claseSeccion="seccion-perfil"
+            claseTitulo="titulo-seccion-perfil"
+          />
 
           <button className="boton-agendar-perfil" onClick={() => onAgendar?.(trabajador)}>
             Agendar

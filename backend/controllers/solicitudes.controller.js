@@ -36,12 +36,16 @@ const subirSolicitud = async(req, res)=>{
 
 const aceptarSolicitud = async(req, res)=>{
     const id = req.id;
-    const { solicitudid, dia } = req.body;
+    const { solicitudid, dia, hora } = req.body;
     if(!solicitudid /*|| !dia #lo descomento cuando agregue la funcion al front*/) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
+    // hora (opcional): la que elige el trabajador, "HH:MM"
+    if(hora && (!dia || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora))) {
+        return res.status(400).json({ message: "La hora no es válida"});
+    }
     try{
-        const result = await SolicitudesService.aceptarSolicitud(id, solicitudid, dia);
+        const result = await SolicitudesService.aceptarSolicitud(id, solicitudid, dia, hora || null);
         res.status(200).json({ message: "Solicitud aceptada exitosamente", result });
     } catch(error){
         res.status(500).json({ message: error.message });

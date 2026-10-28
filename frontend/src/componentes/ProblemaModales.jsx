@@ -9,6 +9,9 @@ import {
   textoPeriodo,
   textoDiasSemana,
   estadoVisible,
+  horasDeFranja,
+  horasEntre,
+  horaPreferida,
 } from "../problemasDatos";
 
 const estilosModales = `
@@ -28,8 +31,8 @@ const estilosModales = `
   }
   .resumen-confirmar { background: #fcf8f8; border: 1px solid #ecdede; border-radius: 12px; padding: 12px 14px; margin: 0.8rem 0; font-size: 0.84rem; color: #333; line-height: 1.6; text-align: center; }
   .resumen-confirmar strong { color: #570101; }
-  .horario-agendar { font-size: 0.78rem; color: #333; text-align: center; margin: 0 0 0.8rem; }
-  .horario-agendar strong { color: #570101; }
+  .campo-hora-agendar { margin-top: 0.9rem; }
+  .ayuda-hora-agendar { font-size: 0.72rem; color: #666; margin: 4px 0 0 0.4rem; }
   .sin-fechas-agendar { text-align: center; font-size: 0.85rem; color: #555; padding: 1.2rem 0.5rem; }
   @media (max-width: 520px) { .datos-cuando { grid-template-columns: 1fr; } }
 `;
@@ -85,7 +88,7 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
             </>
           ) : estado === "terminada" ? "Fuiste el " : "Tu cita es el "}
           <strong>{fechaLarga(problema.dia)}</strong>
-          {franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
+          {problema.hora ? <> a las <strong>{problema.hora} hs</strong></> : franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
         </div>
       )}
 
@@ -133,47 +136,48 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
 /* Agendar cita: el trabajador elige un día entre los del cliente      */
 /* ------------------------------------------------------------------ */
 
-export function AgendarCitaModal({ problema, onCerrar, onConfirmar }) {
-  const fechas = fechasPosibles(problema);
+/**
+ * Ventana para elegir día y hora (la usan "Agendar cita" y "Aceptar solicitud").
+ *  - fechas: días que se pueden elegir (ya filtrados por período y días de la semana)
+ *  - horas: horas que se pueden elegir ("HH:MM")
+ *  - onConfirmar(dia, hora): si tira error, se muestra en la ventana
+ */
+function ElegirDiaHoraModal({ titulo, subtitulo, detalle, fechas, horas, horaInicial = "", ayudaHora, lugar, textoConfirmar, onCerrar, onConfirmar }) {
   const [dia, setDia] = useState(fechas.length === 1 ? fechas[0] : "");
+  const [hora, setHora] = useState(horas.includes(horaInicial) ? horaInicial : "");
   const [error, setError] = useState("");
   const [procesando, setProcesando] = useState(false);
-  const franja = FRANJAS[problema.franja];
-  const nombreCliente = problema.cliente?.nombre?.split(" ")[0] || "el cliente";
 
   const confirmar = async () => {
     if (!dia) {
       setError("Elegí qué día vas a ir.");
       return;
     }
+    if (!hora) {
+      setError("Elegí a qué hora vas a ir.");
+      return;
+    }
     setError("");
     setProcesando(true);
     try {
-      await onConfirmar(problema, dia);
+      await onConfirmar(dia, hora);
     } catch (err) {
-      setError(err.message || "No se pudo agendar la cita. Probá de nuevo.");
+      setError(err.message || "No se pudo confirmar. Probá de nuevo.");
       setProcesando(false);
     }
   };
 
   return (
-    <Modal etiqueta="Agendar cita" onCerrar={procesando ? undefined : onCerrar} ancho={480}>
+    <Modal etiqueta={titulo} onCerrar={procesando ? undefined : onCerrar} ancho={480}>
       <style>{estilosModales}</style>
-      <h2 className="titulo-modal-grande">Agendar cita</h2>
-      <p className="subtitulo-modal">{problema.titulo}</p>
-      <p className="detalle-modal">
-        Elegí qué día vas a ir. Solo se pueden elegir los días que puso {nombreCliente}.
-      </p>
+      <h2 className="titulo-modal-grande">{titulo}</h2>
+      {subtitulo && <p className="subtitulo-modal">{subtitulo}</p>}
+      <p className="detalle-modal">{detalle}</p>
 
       {fechas.length === 0 ? (
-        <p className="sin-fechas-agendar">Este problema ya no tiene días disponibles.</p>
+        <p className="sin-fechas-agendar">Ya no quedan días disponibles para elegir.</p>
       ) : (
         <>
-          {franja && (
-            <p className="horario-agendar">
-              Horario que pidió: <strong>{franja.etiqueta} ({franja.detalle})</strong>
-            </p>
-          )}
           <Calendario
             modo="unico"
             valor={dia}
@@ -183,21 +187,84 @@ export function AgendarCitaModal({ problema, onCerrar, onConfirmar }) {
               setError("");
             }}
           />
+          <div className="campo-hora-agendar">
+            <label className="etiqueta-modal" htmlFor="hora-agendar">¿A qué hora?</label>
+            <select
+              id="hora-agendar"
+              className="select-modal"
+              value={hora}
+              onChange={(e) => {
+                setHora(e.target.value);
+                setError("");
+              }}
+            >
+              <option value="">Elegí la hora</option>
+              {horas.map((h) => <option key={h} value={h}>{h} hs</option>)}
+            </select>
+            {ayudaHora && <p className="ayuda-hora-agendar">{ayudaHora}</p>}
+          </div>
           {dia && (
             <div className="resumen-confirmar">
               Vas a ir el <strong>{fechaLarga(dia)}</strong>
-              {franja ? <> · {franja.etiqueta} ({franja.detalle})</> : null}
-              <br />
-              en {[problema.barrio, problema.localidad].filter(Boolean).join(", ")}
+              {hora ? <> a las <strong>{hora} hs</strong></> : null}
+              {lugar ? <><br />en {lugar}</> : null}
             </div>
           )}
           {error && <p className="error-modal" role="alert">{error}</p>}
-          <button className="boton-grande-modal" onClick={confirmar} disabled={procesando || !dia}>
-            {procesando ? "Agendando..." : "Confirmar cita"}
+          <button className="boton-grande-modal" onClick={confirmar} disabled={procesando || !dia || !hora}>
+            {procesando ? "Un momento..." : textoConfirmar}
           </button>
         </>
       )}
     </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Agendar cita: el trabajador elige día y hora de los del cliente     */
+/* ------------------------------------------------------------------ */
+
+export function AgendarCitaModal({ problema, onCerrar, onConfirmar }) {
+  const franja = FRANJAS[problema.franja];
+  const nombreCliente = problema.cliente?.nombre?.split(" ")[0] || "el cliente";
+  return (
+    <ElegirDiaHoraModal
+      titulo="Agendar cita"
+      subtitulo={problema.titulo}
+      detalle={`Elegí qué día y a qué hora vas a ir. Solo se pueden elegir los días que puso ${nombreCliente}.`}
+      fechas={fechasPosibles(problema)}
+      horas={horasDeFranja(problema.franja)}
+      ayudaHora={franja ? `${nombreCliente} pidió: ${franja.etiqueta} (${franja.detalle})` : ""}
+      lugar={[problema.barrio, problema.localidad].filter(Boolean).join(", ")}
+      textoConfirmar="Confirmar cita"
+      onCerrar={onCerrar}
+      onConfirmar={(dia, hora) => onConfirmar(problema, dia, hora)}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Aceptar una solicitud que le mandaron directo al trabajador:        */
+/* elige el día dentro del período del cliente y la hora               */
+/* ------------------------------------------------------------------ */
+
+export function AceptarSolicitudModal({ solicitud, onCerrar, onConfirmar }) {
+  const preferida = horaPreferida(solicitud.solicitud);
+  const nombreCliente = solicitud.nombre_completo?.split(" ")[0] || "el cliente";
+  return (
+    <ElegirDiaHoraModal
+      titulo="Aceptar solicitud"
+      subtitulo={`De ${solicitud.nombre_completo || "un cliente"}`}
+      detalle={`Elegí qué día y a qué hora vas a ir, dentro de las fechas que propuso ${nombreCliente} (${textoPeriodo(solicitud.periodo)} · ${textoDiasSemana(solicitud.diassemana)}).`}
+      fechas={fechasPosibles(solicitud)}
+      horas={horasEntre("07:00", "21:00")}
+      horaInicial={preferida || ""}
+      ayudaHora={preferida ? `${nombreCliente} prefiere a las ${preferida} hs` : ""}
+      lugar={solicitud.localidad || ""}
+      textoConfirmar="Aceptar y agendar"
+      onCerrar={onCerrar}
+      onConfirmar={(dia, hora) => onConfirmar(solicitud, dia, hora)}
+    />
   );
 }
 

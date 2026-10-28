@@ -170,7 +170,7 @@ export default function MisProblemas() {
         return (
           <div className="caja-estado-problema agendado">
             <strong>{p.trabajador?.nombre || "Un trabajador"}</strong> va a ir el <strong>{fechaLarga(p.dia)}</strong>
-            {franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
+            {p.hora ? <> a las <strong>{p.hora} hs</strong></> : franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
           </div>
         );
       case "terminada":
@@ -310,7 +310,7 @@ export default function MisProblemas() {
             titulo={cancelandoCita ? "¿Cancelar la cita?" : "¿Borrar la publicación?"}
             texto={
               cancelandoCita
-                ? `Le avisamos a ${problemaCancelando.trabajador?.nombre || "el trabajador"} que no vaya el ${fechaLarga(problemaCancelando.dia)}.`
+                ? `Le avisamos a ${problemaCancelando.trabajador?.nombre || "el trabajador"} que no vaya el ${fechaLarga(problemaCancelando.dia)}${problemaCancelando.hora ? ` a las ${problemaCancelando.hora} hs` : ""}.`
                 : "Los trabajadores ya no lo van a ver."
             }
             textoConfirmar={cancelandoCita ? "Sí, cancelar" : "Sí, borrar"}

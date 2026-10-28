@@ -8,5 +8,6 @@ router.post("/subirImagen", verifyToken,  ImagenesTrabajosController.subirImagen
 router.delete("/eliminarImagen", verifyToken, ImagenesTrabajosController.eliminarImagen)
 router.get("/misImagenes", verifyToken, ImagenesTrabajosController.misImagenes)
 router.put("/cambiarDescripcion", verifyToken, ImagenesTrabajosController.cambiarDescripcion)
+router.get("/imagenesDe/:userid", verifyToken, ImagenesTrabajosController.imagenesDe)
 
 export default router;

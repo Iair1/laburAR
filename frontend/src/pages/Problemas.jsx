@@ -183,9 +183,9 @@ export default function Problemas() {
     setProblemaAgendando(problema);
   };
 
-  const confirmarCita = async (problema, dia) => {
+  const confirmarCita = async (problema, dia, hora) => {
     try {
-      await agendarCita(problema.id, dia);
+      await agendarCita(problema.id, dia, hora);
     } catch (err) {
       if (err.status === 401) {
         setProblemaAgendando(null);
@@ -196,7 +196,7 @@ export default function Problemas() {
       throw err;
     }
     setProblemaAgendando(null);
-    mostrarToast(`¡Cita agendada para el ${fechaLarga(dia)}! Le avisamos a ${problema.cliente?.nombre || "quien lo publicó"}.`);
+    mostrarToast(`¡Cita agendada para el ${fechaLarga(dia)} a las ${hora} hs! Le avisamos a ${problema.cliente?.nombre || "quien lo publicó"}.`);
     await cargar();
     cambiarVista("citas");
   };
@@ -501,7 +501,7 @@ export default function Problemas() {
         {citaCancelando && (
           <ConfirmarModal
             titulo="¿Cancelar la cita?"
-            texto={`La cita del ${fechaLarga(citaCancelando.dia)} se cancela y le avisamos a ${citaCancelando.cliente?.nombre || "el cliente"}.`}
+            texto={`La cita del ${fechaLarga(citaCancelando.dia)}${citaCancelando.hora ? ` a las ${citaCancelando.hora} hs` : ""} se cancela y le avisamos a ${citaCancelando.cliente?.nombre || "el cliente"}.`}
             textoConfirmar="Sí, cancelar"
             peligro
             procesando={procesando}

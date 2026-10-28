@@ -187,7 +187,7 @@ async function busqueda(id) {
     }
 }
 
-const aceptarSolicitud = async(id, solicitudid, dia) => {
+const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
     const client = new Client(config);
     try {
         await client.connect();
@@ -197,11 +197,14 @@ const aceptarSolicitud = async(id, solicitudid, dia) => {
             //  - solicitud dirigida (o vieja, con dirigida en NULL): solo el trabajador al que va dirigida
             //  - problema abierto (dirigida = false): cualquier trabajador menos el que lo publicó
             // diassemana va de Lunes [1] a Domingo [7], igual que ISODOW.
+            // Si elige hora, se agrega al texto como "Hora acordada: 10:00 hs" (no hay columna para la hora).
             result = await client.query(`
                 UPDATE solicitudes
                 SET estado = 'pendiente',
                     trabajadorid = $1,
-                    periodo = ARRAY[$3::date, $3::date]
+                    periodo = ARRAY[$3::date, $3::date],
+                    solicitud = CASE WHEN $4::text IS NULL THEN solicitud
+                                     ELSE solicitud || E'\nHora acordada: ' || $4::text || ' hs' END
                 WHERE id = $2
                   AND estado = 'por revisar'
                   AND $3::date BETWEEN periodo[1] AND periodo[2]
@@ -210,7 +213,7 @@ const aceptarSolicitud = async(id, solicitudid, dia) => {
                         (COALESCE(dirigida, TRUE) = TRUE AND trabajadorid = $1)
                      OR (dirigida = FALSE AND contratadorid <> $1)
                   )
-                RETURNING *`, [id, solicitudid, dia]);
+                RETURNING *`, [id, solicitudid, dia, hora]);
         } else {
             // Sin día (como lo manda hoy "Aceptar solicitud"): solo solicitudes dirigidas, sin tocar el período
             result = await client.query(`
@@ -227,8 +230,13 @@ const aceptarSolicitud = async(id, solicitudid, dia) => {
             const trabajador = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
             const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
             avisotxt=`${trabajador.rows[0]?.nombre_completo || "Un trabajador"} agendó una cita para tu problema
-                        Día: ${fecha}
+                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
                         Problema: ${s.solicitud}`;
+        } else if(dia){
+            const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+            avisotxt=`Su solicitud ha sido aceptada por el trabajador
+                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
+                        Solicitud: ${s.solicitud}`;
         } else {
             avisotxt=`Su solicitud ha sido aceptada por el trabajador
                         Solicitud: ${s.solicitud}

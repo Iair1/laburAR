@@ -51,6 +51,7 @@ export function aProblema(fila) {
     franja: texto.franja,
     barrio: texto.barrio,
     urgencia: texto.urgencia,
+    hora: texto.hora || null, // la que eligió el trabajador al agendar
     categoria: fila.aptitud || "",
     aptitudid: fila.aptitudid ?? null,
     localidad: fila.localidad || "",
@@ -114,10 +115,10 @@ export async function obtenerMisCitas() {
   return (resultado.result || []).filter((fila) => fila.dirigida === false).map(aProblema);
 }
 
-/** El trabajador agenda una cita: elige un día (YYYY-MM-DD) dentro de los que puso el cliente. */
-export async function agendarCita(problemaId, dia) {
+/** El trabajador agenda una cita: elige un día (YYYY-MM-DD) dentro de los que puso el cliente y una hora ("HH:MM"). */
+export async function agendarCita(problemaId, dia, hora) {
   try {
-    const resultado = await pedir("/aceptarSolicitud", "POST", { solicitudid: problemaId, dia });
+    const resultado = await pedir("/aceptarSolicitud", "POST", { solicitudid: problemaId, dia, ...(hora ? { hora } : {}) });
     return resultado.result?.solicitud ? aProblema(resultado.result.solicitud) : null;
   } catch (error) {
     if (error.status === 500 && /no existe|no coincide/i.test(error.message)) {

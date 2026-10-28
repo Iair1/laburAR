@@ -12,10 +12,10 @@
 export const DIAS_CORTOS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export const FRANJAS = {
-  manana: { etiqueta: "Mañana", detalle: "8 a 12 hs" },
-  tarde: { etiqueta: "Tarde", detalle: "13 a 17 hs" },
-  noche: { etiqueta: "Tarde/Noche", detalle: "17 a 21 hs" },
-  todo: { etiqueta: "Cualquier horario", detalle: "8 a 21 hs" },
+  manana: { etiqueta: "Mañana", detalle: "8 a 12 hs", desde: "08:00", hasta: "12:00" },
+  tarde: { etiqueta: "Tarde", detalle: "13 a 17 hs", desde: "13:00", hasta: "17:00" },
+  noche: { etiqueta: "Tarde/Noche", detalle: "17 a 21 hs", desde: "17:00", hasta: "21:00" },
+  todo: { etiqueta: "Cualquier horario", detalle: "8 a 21 hs", desde: "08:00", hasta: "21:00" },
 };
 
 export const URGENCIAS = {
@@ -35,7 +35,7 @@ export const ESTADOS_PROBLEMA = {
 
 /* ---------------- texto del problema ---------------- */
 
-const ETIQUETAS_TEXTO = { Horario: "franja", Barrio: "barrio", Urgencia: "urgencia" };
+const ETIQUETAS_TEXTO = { Horario: "franja", Barrio: "barrio", Urgencia: "urgencia", "Hora acordada": "hora" };
 
 /**
  * Arma el texto que se guarda en solicitudes.solicitud:
@@ -58,7 +58,7 @@ export function armarTextoProblema({ titulo, franja, barrio, urgencia, descripci
 /** Lee un texto armado con armarTextoProblema (o cualquier texto libre). */
 export function leerTextoProblema(texto) {
   const lineas = String(texto || "").split("\n").map((l) => l.trim());
-  const datos = { titulo: "", franja: "", barrio: "", urgencia: "", descripcion: "" };
+  const datos = { titulo: "", franja: "", barrio: "", urgencia: "", hora: "", descripcion: "" };
   if (lineas.length < 2) {
     // Texto libre (ej: solicitudes viejas): el título es el comienzo
     const solo = lineas[0] || "";
@@ -69,11 +69,12 @@ export function leerTextoProblema(texto) {
   datos.titulo = lineas[0];
   const resto = [];
   for (const linea of lineas.slice(1)) {
-    const m = linea.match(/^(Horario|Barrio|Urgencia):\s*(.*)$/);
+    const m = linea.match(/^(Horario|Barrio|Urgencia|Hora acordada):\s*(.*)$/);
     if (m && !datos[ETIQUETAS_TEXTO[m[1]]]) {
       const campo = ETIQUETAS_TEXTO[m[1]];
       if (campo === "franja") datos.franja = Object.keys(FRANJAS).find((k) => m[2].startsWith(FRANJAS[k].etiqueta + " (")) || "";
       else if (campo === "urgencia") datos.urgencia = Object.keys(URGENCIAS).find((k) => URGENCIAS[k].etiqueta === m[2]) || "";
+      else if (campo === "hora") datos.hora = horaAcordada(linea) || "";
       else datos.barrio = m[2];
     } else {
       resto.push(linea);
@@ -81,6 +82,36 @@ export function leerTextoProblema(texto) {
   }
   datos.descripcion = resto.join("\n").trim();
   return datos;
+}
+
+/* ---------------- horas ---------------- */
+
+// El backend agrega "Hora acordada: 10:00 hs" al texto cuando el trabajador elige la hora
+export function horaAcordada(texto) {
+  const m = String(texto || "").match(/Hora acordada:\s*(\d{2}:\d{2})/);
+  return m ? m[1] : null;
+}
+
+// Las solicitudes que se mandan desde "Agendar" empiezan con "Horario preferido: 17:00 hrs."
+export function horaPreferida(texto) {
+  const m = String(texto || "").match(/Horario preferido:\s*(\d{1,2}):(\d{2})/i);
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : null;
+}
+
+/** Horas cada 30 minutos entre "08:00" y "12:00" (incluidas). */
+export function horasEntre(desde, hasta, paso = 30) {
+  const aMinutos = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const lista = [];
+  for (let m = aMinutos(desde); m <= aMinutos(hasta); m += paso) {
+    lista.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  }
+  return lista;
+}
+
+/** Horas que el trabajador puede elegir dentro del horario que pidió el cliente. */
+export function horasDeFranja(franja) {
+  const f = FRANJAS[franja] || FRANJAS.todo;
+  return horasEntre(f.desde, f.hasta);
 }
 
 /* ---------------- fechas ---------------- */

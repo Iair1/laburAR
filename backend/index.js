@@ -13,6 +13,7 @@ import MensajesRouter from "./routers/mensajes.router.js"
 import HistorialBusquedaRouter from "./routers/historial_busqueda.router.js"
 import HistorialRouter from "./routers/historial.router.js"
 import ReseñaRouter from "./routers/reseña.router.js"
+import ImagenesTrabajosRouter from "./routers/imagenes_trabajos.router.js"
 
 
 
@@ -56,6 +57,7 @@ app.use("/api/mensajes", MensajesRouter);
 app.use("/api/historial_busqueda", HistorialBusquedaRouter);
 app.use("/api/historial", HistorialRouter);
 app.use("/api/reseñas", ReseñaRouter);
+app.use("/api/imagenes_trabajos", ImagenesTrabajosRouter);
 /*
 app.use("/api/tdr", TdrRouter);
 app.use("/api/trabajos", TrabajosRouter);

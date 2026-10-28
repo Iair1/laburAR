@@ -239,7 +239,7 @@ export function TarjetaProblema({ problema, vista = "trabajador", acciones = nul
         <li className="item-meta-tarjeta">
           {ICONOS.calendario}
           {hayCita
-            ? <span><strong>{fechaLarga(problema.dia)}</strong></span>
+            ? <span><strong>{fechaLarga(problema.dia)}</strong>{problema.hora ? ` · ${problema.hora} hs` : ""}</span>
             : problema.periodo?.[0]
               ? `${textoPeriodo(problema.periodo)} · ${textoDiasSemana(problema.diassemana)}`
               : "Fechas sin definir"}

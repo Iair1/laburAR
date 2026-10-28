@@ -1,13 +1,14 @@
 import ImagenesTrabajosService from "../services/imagenes_trabajos.service.js"
 
-const subirImagen = async(req, res)=>{
+const subirImagenTrabajo = async(req, res)=>{
+    console.log("Al controller llego")
     const id = req.id
     const{imagen, descripcion} = req.body
     if(!imagen){
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
     try{
-        const result = await ImagenesTrabajosService.subirImagen(id, imagen, descripcion)
+        const result = await ImagenesTrabajosService.subirImagenTrabajo(id, imagen, descripcion)
         res.status(201).json({ message: "Imagen agregada exitosamente", result});
     } catch(error){
         res.status(500).json({ message: error.message });
@@ -55,7 +56,7 @@ const cambiarDescripcion = async(req, res)=>{
 
 
 const ImagenesTrabajosController = {
-    subirImagen,
+    subirImagenTrabajo,
     eliminarImagen,
     misImagenes,
     cambiarDescripcion

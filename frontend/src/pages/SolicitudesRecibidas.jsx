@@ -7,6 +7,9 @@ import {
   aceptarSolicitud,
   rechazarSolicitud,
 } from "../api";
+import { AceptarSolicitudModal } from "../componentes/ProblemaModales";
+import { estilosProblemas } from "../estilosProblemas";
+import { textoPeriodo, textoDiasSemana, fechaLarga, fechasPosibles } from "../problemasDatos";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,6 +122,8 @@ export default function SolicitudesRecibidas() {
   const [error, setError] = useState("");
   const [idsEnProceso, setIdsEnProceso] = useState([]);
   const [toast, setToast] = useState("");
+  // Solicitud que se está aceptando (se abre la ventana para elegir día y hora)
+  const [solicitudAceptando, setSolicitudAceptando] = useState(null);
 
   useEffect(() => {
     if (!usuario) {
@@ -148,14 +153,27 @@ export default function SolicitudesRecibidas() {
     );
   };
 
-  const manejarAceptar = async (solicitud) => {
+  // Aceptar: el trabajador elige el día (dentro del período del cliente) y la hora.
+  // Si el período ya pasó, se acepta como antes (sin día).
+  const manejarAceptar = async (solicitud, dia, hora) => {
+    if (!dia && fechasPosibles(solicitud).length > 0) {
+      setSolicitudAceptando(solicitud);
+      return;
+    }
     marcarEnProceso(solicitud.id, true);
     try {
-      await aceptarSolicitud(solicitud.id);
+      await aceptarSolicitud(solicitud.id, dia, hora);
       setSolicitudes((prev) => prev.filter((s) => s.id !== solicitud.id));
-      setToast(`Aceptaste la solicitud de ${solicitud.nombre_completo}`);
-      setTimeout(() => setToast(""), 3000);
+      setSolicitudAceptando(null);
+      setToast(
+        dia
+          ? `Aceptaste la solicitud de ${solicitud.nombre_completo}: ${fechaLarga(dia)} a las ${hora} hs`
+          : `Aceptaste la solicitud de ${solicitud.nombre_completo}`
+      );
+      setTimeout(() => setToast(""), 3500);
     } catch (err) {
+      // Con la ventana abierta, el error se muestra adentro
+      if (dia) throw err;
       setError(err.message || "No se pudo aceptar la solicitud.");
     } finally {
       marcarEnProceso(solicitud.id, false);
@@ -179,6 +197,7 @@ export default function SolicitudesRecibidas() {
   return (
     <>
       <style>{estilos}</style>
+      <style>{estilosProblemas}</style>
       <div className="pagina-solicitudes">
         <BarraNav />
         <div className="contenido-solicitudes">
@@ -211,7 +230,9 @@ export default function SolicitudesRecibidas() {
                     </div>
                     <p className="texto-solicitud">{s.solicitud}</p>
                     <div className="meta-solicitud">
-                      {s.periodo && <span className="chip-meta-solicitud">📅 {s.periodo}</span>}
+                      {s.periodo && (
+                        <span className="chip-meta-solicitud">📅 {textoPeriodo(s.periodo) || String(s.periodo)} · {textoDiasSemana(s.diassemana)}</span>
+                      )}
                       {s.aptitud && <span className="chip-meta-solicitud">{s.aptitud}</span>}
                       {s.aptitud_especifica && <span className="chip-meta-solicitud">{s.aptitud_especifica}</span>}
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
@@ -238,6 +259,13 @@ export default function SolicitudesRecibidas() {
             </div>
           )}
         </div>
+        {solicitudAceptando && (
+          <AceptarSolicitudModal
+            solicitud={solicitudAceptando}
+            onCerrar={() => setSolicitudAceptando(null)}
+            onConfirmar={manejarAceptar}
+          />
+        )}
         {toast && <div className="toast-solicitudes">{toast}</div>}
       </div>
     </>

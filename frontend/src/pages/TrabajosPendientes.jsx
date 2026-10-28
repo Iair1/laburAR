@@ -5,6 +5,7 @@ import { obtenerSesionUsuario } from "../sesion";
 import {
   trabajosPendientes,
 } from "../api";
+import { textoPeriodo, horaAcordada } from "../problemasDatos";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -209,7 +210,8 @@ export default function SolicitudesRecibidas() {
                     </div>
                     <p className="texto-solicitud">{s.solicitud}</p>
                     <div className="meta-solicitud">
-                      {s.periodo && <span className="chip-meta-solicitud">📅 {s.periodo}</span>}
+                      {s.periodo && <span className="chip-meta-solicitud">📅 {textoPeriodo(s.periodo) || String(s.periodo)}</span>}
+                      {horaAcordada(s.solicitud) && <span className="chip-meta-solicitud">🕐 {horaAcordada(s.solicitud)} hs</span>}
                       {s.aptitud && <span className="chip-meta-solicitud">{s.aptitud}</span>}
                       {s.aptitud_especifica && <span className="chip-meta-solicitud">{s.aptitud_especifica}</span>}
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}

@@ -42,7 +42,7 @@ const misImagenes = async(req, res)=>{
 const cambiarDescripcion = async(req, res)=>{
     const id = req.id
     const{imagen, descripcion} = req.body
-    if(!imagen, !descripcion){
+    if(!imagen || !descripcion){
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
     try{
@@ -55,7 +55,22 @@ const cambiarDescripcion = async(req, res)=>{
 
 
 
+// Fotos de los trabajos de otro usuario (para mostrarlas en su perfil)
+const imagenesDe = async(req, res)=>{
+    const userid = Number(req.params.userid)
+    if(!Number.isInteger(userid) || userid <= 0){
+        return res.status(400).json({ message: "Usuario inválido"});
+    }
+    try{
+        const result = await ImagenesTrabajosService.misImagenes(userid)
+        res.status(200).json({ message: "Imagenes encontradas exitosamente", result});
+    } catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const ImagenesTrabajosController = {
+    imagenesDe,
     subirImagenTrabajo,
     eliminarImagen,
     misImagenes,

@@ -17,13 +17,14 @@ import MisServicios from "./pages/MisServicios"
 import SubirProblema from "./pages/SubirProblema"
 import Problemas from "./pages/Problemas"
 import MisProblemas from "./pages/MisProblemas"
+import Avisos from "./pages/Avisos"
 
 function App() {
   return (
     <RegistroProvider>
       <Routes>
         
-        <Route path="/" element={<PaginaInicio />} />
+        <Route path="/" element={<Avisos />} />
         <Route path="/login" element={<Login />} />
         <Route path="/paso1" element={<Paso1 />} />
         <Route path="/paso2" element={<Paso2 />} />

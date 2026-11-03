@@ -34,6 +34,10 @@ const pruebaChat= async(req, res)=>{
         const result = await PruebaChatService.probar(prompt)
         res.status(201).json({message: "Mensaje exitoso", result})
     }catch(error){
+        if(error.message.includes("Server unavailable.Please visit again later")){
+            res.status(503).json({message: "Server unavailable.Please visit again later."})
+            return
+        }
         res.status(500).json({message: error.message})
     }
 }

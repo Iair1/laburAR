@@ -539,3 +539,21 @@ export const iniciarSesionConGoogle = async (credential) => {
 
   return resultado;
 };
+
+const API_URL_AVISOS = import.meta.env.VITE_API_URL_AVISOS || (import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api/avisos"
+  : "/api/avisos");
+
+export const mandarAviso = async (canal, mensaje) => {
+    const respuesta = await fetch(API_URL_AVISOS, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"},
+      body: JSON.stringify({ canal, mensaje }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "Error al mandar el aviso");
+    }
+    return resultado;
+}

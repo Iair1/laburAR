@@ -92,28 +92,25 @@ app.get("/config", (req, res) => {
   });
 });
 
-app.post("/avisos", async (req, res) => {
-  const texto = "ESTOY PROBANDO, PROBANDO, PROBANDO"
+app.post("/api/avisos", async (req, res) => {
+  const { canal, mensaje } = req.body ?? {};
 
-  if (
-    typeof texto !== "string" ||
-    !texto.trim() ||
-    texto.length > 500
-  ) {
-    return res.status(400).json({
-      error: "Enviá un texto de entre 1 y 500 caracteres.",
-    });
+  if (typeof canal !== "string" || !/^[a-zA-Z0-9_\-=@,.;]+$/.test(canal) || canal.length > 164) {
+    return res.status(400).json({ error: "Nombre de canal inválido." });
+  }
+  if (typeof mensaje !== "string" || !mensaje.trim() || mensaje.length > 500) {
+    return res.status(400).json({ error: "Enviá un mensaje de entre 1 y 500 caracteres." });
   }
 
   const aviso = {
     id: randomUUID(),
-    texto: texto.trim(),
+    texto: mensaje.trim(),
     fecha: new Date().toISOString(),
   };
 
   try {
     // Publicamos el aviso para los navegadores suscritos.
-    await pusher.trigger("avisos", "nuevo-aviso", aviso);
+    await pusher.trigger(canal, "nuevo-aviso", aviso);
 
     // Respondemos a quien hizo el POST.
     res.json({ publicado: true, aviso });

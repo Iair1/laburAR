@@ -77,6 +77,7 @@ export const estilosProblemas = `
     margin: -4px 0 12px;
   }
   .persona-tarjeta strong { color: #1a1a1a; }
+  .persona-tarjeta .puntaje-persona { color: #b07a00; font-weight: 700; }
   .persona-tarjeta.cita { background: #f1f9f2; border-color: #b7dfba; color: #1e5e22; }
   .persona-tarjeta.cita strong { color: #1e5e22; }
 

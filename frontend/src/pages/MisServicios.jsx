@@ -8,8 +8,12 @@ import {
   eliminarServicio,
   obtenerMiPerfil,
   cambiarDatos,
+  obtenerMisEspecialidades,
+  obtenerTodasLasEspecialidades,
 } from "../api";
-import { ZONAS } from "../constantes";
+import Especialidades from "../componentes/Especialidades";
+import SelectorZona from "../componentes/SelectorZona";
+import { normalizarZona } from "../zonas";
 import { ICONOS_CATEGORIAS } from "../iconosCategorias";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -461,12 +465,22 @@ export default function MisServicios() {
       ]);
       setServicios(misServicios);
       setPerfil(miPerfil);
+      cargarEspecialidades();
     } catch (err) {
       manejarError(err, setError);
     } finally {
       setCargando(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manejarError]);
+
+  // Especialidades de cada servicio (y las que ya existen, para sugerir)
+  const [especialidades, setEspecialidades] = useState([]);
+  const [todasEspecialidades, setTodasEspecialidades] = useState([]);
+  const cargarEspecialidades = useCallback(() => {
+    obtenerMisEspecialidades().then(setEspecialidades).catch(() => setEspecialidades([]));
+    obtenerTodasLasEspecialidades().then(setTodasEspecialidades).catch(() => setTodasEspecialidades([]));
+  }, []);
 
   useEffect(() => {
     if (!usuario) {
@@ -513,7 +527,7 @@ export default function MisServicios() {
     : [];
 
   const empezarEdicionZona = () => {
-    setZona(ZONAS.includes(perfil?.localidad) ? perfil.localidad : "");
+    setZona(normalizarZona(perfil?.localidad));
     setDias(diasDelPerfil);
     setErrorZona("");
     setEditandoZona(true);
@@ -595,10 +609,14 @@ export default function MisServicios() {
                 </div>
               ) : (
                 <div className="form-zona">
-                  <select className="select-servicio" value={zona} onChange={(e) => setZona(e.target.value)} aria-label="Zona">
-                    <option value="">Elegí una zona</option>
-                    {ZONAS.map((z) => <option key={z} value={z}>{z}</option>)}
-                  </select>
+                  <SelectorZona
+                    valor={{ zona, barrio: "" }}
+                    onCambio={(l) => setZona(l.zona)}
+                    conBarrio={false}
+                    claseBoton="select-servicio"
+                    placeholder="Elegí una zona"
+                    ariaLabel="Zona"
+                  />
                   <div className="chips-dias-editar">
                     {DIAS.map((d) => (
                       <button
@@ -661,6 +679,16 @@ export default function MisServicios() {
                     <p className={`descripcion-servicio ${s.descripcion ? "" : "vacia"}`}>
                       {s.descripcion || "Sin descripción. Agregá una para que los clientes sepan qué hacés."}
                     </p>
+                    <Especialidades
+                      servicio={s}
+                      especialidades={especialidades.filter((e) => e.usuario_aptitudid === s.usuario_aptitudid)}
+                      sugerenciasBase={todasEspecialidades.filter((e) => e.aptitudid === s.id).map((e) => e.aptitud_especifica)}
+                      onCambio={cargarEspecialidades}
+                      onSesionVencida={() => {
+                        cerrarSesionCompleta();
+                        navegar("/login");
+                      }}
+                    />
                     <div className="acciones-servicio">
                       <button className="boton-secundario" onClick={() => setServicioEditando(s)}>Editar</button>
                       <button className="boton-peligro" onClick={() => setServicioEliminando(s)}>Eliminar</button>

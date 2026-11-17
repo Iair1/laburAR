@@ -6,14 +6,10 @@ import {
   guardarSesionUsuario,
   iniciarSesionConGoogleSimulado,
 } from "../sesion";
+import SelectorZona from "../componentes/SelectorZona";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
 
-const LOCALIDADES = [
-  "CABA", "GBA Norte", "GBA Sur", "GBA Oeste", "Córdoba Capital",
-  "Rosario", "Mendoza Capital", "La Plata", "Mar del Plata", "Tucumán",
-  "Salta Capital", "Santa Fe Capital", "Neuquén Capital", "Bahía Blanca",
-];
 
 const estilos = `
   * { box-sizing: border-box; }
@@ -441,16 +437,16 @@ export default function Paso1() {
             onChange={(e) => setCodigoPostal(e.target.value)}
           />
 
-          <select
-            className="select-auth"
-            value={localidad}
-            onChange={(e) => setLocalidad(e.target.value)}
-          >
-            <option value="">LOCALIDAD</option>
-            {LOCALIDADES.map((loc) => (
-              <option key={loc} value={loc}>{loc}</option>
-            ))}
-          </select>
+          <div className="campo-zona-auth">
+            <SelectorZona
+              valor={{ zona: localidad, barrio: "" }}
+              onCambio={(l) => setLocalidad(l.zona)}
+              conBarrio={false}
+              claseBoton="select-auth"
+              placeholder="ZONA (LOCALIDAD)"
+              ariaLabel="Zona donde vivís"
+            />
+          </div>
 
           {!registradoConGoogle && (
             <>

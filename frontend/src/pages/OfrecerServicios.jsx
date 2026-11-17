@@ -11,6 +11,8 @@ import {
   TIPOS_FOTO_PERFIL,
 } from "../api";
 import Avatar from "../componentes/Avatar";
+import SelectorZona from "../componentes/SelectorZona";
+import { normalizarZona } from "../zonas";
 import fondo from "../assets/fondo.png"; 
 
 const estilos = `
@@ -171,11 +173,6 @@ const CATEGORIAS = [
   "Herrería", "Cerrajería", "Informática", "Aire acondicionado", "Soldadura",
 ];
 
-const ZONAS = [
-  "CABA", "GBA Norte", "GBA Sur", "GBA Oeste", "Córdoba Capital",
-  "Rosario", "Mendoza Capital", "La Plata", "Mar del Plata", "Tucumán",
-  "Salta Capital", "Santa Fe Capital", "Neuquén Capital", "Bahía Blanca",
-];
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -227,7 +224,7 @@ export default function OfrecerServicios() {
     obtenerMiPerfil()
       .then((perfil) => {
         if (cancelado || !perfil) return;
-        if (ZONAS.includes(perfil.localidad)) setZona((z) => z || perfil.localidad);
+        if (normalizarZona(perfil.localidad)) setZona((z) => z || normalizarZona(perfil.localidad));
         if (Array.isArray(perfil.disponibilidad) && perfil.disponibilidad.some(Boolean)) {
           setDiasDisponibles((d) => (d.length ? d : DIAS.filter((_, i) => perfil.disponibilidad[i])));
         }
@@ -408,12 +405,14 @@ export default function OfrecerServicios() {
             <div className="fila-dos">
               <div className="campo">
                 <label className="etiqueta-campo">Zona de cobertura</label>
-                <select className="select-ofrecer" value={zona} onChange={(e) => setZona(e.target.value)}>
-                  <option value="">Elegí una zona</option>
-                  {ZONAS.map((z) => (
-                    <option key={z} value={z}>{z}</option>
-                  ))}
-                </select>
+                <SelectorZona
+                  valor={{ zona, barrio: "" }}
+                  onCambio={(l) => setZona(l.zona)}
+                  conBarrio={false}
+                  claseBoton="select-ofrecer"
+                  placeholder="Elegí una zona"
+                  ariaLabel="Zona de cobertura"
+                />
               </div>
               <div className="campo">
                 <label className="etiqueta-campo">Cobro por hora ($)</label>

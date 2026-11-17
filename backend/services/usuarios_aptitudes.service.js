@@ -64,7 +64,7 @@ async function misAptitudes(id) {
         // cual sea el tipo de usuarios.cobro_por_hora; el front los convierte a número.
         const result = columnasServicio
             ? await client.query(`
-                SELECT DISTINCT ON (a.aptitud) a.aptitud, a.id,
+                SELECT DISTINCT ON (a.aptitud) a.aptitud, a.id, ua.id AS usuario_aptitudid,
                     COALESCE(ua.cobro_por_hora::text, NULLIF(u.cobro_por_hora::text, '')) AS cobro_por_hora,
                     COALESCE(ua.descripcion, u.sobre_mi::text) AS descripcion,
                     ua.anios_experiencia
@@ -75,7 +75,7 @@ async function misAptitudes(id) {
                 ORDER BY a.aptitud;
             `, [id])
             : await client.query(`
-                SELECT a.aptitud, a.id
+                SELECT a.aptitud, a.id, ua.id AS usuario_aptitudid
                 FROM aptitudes a INNER JOIN usuarios_aptitudes ua ON a.id = ua.aptitudid
                 WHERE ua.userid = $1;
             `, [id]);

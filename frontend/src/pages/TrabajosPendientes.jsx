@@ -5,7 +5,10 @@ import { obtenerSesionUsuario } from "../sesion";
 import {
   trabajosPendientes,
 } from "../api";
-import { textoPeriodo, horaAcordada } from "../problemasDatos";
+import { textoPeriodo, normalizarPeriodo, leerTextoSolicitud, FRANJAS } from "../problemasDatos";
+import Avatar from "../componentes/Avatar";
+import AccionesCita from "../componentes/AccionesCita";
+import { usePendientesResenas } from "../usePendientesResenas";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,7 +65,8 @@ const estilos = `
   }
   .nombre-contratador { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; }
   .puntuacion-contratador { font-size: 0.75rem; color: #b8860b; font-weight: 600; }
-  .texto-solicitud { font-size: 0.85rem; color: #333; margin: 6px 0 8px; }
+  .texto-solicitud { font-size: 0.85rem; color: #333; margin: 6px 0 8px; white-space: pre-line; }
+  .titulo-texto-solicitud { display: block; font-weight: 700; color: #1a1a1a; margin-bottom: 2px; }
   .meta-solicitud {
     display: flex;
     flex-wrap: wrap;
@@ -112,6 +116,7 @@ const estilos = `
 export default function SolicitudesRecibidas() {
   const navegar = useNavigate();
   const usuario = obtenerSesionUsuario();
+  const pendientesResenas = usePendientesResenas(Boolean(usuario));
 
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -194,13 +199,11 @@ export default function SolicitudesRecibidas() {
             <div className="estado-solicitudes">No te falta ningun trabajo.</div>
           ) : (
             <div className="lista-solicitudes">
-              {solicitudes.map((s) => (
+              {solicitudes.map((s) => {
+                const texto = leerTextoSolicitud(s.solicitud);
+                return (
                 <div className="tarjeta-solicitud" key={s.id}>
-                  <img
-                    className="avatar-solicitud"
-                    src={s.foto_perfil || "https://cdn-icons-png.flaticon.com/128/149/149071.png"}
-                    alt={s.nombre_completo}
-                  />
+                  <Avatar className="avatar-solicitud" src={s.foto_perfil} nombre={s.nombre_completo} tamano={56} />
                   <div className="cuerpo-solicitud">
                     <div className="encabezado-solicitud">
                       <span className="nombre-contratador">{s.nombre_completo}</span>
@@ -208,18 +211,32 @@ export default function SolicitudesRecibidas() {
                         <span className="puntuacion-contratador">★ {Number(s.puntuacion_contratador).toFixed(1)}</span>
                       )}
                     </div>
-                    <p className="texto-solicitud">{s.solicitud}</p>
+                    <p className="texto-solicitud">
+                      {texto.titulo && <span className="titulo-texto-solicitud">{texto.titulo}</span>}
+                      {texto.descripcion}
+                    </p>
                     <div className="meta-solicitud">
                       {s.periodo && <span className="chip-meta-solicitud">📅 {textoPeriodo(s.periodo) || String(s.periodo)}</span>}
-                      {horaAcordada(s.solicitud) && <span className="chip-meta-solicitud">🕐 {horaAcordada(s.solicitud)} hs</span>}
+                      {texto.horaAcordada && <span className="chip-meta-solicitud">🕐 {texto.horaAcordada} hs</span>}
+                      {texto.barrio && <span className="chip-meta-solicitud">📍 {texto.barrio}</span>}
+                      {!texto.horaAcordada && FRANJAS[texto.franja] && <span className="chip-meta-solicitud">{FRANJAS[texto.franja].etiqueta}</span>}
                       {s.aptitud && <span className="chip-meta-solicitud">{s.aptitud}</span>}
                       {s.aptitud_especifica && <span className="chip-meta-solicitud">{s.aptitud_especifica}</span>}
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
                     </div>
-                   
+                    <AccionesCita
+                      otro={{ id: s.contratadorid, nombre: s.nombre_completo }}
+                      solicitudid={s.id}
+                      dia={normalizarPeriodo(s.periodo)[0]}
+                      estado={s.estado}
+                      pendiente={pendientesResenas.find((x) => x.trabajo === s.id) || null}
+                      rolOtro="cliente"
+                      onTerminado={cargarSolicitudes}
+                    />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

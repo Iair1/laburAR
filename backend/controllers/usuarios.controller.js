@@ -117,7 +117,17 @@ const miPerfil = async(req, res)=>{
     }
 }
 
+const misNotificaciones = async(req, res)=>{
+    try{
+        const result = await UsuariosService.misNotificaciones(req.id)
+        res.status(200).json({ message: "Notificaciones", result })
+    }catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const UsuariosController={
+    misNotificaciones,
     crearCuenta,
     iniciarSesion,
     cambiarDato,

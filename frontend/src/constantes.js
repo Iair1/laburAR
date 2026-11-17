@@ -1,12 +1,7 @@
 // Listados compartidos entre páginas.
 
-// Debe coincidir con las localidades que se guardan en la tabla "usuarios"
-// (mismo listado que usan OfrecerServicios.jsx y Paso1.jsx).
-export const ZONAS = [
-  "CABA", "GBA Norte", "GBA Sur", "GBA Oeste", "Córdoba Capital",
-  "Rosario", "Mendoza Capital", "La Plata", "Mar del Plata", "Tucumán",
-  "Salta Capital", "Santa Fe Capital", "Neuquén Capital", "Bahía Blanca",
-];
+// Las zonas (y sus barrios) viven en zonas.js: es el único lugar donde se definen.
+export { ZONAS } from "./zonas";
 
 // Pasa a minúsculas y saca los acentos, para comparar textos sin importar
 // cómo los escribió el usuario ("Jardineria" == "Jardinería").

@@ -12,6 +12,12 @@ import {
   rechazarSolicitud,
 } from "../api";
 import { ZONAS, normalizarTexto } from "../constantes";
+import { AceptarSolicitudModal } from "../componentes/ProblemaModales";
+import AccionesCita from "../componentes/AccionesCita";
+import { estilosProblemas } from "../estilosProblemas";
+import { fechasPosibles, fechaLarga } from "../problemasDatos";
+import SelectorZona from "../componentes/SelectorZona";
+import { lugarDesdeParametros, textoLugar } from "../zonas";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -647,12 +653,13 @@ function PaginaBusqueda() {
   }, []);
 
   const [consulta, setConsulta] = useState(parametros.get("q") || "");
-  const zonaInicial = ZONAS.includes(parametros.get("zona")) ? parametros.get("zona") : "";
+  // Zona (y barrio, opcional) elegidos: vienen de la URL (?zona=CABA&barrio=Palermo)
+  const [lugar, setLugar] = useState(() => lugarDesdeParametros(parametros));
+  const filtroZona = lugar.zona;
 
   const [filtroCategoria, setFiltroCategoria] = useState(parametros.get("categoria") || "");
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
-  const [filtroZona, setFiltroZona] = useState(zonaInicial);
   const [ordenCalificacion, setOrdenCalificacion] = useState(""); // "" | "mayor" | "menor"
   const [filtroFecha, setFiltroFecha] = useState(""); // "" | "hoy" | "semana" | "3dias" | "manual"
   const [fechaManual, setFechaManual] = useState("");
@@ -692,8 +699,10 @@ function PaginaBusqueda() {
     setCargando(true);
     setError("");
     try {
-      const zonas = zona ? [zona] : ZONAS;
-      const resultado = await buscarTrabajadores(zonas);
+      // Sin zona elegida se busca en todas (lista vacía = sin filtro de zona).
+      // Si el servidor todavía es el viejo (que con lista vacía no trae nada), se reintenta con todas.
+      let resultado = await buscarTrabajadores(zona ? [zona] : []);
+      if (!zona && Array.isArray(resultado) && resultado.length === 0) resultado = await buscarTrabajadores(ZONAS);
       setTrabajadoresCrudos(Array.isArray(resultado) ? resultado : []);
     } catch (err) {
       if (err.status === 401) {
@@ -760,7 +769,7 @@ function PaginaBusqueda() {
     setFiltroCategoria("");
     setPrecioMin("");
     setPrecioMax("");
-    setFiltroZona("");
+    setLugar({ zona: "", barrio: "" });
     setOrdenCalificacion("");
     setFiltroFecha("");
     setFechaManual("");
@@ -802,13 +811,22 @@ function PaginaBusqueda() {
     );
   };
 
-  const manejarAceptar = async (s) => {
+  // Aceptar: el trabajador elige día (dentro del período del cliente) y hora.
+  // Si el período ya pasó, se acepta como antes (sin día).
+  const [solicitudAceptando, setSolicitudAceptando] = useState(null);
+  const manejarAceptar = async (s, dia, hora) => {
+    if (!dia && fechasPosibles(s).length > 0) {
+      setSolicitudAceptando(s);
+      return;
+    }
     marcarEnProceso(s.id, true);
     try {
-      await aceptarSolicitud(s.id);
+      await aceptarSolicitud(s.id, dia, hora);
       setSolicitudes((prev) => prev.filter((x) => x.id !== s.id));
-      mostrarToast(`Aceptaste la solicitud de ${s.nombre_completo}`);
+      setSolicitudAceptando(null);
+      mostrarToast(dia ? `Aceptaste la solicitud de ${s.nombre_completo}: ${fechaLarga(dia)} a las ${hora} hs` : `Aceptaste la solicitud de ${s.nombre_completo}`);
     } catch (err) {
+      if (dia) throw err; // con la ventana abierta, el error se muestra adentro
       setErrorSolicitudes(err.message || "No se pudo aceptar la solicitud.");
     } finally {
       marcarEnProceso(s.id, false);
@@ -964,17 +982,15 @@ function PaginaBusqueda() {
         onChange={(e) => setConsulta(e.target.value)}
         onKeyDown={manejarTecla}
       />
-      <select
-        className="select-barrio-nav"
-        value={filtroZona}
-        onChange={(e) => setFiltroZona(e.target.value)}
-        aria-label="Barrio o zona"
-      >
-        <option value="">BARRIO</option>
-        {ZONAS.map((z) => (
-          <option key={z} value={z}>{z}</option>
-        ))}
-      </select>
+<SelectorZona
+        valor={lugar}
+        onCambio={setLugar}
+        claseBoton="select-barrio-nav"
+        textoTodas="BARRIO"
+        placeholder="BARRIO"
+        ariaLabel="Barrio o zona"
+        alinearDerecha
+      />
     </div>
   );
 
@@ -1065,7 +1081,7 @@ function PaginaBusqueda() {
       <>
         <p className="resumen-resultados">
           <strong>{resultados.length}</strong> trabajador{resultados.length === 1 ? "" : "es"} encontrado{resultados.length === 1 ? "" : "s"}
-          {filtroZona ? <> en <strong>{filtroZona}</strong></> : ""}
+          {filtroZona ? <> en <strong>{filtroZona}</strong>{lugar.barrio ? <> · atienden toda la zona, incluido {lugar.barrio}</> : null}</> : ""}
         </p>
 
         {resultados.length === 0 ? (
@@ -1186,7 +1202,8 @@ function PaginaBusqueda() {
                     {s.trabajo && <li className="item-meta-tarjeta">{Iconos.reloj}{s.trabajo}</li>}
                   </ul>
 
-                  <div className="acciones-tarjeta">
+                  <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
+                  <div className="acciones-tarjeta" style={{ marginTop: 10 }}>
                     <button className="boton-ver-perfil" onClick={() => manejarRechazar(s)} disabled={enProceso}>
                       Rechazar
                     </button>
@@ -1231,7 +1248,7 @@ function PaginaBusqueda() {
                     {precioPromedio != null ? `$${precioPromedio.toLocaleString("es-AR")}` : "—"}
                   </div>
                   <div className="detalle-resumen">
-                    Precio promedio por hora {filtroZona ? `en ${filtroZona}` : "cerca de tu zona"}
+                    Precio promedio por hora {filtroZona ? `en ${textoLugar(filtroZona, lugar.barrio)}` : "en todas las zonas"}
                   </div>
                   <div className="separador-resumen" />
                   <p className="ayuda-resumen">Ajustá los filtros para obtener un resultado más acorde a tus necesidades</p>
@@ -1309,6 +1326,16 @@ function PaginaBusqueda() {
           </div>
         </div>
 
+        {solicitudAceptando && (
+          <>
+            <style>{estilosProblemas}</style>
+            <AceptarSolicitudModal
+              solicitud={solicitudAceptando}
+              onCerrar={() => setSolicitudAceptando(null)}
+              onConfirmar={manejarAceptar}
+            />
+          </>
+        )}
         {trabajadorParaVer && (
           <PerfilTrabajadorModal
             trabajador={trabajadorParaVer}

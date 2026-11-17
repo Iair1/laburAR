@@ -213,6 +213,9 @@ export function TarjetaProblema({ problema, vista = "trabajador", acciones = nul
           <span>
             {vista === "cita" ? "Cita con " : "Publicado por "}
             <strong>{problema.cliente.nombre}</strong>
+            {Number(problema.cliente.puntuacion) > 0 && (
+              <span className="puntaje-persona" title="Puntaje como cliente"> · ★ {Number(problema.cliente.puntuacion).toFixed(1)}</span>
+            )}
           </span>
         </div>
       )}

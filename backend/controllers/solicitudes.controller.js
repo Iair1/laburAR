@@ -100,16 +100,21 @@ const serviciosPendientes = async(req, res)=>{
     }
 }
 
-/*const terminarTrabajo = async(req, res)=>{
+// Cualquiera de los dos marca el trabajo como terminado (desde el día de la cita).
+// Después los dos pueden dejarse una reseña.
+const terminarTrabajo = async(req, res)=>{
     const id = req.id;
     const { solicitudid } = req.body;
+    if(!solicitudid) {
+        return res.status(400).json({ message: "Debe completar todos los campos"});
+    }
     try{
         const result = await SolicitudesService.terminarTrabajo(id, solicitudid);
-        res.status(201).json({ message: result.message, resultado: result.resultado});
+        res.status(200).json({ message: "Trabajo terminado", result});
     } catch(error){
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
-}*/
+}
 const cancelarTrabajo = async(req, res)=>{
     const id = req.id;
     const { solicitudid } = req.body;
@@ -169,6 +174,7 @@ const SolicitudesController = {
     trabajosPendientes,
     serviciosPendientes,
     cancelarTrabajo,
+    terminarTrabajo,
     misSolicitudes,
     revisarTerminadas
 }

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
-import { ZONAS } from "../constantes";
+import SelectorZona from "../componentes/SelectorZona";
+import { textoLugar } from "../zonas";
 import { agregarAlHistorial, obtenerHistorial } from "../sesion";
 import iconoCarpinteria from "../assets/categorias/carpinteria.svg";
 import iconoJardineria from "../assets/categorias/jardineria.svg";
@@ -332,10 +333,11 @@ function IconoCasa() {
   );
 }
 
-function armarRutaBusqueda({ consulta, zona, categoria }) {
+function armarRutaBusqueda({ consulta, zona, barrio, categoria }) {
   const params = new URLSearchParams();
   if (consulta) params.set("q", consulta);
   if (zona) params.set("zona", zona);
+  if (zona && barrio) params.set("barrio", barrio);
   if (categoria) params.set("categoria", categoria);
   const query = params.toString();
   return query ? `/buscar?${query}` : "/buscar";
@@ -344,10 +346,9 @@ function armarRutaBusqueda({ consulta, zona, categoria }) {
 function PaginaInicio() {
   const navegar = useNavigate();
   const [consulta, setConsulta] = useState("");
-  const [barrio, setBarrio] = useState("");
-  const [menuBarrioAbierto, setMenuBarrioAbierto] = useState(false);
+  // Zona y barrio elegidos (se usan para buscar y para "Subir un problema")
+  const [lugar, setLugar] = useState({ zona: "", barrio: "" });
   const [historial, setHistorial] = useState(() => obtenerHistorial());
-  const referenciaBarrio = useRef(null);
 
   useEffect(() => {
     const actualizar = () => setHistorial(obtenerHistorial());
@@ -355,29 +356,20 @@ function PaginaInicio() {
     return () => window.removeEventListener("laburar-historial-cambio", actualizar);
   }, []);
 
-  const cerrarMenuBarrio = useCallback((e) => {
-    if (referenciaBarrio.current && !referenciaBarrio.current.contains(e.target)) {
-      setMenuBarrioAbierto(false);
-    }
-  }, []);
-  useEffect(() => {
-    document.addEventListener("mousedown", cerrarMenuBarrio);
-    return () => document.removeEventListener("mousedown", cerrarMenuBarrio);
-  }, [cerrarMenuBarrio]);
-
   const manejarBusqueda = () => {
     const texto = consulta.trim();
     if (texto) {
-      agregarAlHistorial({ tipo: "busqueda", titulo: texto, consulta: texto, zona: barrio });
+      agregarAlHistorial({ tipo: "busqueda", titulo: texto, consulta: texto, zona: lugar.zona, barrio: lugar.barrio });
     }
-    navegar(armarRutaBusqueda({ consulta: texto, zona: barrio }));
+    navegar(armarRutaBusqueda({ consulta: texto, ...lugar }));
   };
 
   // Lo escrito en el buscador y el barrio pasan al formulario de "Subir un problema"
   const subirProblema = () => {
     const params = new URLSearchParams();
     if (consulta.trim()) params.set("descripcion", consulta.trim());
-    if (barrio) params.set("zona", barrio);
+    if (lugar.zona) params.set("zona", lugar.zona);
+    if (lugar.barrio) params.set("barrio", lugar.barrio);
     const query = params.toString();
     navegar(query ? `/subir-problema?${query}` : "/subir-problema");
   };
@@ -386,18 +378,13 @@ function PaginaInicio() {
     if (e.key === "Enter") manejarBusqueda();
   };
 
-  const elegirBarrio = (zona) => {
-    setBarrio(zona);
-    setMenuBarrioAbierto(false);
-  };
-
   const manejarCategoria = (cat) => {
-    agregarAlHistorial({ tipo: "busqueda", titulo: cat.aptitud, categoria: cat.aptitud, zona: barrio });
-    navegar(armarRutaBusqueda({ categoria: cat.aptitud, zona: barrio }));
+    agregarAlHistorial({ tipo: "busqueda", titulo: cat.aptitud, categoria: cat.aptitud, zona: lugar.zona, barrio: lugar.barrio });
+    navegar(armarRutaBusqueda({ categoria: cat.aptitud, ...lugar }));
   };
 
   const retomar = (h) => {
-    navegar(armarRutaBusqueda({ consulta: h.consulta, zona: h.zona, categoria: h.categoria }));
+    navegar(armarRutaBusqueda({ consulta: h.consulta, zona: h.zona, barrio: h.barrio, categoria: h.categoria }));
   };
 
   return (
@@ -423,36 +410,16 @@ function PaginaInicio() {
                 onChange={(e) => setConsulta(e.target.value)}
                 onKeyDown={manejarTecla}
               />
-              <div className="contenedor-barrio" ref={referenciaBarrio}>
-                <button
-                  className="boton-barrio"
-                  onClick={() => setMenuBarrioAbierto((v) => !v)}
-                  aria-haspopup="listbox"
-                  aria-expanded={menuBarrioAbierto}
-                  title={barrio || "Elegí tu barrio o zona"}
-                >
-                  <span>{barrio || "BARRIO"}</span>
-                  <svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M0 2.5h10L5 8.5z" /></svg>
-                </button>
-                {menuBarrioAbierto && (
-                  <div className="menu-barrio" role="listbox">
-                    <button
-                      className={`opcion-barrio ${barrio === "" ? "activa" : ""}`}
-                      onClick={() => elegirBarrio("")}
-                    >
-                      Todas las zonas
-                    </button>
-                    {ZONAS.map((z) => (
-                      <button
-                        key={z}
-                        className={`opcion-barrio ${barrio === z ? "activa" : ""}`}
-                        onClick={() => elegirBarrio(z)}
-                      >
-                        {z}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="contenedor-barrio">
+                <SelectorZona
+                  valor={lugar}
+                  onCambio={setLugar}
+                  claseBoton="boton-barrio"
+                  textoTodas="BARRIO"
+                  placeholder="BARRIO"
+                  ariaLabel="Barrio o zona"
+                  alinearDerecha
+                />
               </div>
             </div>
           </div>
@@ -487,7 +454,7 @@ function PaginaInicio() {
                         <span className="titulo-tarjeta" style={{ display: "block" }}>{h.titulo}</span>
                         <span className="ubicacion-tarjeta" style={{ display: "block" }}>
                           {h.tipo === "solicitud" ? "Solicitud enviada" : "Búsqueda"}
-                          {h.zona ? ` · ${h.zona}` : ""}
+                          {h.zona ? ` · ${textoLugar(h.zona, h.barrio)}` : ""}
                         </span>
                       </span>
                     </button>

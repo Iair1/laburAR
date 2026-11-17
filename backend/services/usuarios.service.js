@@ -220,11 +220,11 @@ const buscarTrabajadores = async(id, zonas)=>{
         LEFT JOIN tdr t
             ON t.id = utdr.trabajoid
 
-        WHERE u.localidad = ANY($1) AND u.id != $2
+        WHERE ($1::text[] IS NULL OR cardinality($1::text[]) = 0 OR u.localidad = ANY($1::text[])) AND u.id != $2
 
         GROUP BY
             u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
-        ;`, [zonas, id])
+        ;`, [Array.isArray(zonas) && zonas.length > 0 ? zonas : null, id])
         return result.rows
     }catch(error){
         throw error
@@ -243,13 +243,26 @@ const buscarClientes = async(id)=>{
     }
 }*/
 
+// Notificaciones del usuario (las mismas que llegan al iniciar sesión), para actualizarlas sin salir
+const misNotificaciones = async(id)=>{
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query("SELECT * FROM notificaciones WHERE userid = $1 ORDER BY id", [id]);
+        return result.rows;
+    }finally{
+        await client.end();
+    }
+}
+
 // Datos del usuario logueado (para mostrar y editar su perfil)
 const miPerfil = async(id)=>{
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT id, nombre_completo, foto_perfil, localidad, disponibilidad, cobro_por_hora, sobre_mi
+            SELECT id, nombre_completo, foto_perfil, localidad, disponibilidad, cobro_por_hora, sobre_mi,
+                puntuacion_trabajador, puntuacion_contratador, direccion_calle, direccion_altura, codigo_postal
             FROM usuarios WHERE id = $1
         `, [id]);
         if(result.rowCount === 0){
@@ -269,6 +282,7 @@ const UsuariosService={
     sip,
     cambiarContraseña,
     buscarTrabajadores,
-    miPerfil
+    miPerfil,
+    misNotificaciones
 }
 export default UsuariosService;

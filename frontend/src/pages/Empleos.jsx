@@ -1,7 +1,6 @@
-import React from 'react'
+import { Navigate } from "react-router-dom";
 
-const Empleos = () => {
-  return <h1>Empleos</h1>
-}
+// "Empleos" = los problemas que publicó la gente para que un trabajador los arregle.
+const Empleos = () => <Navigate to="/problemas" replace />;
 
-export default Empleos
+export default Empleos;

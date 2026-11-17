@@ -88,9 +88,10 @@ async function misSolicitudes(id) {
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud
             FROM solicitudes s
             INNER JOIN usuarios u ON u.id = s.trabajadorid
+            LEFT JOIN aptitudes a ON a.id = s.aptitudid
             WHERE s.contratadorid = $1 AND s.estado = 'por revisar'
             ORDER BY s.id DESC;
         `, [id]);
@@ -128,9 +129,10 @@ async function serviciosPendientes(id) {
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud
             FROM solicitudes s
             INNER JOIN usuarios u ON u.id = s.trabajadorid
+            LEFT JOIN aptitudes a ON a.id = s.aptitudid
             WHERE s.contratadorid = $1 AND s.estado = 'pendiente'
             ORDER BY s.id DESC;
         `, [id]);
@@ -149,7 +151,7 @@ async function busqueda(id) {
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, s.diassemana, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
+            SELECT s.id, s.solicitud, s.periodo, s.diassemana, s.contratadorid, s.localidad, s.estado, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
@@ -316,6 +318,37 @@ const cancelarTrabajo = async(id, solicitudid) => {
        
 
 
+// El trabajador o el cliente marcan el trabajo como terminado, desde el día de la cita.
+const terminarTrabajo = async(id, solicitudid) => {
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+            UPDATE solicitudes s
+            SET estado = 'terminada'
+            WHERE s.id = $2 AND s.estado = 'pendiente'
+              AND (s.contratadorid = $1 OR s.trabajadorid = $1)
+              AND s.periodo[1] <= CURRENT_DATE
+            RETURNING s.*`, [id, solicitudid]);
+        if(result.rowCount === 0) {
+            const error = new Error("No se puede terminar: el trabajo no existe, no es tuyo, no está agendado o todavía no llegó el día");
+            error.status = 400;
+            throw error;
+        }
+        const s = result.rows[0];
+        const otro = s.contratadorid === Number(id) ? s.trabajadorid : s.contratadorid;
+        const yo = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
+        await client.query(`
+            INSERT INTO notificaciones (tipo, userid, contenido, otroid)
+            VALUES ('trabajo-terminado', $1, $2, $3)`,
+            [otro, `${yo.rows[0]?.nombre_completo || "La otra persona"} marcó el trabajo como terminado. ¿Querés dejarle una reseña?
+                        Solicitud: ${s.solicitud}`, id]);
+        return s;
+    } finally {
+        await client.end();
+    }
+}
+
 const revisarTerminadas = async() => {
     const client = new Client(config);
     try {
@@ -428,6 +461,7 @@ const SolicitudesService = {
     rechazarSolicitud,
     serviciosPendientes,
     cancelarTrabajo,
+    terminarTrabajo,
     revisarTerminadas
 }
 

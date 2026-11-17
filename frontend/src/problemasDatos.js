@@ -84,6 +84,30 @@ export function leerTextoProblema(texto) {
   return datos;
 }
 
+/**
+ * Lee el texto de cualquier solicitud para mostrarlo prolijo:
+ *  - las de "Agendar": "Horario preferido: 17:00 hrs. Barrio: Palermo. Descripción"
+ *  - las de un problema publicado (armarTextoProblema)
+ * y les saca el "Hora acordada: ..." que agrega el backend.
+ * Devuelve { titulo, descripcion, barrio, franja, horaPreferida, horaAcordada }.
+ */
+export function leerTextoSolicitud(texto) {
+  const crudo = String(texto || "");
+  let resto = crudo.replace(/^\s*Horario preferido:[^.\n]*\.\s*/i, "");
+  const barrioPedido = (resto.match(/^Barrio:\s*([^.\n]*)\.\s*/i) || [])[1] || "";
+  resto = resto.replace(/^Barrio:[^.\n]*\.\s*/i, "").replace(/\n?\s*Hora acordada:.*$/gim, "").trim();
+  const datos = leerTextoProblema(resto);
+  const varias = resto.includes("\n");
+  return {
+    titulo: varias ? datos.titulo : "",
+    descripcion: varias ? datos.descripcion : resto,
+    barrio: barrioPedido.trim() || datos.barrio,
+    franja: datos.franja,
+    horaPreferida: horaPreferida(crudo),
+    horaAcordada: horaAcordada(crudo),
+  };
+}
+
 /* ---------------- horas ---------------- */
 
 // El backend agrega "Hora acordada: 10:00 hs" al texto cuando el trabajador elige la hora

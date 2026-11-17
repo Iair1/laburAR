@@ -5,7 +5,10 @@ import { estilosProblemas } from "../estilosProblemas";
 import { TarjetaProblema, Calendario } from "../componentes/ProblemasUI";
 import { estilosTarjetas } from "../estilosTarjetas";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
-import { ZONAS, CATEGORIAS } from "../constantes";
+import { CATEGORIAS } from "../constantes";
+import SelectorZona from "../componentes/SelectorZona";
+import { lugarDesdeParametros, normalizarZona, normalizarBarrio } from "../zonas";
+import { obtenerMiPerfil } from "../api";
 import { subirProblema } from "../problemasApi";
 import {
   DIAS_CORTOS,
@@ -58,6 +61,7 @@ const estilos = `
   .ayuda-seccion-subir { font-size: 0.74rem; color: #777; margin-top: 1px; }
   .campo-subir { margin-bottom: 0.95rem; }
   .campo-subir:last-child { margin-bottom: 0; }
+  .ayuda-campo-subir { font-size: 0.7rem; color: #888; margin: 4px 0 0 0.4rem; }
   .contador-letras { font-size: 0.68rem; color: #999; text-align: right; margin-top: 3px; }
   .consejo-subir {
     font-size: 0.72rem; color: #5b4a2e; background: #faf5ec; border: 1px solid #efe2c8; border-radius: 10px;
@@ -100,13 +104,13 @@ const TODOS_LOS_DIAS = [true, true, true, true, true, true, true];
 
 function formularioVacio(parametros) {
   const categoria = parametros.get("categoria");
-  const zona = parametros.get("zona");
+  const { zona, barrio } = lugarDesdeParametros(parametros);
   return {
     categoria: CATEGORIAS.includes(categoria) ? categoria : "",
     titulo: "",
     descripcion: (parametros.get("descripcion") || "").slice(0, 1500),
-    zona: ZONAS.includes(zona) ? zona : "",
-    barrio: "",
+    zona,
+    barrio,
     inicio: "",
     fin: "",
     diassemana: [...TODOS_LOS_DIAS],
@@ -121,8 +125,8 @@ function formularioDesdeProblema(p) {
     categoria: CATEGORIAS.includes(p.categoria) ? p.categoria : "",
     titulo: p.titulo || "",
     descripcion: p.descripcion || "",
-    zona: ZONAS.includes(p.localidad) ? p.localidad : "",
-    barrio: p.barrio || "",
+    zona: normalizarZona(p.localidad),
+    barrio: p.barrio ? normalizarBarrio(p.barrio, normalizarZona(p.localidad)) : "",
     inicio: "",
     fin: "",
     diassemana: Array.isArray(p.diassemana) && p.diassemana.some(Boolean) ? [...p.diassemana] : [...TODOS_LOS_DIAS],
@@ -167,6 +171,21 @@ export default function SubirProblema() {
   useEffect(() => {
     if (!usuario) navegar(`/login?volver=${encodeURIComponent(ubicacion.pathname + ubicacion.search)}`, { replace: true });
   }, [usuario, navegar, ubicacion]);
+
+  // Si no eligió zona, se completa con la de su perfil
+  useEffect(() => {
+    if (!usuario) return undefined;
+    let activo = true;
+    obtenerMiPerfil()
+      .then((perfil) => {
+        const zona = normalizarZona(perfil?.localidad);
+        if (activo && zona) setForm((f) => (f.zona ? f : { ...f, zona }));
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [usuario]);
 
   const fin = form.fin || form.inicio;
   const fechasValidas = useMemo(
@@ -331,30 +350,17 @@ export default function SubirProblema() {
                   <p className="ayuda-seccion-subir">Los trabajadores ven tu zona y tu barrio.</p>
                 </div>
               </div>
-              <div className="fila-modal">
-                <div className="campo-subir">
-                  <label className="etiqueta-modal" htmlFor="zona-problema">Zona</label>
-                  <select
-                    id="zona-problema"
-                    className={`select-modal ${conError("zona")}`}
-                    value={form.zona}
-                    onChange={(e) => cambiar("zona", e.target.value)}
-                  >
-                    <option value="">Elegí tu zona</option>
-                    {ZONAS.map((z) => <option key={z} value={z}>{z}</option>)}
-                  </select>
-                </div>
-                <div className="campo-subir">
-                  <label className="etiqueta-modal" htmlFor="barrio-problema">Barrio (opcional)</label>
-                  <input
-                    id="barrio-problema"
-                    className="entrada-modal"
-                    maxLength={60}
-                    placeholder="Ej: Palermo"
-                    value={form.barrio}
-                    onChange={(e) => cambiar("barrio", e.target.value)}
-                  />
-                </div>
+              <div className="campo-subir">
+                <label className="etiqueta-modal" htmlFor="zona-problema">Zona y barrio</label>
+                <SelectorZona
+                  id="zona-problema"
+                  valor={{ zona: form.zona, barrio: form.barrio }}
+                  onCambio={({ zona, barrio }) => actualizarForm((f) => ({ ...f, zona, barrio }))}
+                  claseBoton={`select-modal ${conError("zona")}`}
+                  placeholder="Elegí tu zona y tu barrio"
+                  ariaLabel="Zona y barrio"
+                />
+                <p className="ayuda-campo-subir">Buscá tu barrio o localidad. Si no está en la lista, elegí solo la zona.</p>
               </div>
             </section>
 

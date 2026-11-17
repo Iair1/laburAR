@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { crearSolicitud } from "../api";
+import SelectorZona from "./SelectorZona";
+import { normalizarZona } from "../zonas";
 
 const estilos = `
   .fondo-modal-agendar {
@@ -268,7 +270,8 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
   const [periodoFin, setPeriodoFin] = useState("");
   const [horario, setHorario] = useState("");
 
-  const [localidad, setLocalidad] = useState(trabajador?.zona || "");
+  // Dónde es el trabajo: zona (se guarda en solicitudes.localidad) y barrio opcional (va en el texto)
+  const [lugar, setLugar] = useState({ zona: normalizarZona(trabajador?.zona), barrio: "" });
   // Servicios del trabajador que se pueden pedir (los que el backend identifica con aptitudid)
   const serviciosPedibles = (trabajador?.servicios || []).filter((sv) => sv.aptitudid != null);
   const [servicioElegido, setServicioElegido] = useState(() => {
@@ -341,23 +344,26 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
       setError("Elegí qué servicio necesitás.");
       return;
     }
-    if (!descripcion.trim() || !periodoInicio || !periodoFin || !localidad.trim()) {
-      setError("Completá la descripción, el período (elegí dos días en el calendario) y la localidad.");
+    if (!descripcion.trim() || !periodoInicio || !periodoFin || !lugar.zona) {
+      setError("Completá la descripción, el período (elegí dos días en el calendario) y la zona.");
       return;
     }
 
     setError("");
     setEnviando(true);
     try {
-      const descripcionFinal = horario
-        ? `Horario preferido: ${horario}. ${descripcion.trim()}`
-        : descripcion.trim();
+      // El barrio (si lo eligió) va en el texto: "Horario preferido: 17:00 hrs. Barrio: Palermo. ..."
+      const descripcionFinal = [
+        horario ? `Horario preferido: ${horario}.` : "",
+        lugar.barrio ? `Barrio: ${lugar.barrio}.` : "",
+        descripcion.trim(),
+      ].filter(Boolean).join(" ");
 
       await crearSolicitud({
         trabajadorid: trabajador.id,
         solicitud: descripcionFinal,
         periodo: [periodoInicio, periodoFin],
-        localidad: localidad.trim(),
+        localidad: lugar.zona,
         diassemana: DIAS.map((dia) => diasSeleccionados.includes(dia)),
         ...(servicioElegido ? { aptitudid: Number(servicioElegido) } : {}),
       });
@@ -493,13 +499,13 @@ export default function AgendarModal({ trabajador, onCerrar, onEnviada }) {
           </div>
 
           <div className="campo-agendar">
-            <label className="etiqueta-agendar">Localidad</label>
-            <input
-              className="entrada-agendar"
-              type="text"
-              placeholder="Ej: CABA"
-              value={localidad}
-              onChange={(e) => setLocalidad(e.target.value)}
+            <label className="etiqueta-agendar">Zona y barrio</label>
+            <SelectorZona
+              valor={lugar}
+              onCambio={setLugar}
+              claseBoton="entrada-agendar"
+              placeholder="Elegí la zona y el barrio"
+              ariaLabel="Zona y barrio del trabajo"
             />
           </div>
 

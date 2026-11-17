@@ -9,6 +9,8 @@ import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { normalizarTexto } from "../constantes";
 import { obtenerMisProblemas, cancelarProblema } from "../problemasApi";
 import { FRANJAS, estadoVisible, fechaLarga } from "../problemasDatos";
+import AccionesCita from "../componentes/AccionesCita";
+import { usePendientesResenas } from "../usePendientesResenas";
 
 const estilos = `
   .encabezado-mis-problemas {
@@ -46,6 +48,8 @@ export default function MisProblemas() {
   const ubicacion = useLocation();
   const [parametros, setParametros] = useSearchParams();
   const [usuario] = useState(() => obtenerSesionUsuario());
+  // Reseñas que faltan dejar (por id de trabajo)
+  const pendientesResenas = usePendientesResenas(Boolean(usuario));
   const vista = parametros.get("vista") === "historial" ? "historial" : "activos";
   const publicado = parametros.get("publicado");
 
@@ -171,12 +175,28 @@ export default function MisProblemas() {
           <div className="caja-estado-problema agendado">
             <strong>{p.trabajador?.nombre || "Un trabajador"}</strong> va a ir el <strong>{fechaLarga(p.dia)}</strong>
             {p.hora ? <> a las <strong>{p.hora} hs</strong></> : franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
+            <AccionesCita
+              otro={p.trabajador}
+              solicitudid={p.id}
+              dia={p.dia}
+              estado={p.estado}
+              rolOtro="trabajador"
+              onTerminado={cargar}
+            />
           </div>
         );
       case "terminada":
         return (
           <div className="caja-estado-problema">
             Trabajo hecho con <strong>{p.trabajador?.nombre || "el trabajador"}</strong> el {fechaLarga(p.dia)}.
+            <AccionesCita
+              otro={p.trabajador}
+              solicitudid={p.id}
+              dia={p.dia}
+              estado="terminada"
+              pendiente={pendientesResenas.find((x) => x.trabajo === p.id) || null}
+              rolOtro="trabajador"
+            />
           </div>
         );
       default:

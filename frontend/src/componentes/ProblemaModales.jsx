@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Avatar from "./Avatar";
+import { ResenasModal } from "./Resenas";
 import { ImagenProblema, ChipEstado, ChipUrgencia, Calendario, Modal } from "./ProblemasUI";
 import {
   FRANJAS,
@@ -19,7 +20,9 @@ const estilosModales = `
   .titulo-detalle { font-size: 1.1rem; font-weight: 700; color: #1a1a1a; line-height: 1.25; }
   .chips-detalle { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
   .chip-categoria-detalle { font-size: 0.68rem; font-weight: 600; color: #fff; background: #7a2a2a; border-radius: 999px; padding: 3px 10px; }
-  .cliente-detalle { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #444; margin-bottom: 1rem; }
+  .cliente-detalle { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #444; margin-bottom: 1rem; flex-wrap: wrap; }
+  .enlace-resenas-detalle { background: none; border: none; color: #570101; font-weight: 700; font-size: 0.74rem; cursor: pointer; padding: 0; font-family: inherit; margin-left: auto; }
+  .enlace-resenas-detalle:hover { text-decoration: underline; }
   .datos-cuando { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
   .dato-cuando { background: #fcf8f8; border: 1px solid #ecdede; border-radius: 10px; padding: 8px 10px; font-size: 0.76rem; color: #333; }
   .dato-cuando strong { display: block; font-size: 0.68rem; color: #7a2a2a; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
@@ -45,6 +48,7 @@ const estilosModales = `
 /* ------------------------------------------------------------------ */
 
 export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelarCita, paraCliente = false }) {
+  const [viendoResenas, setViendoResenas] = useState(false);
   const estado = estadoVisible(problema);
   const esCita = problema.estado === "pendiente" || problema.estado === "terminada";
   const fechas = esCita ? [] : fechasPosibles(problema);
@@ -70,8 +74,15 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
           <Avatar src={problema.cliente.foto} nombre={problema.cliente.nombre} tamano={30} />
           <span>
             Publicado por <strong>{problema.cliente.nombre}</strong>
+            {Number(problema.cliente.puntuacion) > 0 ? ` · ★ ${Number(problema.cliente.puntuacion).toFixed(1)}` : ""}
           </span>
+          <button type="button" className="enlace-resenas-detalle" onClick={() => setViendoResenas(true)}>
+            Ver reseñas
+          </button>
         </div>
+      )}
+      {viendoResenas && problema.cliente && (
+        <ResenasModal userid={problema.cliente.id} nombre={problema.cliente.nombre} rolInicial="cliente" onCerrar={() => setViendoResenas(false)} />
       )}
 
       {esCita && problema.dia && (

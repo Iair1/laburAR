@@ -6,8 +6,12 @@ import { estilosProblemas } from "../estilosProblemas";
 import { TarjetaProblema, Icono } from "../componentes/ProblemasUI";
 import { DetalleProblemaModal, AgendarCitaModal, ConfirmarModal } from "../componentes/ProblemaModales";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
-import { obtenerMisAptitudes } from "../api";
-import { ZONAS, CATEGORIAS, normalizarTexto } from "../constantes";
+import { obtenerMisAptitudes, obtenerMiPerfil } from "../api";
+import AccionesCita from "../componentes/AccionesCita";
+import { usePendientesResenas } from "../usePendientesResenas";
+import { CATEGORIAS, normalizarTexto } from "../constantes";
+import SelectorZona from "../componentes/SelectorZona";
+import { coincideLugar, lugarDesdeParametros, normalizarZona, textoLugar } from "../zonas";
 import { obtenerProblemasDisponibles, obtenerMisCitas, agendarCita, cancelarCita } from "../problemasApi";
 import { URGENCIAS, fechasPosibles, hoyStr, sumarDias, fechaLarga, estadoVisible } from "../problemasDatos";
 
@@ -50,8 +54,12 @@ export default function Problemas() {
   const vista = parametros.get("vista") === "citas" ? "citas" : "problemas";
 
   const [usuario] = useState(() => obtenerSesionUsuario());
+  const pendientesResenas = usePendientesResenas(Boolean(usuario));
   const [consulta, setConsulta] = useState(parametros.get("q") || "");
-  const [filtroZona, setFiltroZona] = useState(ZONAS.includes(parametros.get("zona")) ? parametros.get("zona") : "");
+  // Zona y barrio elegidos (?zona=CABA&barrio=Palermo) y la zona donde trabaja la persona
+  const [lugar, setLugar] = useState(() => lugarDesdeParametros(parametros));
+  const filtroZona = lugar.zona;
+  const [miZona, setMiZona] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState(CATEGORIAS.includes(parametros.get("categoria")) ? parametros.get("categoria") : "");
   const [soloMisServicios, setSoloMisServicios] = useState(false);
   const [misServicios, setMisServicios] = useState([]);
@@ -111,6 +119,10 @@ export default function Problemas() {
     obtenerMisAptitudes()
       .then((lista) => setMisServicios(lista.map((a) => a.aptitud)))
       .catch(() => setMisServicios([]));
+    // Su zona: para mostrar primero los problemas cerca y el filtro "Solo en mi zona"
+    obtenerMiPerfil()
+      .then((perfil) => setMiZona(normalizarZona(perfil?.localidad)))
+      .catch(() => setMiZona(""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,7 +135,7 @@ export default function Problemas() {
 
   const limpiarFiltros = () => {
     setConsulta("");
-    setFiltroZona("");
+    setLugar({ zona: "", barrio: "" });
     setFiltroCategoria("");
     setSoloMisServicios(false);
     setFiltroUrgencia("");
@@ -150,7 +162,7 @@ export default function Problemas() {
       const fechas = fechasPosibles(p);
       if (fechas.length === 0) return false; // ya no tiene días para agendar
       if (!coincideTexto(p, texto)) return false;
-      if (filtroZona && p.localidad !== filtroZona) return false;
+      if (!coincideLugar({ zona: p.localidad, barrio: p.barrio }, lugar)) return false;
       if (filtroCategoria && p.categoria !== filtroCategoria) return false;
       if (soloMisServicios && misServicios.length > 0 && !misServicios.includes(p.categoria)) return false;
       if (filtroUrgencia && p.urgencia !== filtroUrgencia) return false;
@@ -160,20 +172,24 @@ export default function Problemas() {
       return true;
     });
     const primeraFecha = (p) => fechasPosibles(p)[0] || "9999";
-    if (orden === "recomendados") return filtrados; // el backend ya los manda por coincidencia con tus servicios
+    // "Recomendados": el backend ya los manda por coincidencia con tus servicios; además, los de tu zona primero
+    if (orden === "recomendados") {
+      if (!miZona) return filtrados;
+      return [...filtrados].sort((a, b) => Number(normalizarZona(a.localidad) !== miZona) - Number(normalizarZona(b.localidad) !== miZona));
+    }
     return [...filtrados].sort((a, b) => {
       if (orden === "urgentes") return (PESO_URGENCIA[a.urgencia] ?? 3) - (PESO_URGENCIA[b.urgencia] ?? 3) || b.id - a.id;
       if (orden === "proximos") return primeraFecha(a).localeCompare(primeraFecha(b)) || b.id - a.id;
       return b.id - a.id;
     });
-  }, [problemas, consulta, filtroZona, filtroCategoria, soloMisServicios, misServicios, filtroUrgencia, filtroFecha, fechaManual, filtroHorario, orden]);
+  }, [problemas, consulta, lugar, miZona, filtroCategoria, soloMisServicios, misServicios, filtroUrgencia, filtroFecha, fechaManual, filtroHorario, orden]);
 
   const citasFiltradas = useMemo(() => {
     const texto = normalizarTexto(consulta.trim());
     return citas
-      .filter((c) => coincideTexto(c, texto) && (!filtroZona || c.localidad === filtroZona))
+      .filter((c) => coincideTexto(c, texto) && coincideLugar({ zona: c.localidad, barrio: c.barrio }, lugar))
       .sort((a, b) => String(a.dia).localeCompare(String(b.dia)));
-  }, [citas, consulta, filtroZona]);
+  }, [citas, consulta, lugar]);
 
   const coincidenConMisServicios = problemas.filter((p) => p.coincidencias > 0 && fechasPosibles(p).length > 0).length;
   const proximaCita = citas.map((c) => c.dia).filter((d) => d && d >= hoyStr()).sort()[0];
@@ -231,10 +247,15 @@ export default function Problemas() {
         onChange={(e) => setConsulta(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
       />
-      <select className="select-barrio-nav" value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)} aria-label="Barrio o zona">
-        <option value="">BARRIO</option>
-        {ZONAS.map((z) => <option key={z} value={z}>{z}</option>)}
-      </select>
+<SelectorZona
+        valor={lugar}
+        onCambio={setLugar}
+        claseBoton="select-barrio-nav"
+        textoTodas="BARRIO"
+        placeholder="BARRIO"
+        ariaLabel="Barrio o zona"
+        alinearDerecha
+      />
     </div>
   );
 
@@ -262,7 +283,7 @@ export default function Problemas() {
       <>
         <p className="resumen-resultados">
           <strong>{resultados.length}</strong> {resultados.length === 1 ? "problema para resolver" : "problemas para resolver"}
-          {filtroZona ? <> en <strong>{filtroZona}</strong></> : ""}
+          {filtroZona ? <> en <strong>{textoLugar(filtroZona, lugar.barrio)}</strong></> : ""}
         </p>
         {resultados.length === 0 ? (
           <div className="sin-resultados">
@@ -324,6 +345,17 @@ export default function Problemas() {
                   key={c.id}
                   problema={c}
                   vista="cita"
+                  extra={
+                    <AccionesCita
+                      otro={c.cliente}
+                      solicitudid={c.id}
+                      dia={c.dia}
+                      estado={c.estado}
+                      pendiente={pendientesResenas.find((x) => x.trabajo === c.id) || null}
+                      rolOtro="cliente"
+                      onTerminado={() => cargar()}
+                    />
+                  }
                   acciones={
                     <>
                       <button className="boton-ver-perfil" onClick={() => setProblemaViendo(c)}>Ver problema</button>
@@ -365,6 +397,28 @@ export default function Problemas() {
                   </div>
                   <div className="separador-resumen" />
                   <p className="ayuda-resumen">Elegí un problema, agendá una cita en uno de los días que pidió el cliente y le llega el aviso</p>
+                </div>
+
+                <div className="caja-filtro">
+                  <p className="titulo-caja-filtro">Zona:</p>
+                  <SelectorZona
+                    valor={lugar}
+                    onCambio={setLugar}
+                    claseBoton="select-filtro"
+                    textoTodas="Todas las zonas"
+                    placeholder="Todas las zonas"
+                    ariaLabel="Zona del problema"
+                  />
+                  {miZona && (
+                    <label className="opcion-check">
+                      <input
+                        type="checkbox"
+                        checked={lugar.zona === miZona && !lugar.barrio}
+                        onChange={(e) => setLugar(e.target.checked ? { zona: miZona, barrio: "" } : { zona: "", barrio: "" })}
+                      />
+                      Solo en mi zona ({miZona})
+                    </label>
+                  )}
                 </div>
 
                 <div className="caja-filtro">

@@ -17,6 +17,9 @@ import MisServicios from "./pages/MisServicios"
 import SubirProblema from "./pages/SubirProblema"
 import Problemas from "./pages/Problemas"
 import MisProblemas from "./pages/MisProblemas"
+import MiCuenta from "./pages/MiCuenta"
+import MisPedidos from "./pages/MisPedidos"
+import { AvisoResenasPendientes } from "./componentes/Resenas"
 
 function App() {
   return (
@@ -38,8 +41,12 @@ function App() {
         <Route path="/subir-problema" element={<SubirProblema />} />
         <Route path="/problemas" element={<Problemas />} />
         <Route path="/mis-problemas" element={<MisProblemas />} />
+        <Route path="/mi-cuenta" element={<MiCuenta />} />
+        <Route path="/mis-pedidos" element={<MisPedidos />} />
 
       </Routes>
+      {/* Cuando termina un trabajo, a los dos les aparece para dejar la reseña */}
+      <AvisoResenasPendientes />
     </RegistroProvider>
   );
 }

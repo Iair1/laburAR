@@ -9,7 +9,9 @@ import {
   claveNotificacion,
   actualizarFotoSesion,
 } from "../sesion";
-import { subirFotoPerfil, TIPOS_FOTO_PERFIL } from "../api";
+import { subirFotoPerfil, TIPOS_FOTO_PERFIL, obtenerMisNotificaciones } from "../api";
+import { contarNoLeidos, EVENTO_MENSAJES } from "../mensajesApi";
+import { guardarNotificaciones } from "../sesion";
 import Avatar from "./Avatar";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
@@ -83,7 +85,7 @@ const estilos = `
     transition: background 0.15s, color 0.15s;
   }
   .boton-ver-problemas:hover { background: #fff; color: #570101; }
-  .boton-ver-problemas .texto-corto { display: none; }
+  .boton-ver-problemas .texto-corto, .boton-ofrecer .texto-corto { display: none; }
 
   .contenedor-desplegable { position: relative; }
 
@@ -104,6 +106,7 @@ const estilos = `
   }
   .boton-campana:hover { background: rgba(255,255,255,0.35); }
   .boton-campana svg { width: 24px; height: 24px; }
+  .boton-mensajes-nav svg { width: 22px; height: 22px; }
   .insignia-campana {
     position: absolute;
     top: 3px;
@@ -270,8 +273,27 @@ const estilos = `
     .boton-ver-problemas { padding: 0.4rem 0.7rem; font-size: 0.7rem; }
     .boton-ver-problemas .texto-largo { display: none; }
     .boton-ver-problemas .texto-corto { display: inline; }
+    .barra-nav { gap: 0.5rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+    .nav-derecha { gap: 0.3rem; }
+    .boton-campana { width: 34px; height: 34px; }
+    .boton-usuario { padding: 2px; }
+  }
+  @media (max-width: 370px) {
+    .boton-ofrecer, .boton-ver-problemas { padding: 0.35rem 0.55rem; font-size: 0.66rem; }
+    .boton-campana { width: 30px; height: 30px; }
+    .boton-campana svg { width: 21px; height: 21px; }
+    .boton-ofrecer .texto-largo { display: none; }
+    .boton-ofrecer .texto-corto { display: inline; }
   }
 `;
+
+function IconoMensajes() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4.4 3.3A1 1 0 0 1 3 20.5V6a2 2 0 0 1 1-2zm3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zm5 0a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zm5 0a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" />
+    </svg>
+  );
+}
 
 function IconoCampana() {
   return (
@@ -361,6 +383,39 @@ export default function BarraNav({ centro = null }) {
     };
   }, []);
 
+  // Notificaciones y mensajes sin leer, al día (cada un rato, al volver a la pestaña y cuando cambia algo)
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+  const idUsuario = usuario?.id;
+  useEffect(() => {
+    if (!idUsuario) return undefined;
+    let activo = true;
+    const actualizarMensajes = () =>
+      contarNoLeidos()
+        .then((n) => activo && setMensajesNoLeidos(n))
+        .catch(() => {});
+    const actualizarNotificaciones = () =>
+      obtenerMisNotificaciones()
+        .then((lista) => activo && guardarNotificaciones(lista))
+        .catch(() => {});
+    const alVolver = () => {
+      if (document.hidden) return;
+      actualizarMensajes();
+      actualizarNotificaciones();
+    };
+    alVolver();
+    const intervaloMensajes = setInterval(() => !document.hidden && actualizarMensajes(), 30000);
+    const intervaloNotificaciones = setInterval(() => !document.hidden && actualizarNotificaciones(), 60000);
+    window.addEventListener(EVENTO_MENSAJES, actualizarMensajes);
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      activo = false;
+      clearInterval(intervaloMensajes);
+      clearInterval(intervaloNotificaciones);
+      window.removeEventListener(EVENTO_MENSAJES, actualizarMensajes);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [idUsuario]);
+
   const cerrarMenu = useCallback(() => setMenuAbierto(false), []);
   const cerrarCampana = useCallback(() => setCampanaAbierta(false), []);
   useClickAfuera(referenciaMenu, cerrarMenu);
@@ -434,8 +489,21 @@ export default function BarraNav({ centro = null }) {
                 <span className="texto-largo">Ver problemas</span>
                 <span className="texto-corto">Problemas</span>
               </button>
-              <button className="boton-ofrecer" onClick={() => navegar("/ofrecer-servicios")}>
-                Ofrecer mi servicio
+              <button className="boton-ofrecer" onClick={() => navegar("/ofrecer-servicios")} title="Ofrecer mi servicio">
+                <span className="texto-largo">Ofrecer mi servicio</span>
+                <span className="texto-corto">Ofrecer</span>
+              </button>
+
+              <button
+                className="boton-campana boton-mensajes-nav"
+                onClick={() => navegar("/mensajes")}
+                aria-label={`Mensajes${mensajesNoLeidos ? ` (${mensajesNoLeidos} sin leer)` : ""}`}
+                title="Mensajes"
+              >
+                <IconoMensajes />
+                {mensajesNoLeidos > 0 && (
+                  <span className="insignia-campana">{mensajesNoLeidos > 9 ? "9+" : mensajesNoLeidos}</span>
+                )}
               </button>
 
               <div className="contenedor-desplegable" ref={referenciaCampana}>
@@ -543,6 +611,9 @@ export default function BarraNav({ centro = null }) {
                     <button className="menu-avatar-item" onClick={() => ir("/buscar")}>
                       Buscar trabajadores
                     </button>
+                    <button className="menu-avatar-item" onClick={() => ir("/mis-pedidos")}>
+                      Mis pedidos (solicitudes que mandé)
+                    </button>
                     <button className="menu-avatar-item" onClick={() => ir("/buscar?vista=solicitudes")}>
                       Mis solicitudes
                     </button>
@@ -553,7 +624,7 @@ export default function BarraNav({ centro = null }) {
                       Trabajos pendientes
                     </button>
                     <button className="menu-avatar-item" onClick={() => ir("/mensajes")}>
-                      Bandeja de entrada
+                      Mensajes{mensajesNoLeidos > 0 ? ` (${mensajesNoLeidos})` : ""}
                     </button>
                     <button className="menu-avatar-item" onClick={() => ir("/mis-servicios")}>
                       Mis servicios
@@ -562,6 +633,9 @@ export default function BarraNav({ centro = null }) {
                       Ofrecer servicios
                     </button>
                     <div className="menu-avatar-separador" />
+                    <button className="menu-avatar-item" onClick={() => ir("/mi-cuenta")}>
+                      Mi cuenta
+                    </button>
                     <button className="menu-avatar-item salir" onClick={manejarCerrarSesion}>
                       Cerrar sesión
                     </button>

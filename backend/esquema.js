@@ -48,3 +48,64 @@ export function asegurarColumnasServicio() {
     }
     return promesaColumnas;
 }
+
+/* ------------------------------------------------------------------ */
+/* Reseñas y mensajes (ver migraciones/002_resenas_y_mensajes.sql)     */
+/* ------------------------------------------------------------------ */
+
+const SENTENCIAS_RESENAS_Y_MENSAJES = [
+    // Reseñas: una tabla por dirección (el cliente reseña al trabajador y viceversa)
+    `CREATE TABLE IF NOT EXISTS resena_al_trabajador ("reseña" text, puntuacion integer, contratadorid integer, trabajadorid integer, trabajo integer)`,
+    `CREATE TABLE IF NOT EXISTS resena_al_contratador ("reseña" text, puntuacion integer, trabajadorid integer, contratadorid integer, trabajo integer)`,
+    `ALTER TABLE resena_al_trabajador ADD COLUMN IF NOT EXISTS id serial, ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now()`,
+    `ALTER TABLE resena_al_contratador ADD COLUMN IF NOT EXISTS id serial, ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now()`,
+    // Mensajes: cuándo se mandó, si el otro ya lo leyó y una foto opcional
+    `ALTER TABLE mensajes
+        ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS leido boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS imagen text`,
+];
+
+// No son obligatorios: si fallan (por ejemplo, porque ya hay reseñas repetidas), se sigue igual
+const SENTENCIAS_OPCIONALES = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS resena_al_trabajador_trabajo_unico ON resena_al_trabajador (trabajo)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS resena_al_contratador_trabajo_unico ON resena_al_contratador (trabajo)`,
+    `CREATE INDEX IF NOT EXISTS mensajes_emisor_receptor ON mensajes (emisorid, receptorid)`,
+];
+
+let promesaResenasYMensajes = null;
+
+/**
+ * Se asegura (una sola vez por proceso) de que existan las tablas de reseñas y las
+ * columnas nuevas de mensajes. Nunca tira error: devuelve false si no pudo.
+ * @returns {Promise<boolean>}
+ */
+export function asegurarResenasYMensajes() {
+    if (!promesaResenasYMensajes) {
+        promesaResenasYMensajes = (async () => {
+            const client = new Client(config);
+            try {
+                await client.connect();
+                for (const sentencia of SENTENCIAS_RESENAS_Y_MENSAJES) {
+                    await client.query(sentencia);
+                }
+                for (const sentencia of SENTENCIAS_OPCIONALES) {
+                    await client.query(sentencia).catch((error) =>
+                        console.error("Aviso (no grave):", error.message)
+                    );
+                }
+                return true;
+            } catch (error) {
+                console.error(
+                    "No se pudieron preparar reseñas/mensajes. Corré backend/migraciones/002_resenas_y_mensajes.sql en la base.",
+                    error.message
+                );
+                promesaResenasYMensajes = null; // reintenta en el próximo pedido
+                return false;
+            } finally {
+                await client.end().catch(() => {});
+            }
+        })();
+    }
+    return promesaResenasYMensajes;
+}

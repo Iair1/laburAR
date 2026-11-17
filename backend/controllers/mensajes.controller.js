@@ -1,22 +1,25 @@
 import MensajesService from "../services/mensajes.service.js"
-/*
-mandarMensaje
-conseguirChat
-borrarMensaje
-conseguirChats*/
+
+const MAXIMO_TEXTO = 2000;
 
 const mandarMensaje = async(req, res)=>{
     const id = req.id
-    console.log("hnola")
-    const{receptor, mensaje} = req.body
-    if(!receptor || !mensaje){
+    const{receptor, mensaje, imagen} = req.body
+    const texto = typeof mensaje === "string" ? mensaje.trim() : "";
+    if(!receptor || (!texto && !imagen)){
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
+    if(texto.length > MAXIMO_TEXTO){
+        return res.status(400).json({ message: `El mensaje puede tener hasta ${MAXIMO_TEXTO} caracteres`});
+    }
+    if(imagen && (typeof imagen !== "string" || !imagen.startsWith("data:image/"))){
+        return res.status(400).json({ message: "La foto no es válida"});
+    }
     try{
-        const result = await MensajesService.mandarMensaje(id, receptor, mensaje)
+        const result = await MensajesService.mandarMensaje(id, receptor, texto, imagen || null)
         res.status(201).json({message: "Mensaje exitoso", result})
     } catch(error){
-        res.status(500).json({message: error.message})
+        res.status(error.status || 500).json({message: error.message})
     }
 }
 
@@ -24,7 +27,7 @@ const borrarMensaje = async(req, res)=>{
     const id = req.id
     const{mensaje} = req.body
     if(!mensaje){
-        res.status(400).json({message: "Debe completar todos los campos"});
+        return res.status(400).json({message: "Debe completar todos los campos"});
     }
     try{
         const result = await MensajesService.borrarMensaje(id, mensaje)
@@ -34,15 +37,17 @@ const borrarMensaje = async(req, res)=>{
     }
 }
 
+// body: { otroid, despuesDe? } → result: mensajes (del más viejo al más nuevo)
+// Sin despuesDe también devuelve otro (sus datos), citas (las que tienen entre los dos) y puedeEscribir
 const conseguirChat = async(req, res)=>{
     const id = req.id
-    const{otroid} = req.body
+    const{otroid, despuesDe} = req.body
     if(!otroid){
-        res.status(400).json({message: "Debe completar todos los campos"});
+        return res.status(400).json({message: "Debe completar todos los campos"});
     }
     try{
-        const result = await MensajesService.conseguirChat(id, otroid)
-        res.status(201).json({message: "Mensajes encontrados exitosamente", result, userid: id})
+        const datos = await MensajesService.conseguirChat(id, otroid, despuesDe ? Number(despuesDe) : null)
+        res.status(201).json({message: "Mensajes encontrados exitosamente", result: datos.mensajes, otro: datos.otro, citas: datos.citas, puedeEscribir: datos.puedeEscribir, userid: id})
     }catch(error){
         res.status(500).json({message: error.message})
     }
@@ -58,10 +63,31 @@ const misChats = async(req, res)=>{
     }
 }
 
+// Personas con las que se puede empezar un chat (tienen una cita o solicitud en común)
+const contactos = async(req, res)=>{
+    try{
+        const result = await MensajesService.contactos(req.id)
+        res.status(200).json({message: "Contactos encontrados", result})
+    }catch(error){
+        res.status(500).json({message: error.message})
+    }
+}
+
+const noLeidos = async(req, res)=>{
+    try{
+        const cantidad = await MensajesService.noLeidos(req.id)
+        res.status(200).json({message: "Mensajes sin leer", cantidad})
+    }catch(error){
+        res.status(500).json({message: error.message})
+    }
+}
+
 const MensajesController = {
-    mandarMensaje, 
+    mandarMensaje,
     borrarMensaje,
     conseguirChat,
-    misChats
+    misChats,
+    contactos,
+    noLeidos
 }
 export default MensajesController

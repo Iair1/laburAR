@@ -404,6 +404,9 @@ export const cambiarDatos = (inf) =>
 
 export const TIPOS_FOTO_PERFIL = ["image/jpeg", "image/png", "image/webp"];
 
+/** Achica una foto y la pasa a base64 (para mandarla en un mensaje, por ejemplo). */
+export const comprimirFoto = (archivo, ladoMaximo = 1200) => archivoABase64(archivo, ladoMaximo);
+
 /**
  * Sube una foto de perfil nueva: la comprime, el backend la sube a Cloudinary
  * y guarda la URL en usuarios.foto_perfil.
@@ -452,6 +455,51 @@ export const editarServicio = (aptitud, { cobro_por_hora, descripcion, anios_exp
 // DELETE /eliminarAptitud → body: { aptitud }
 export const eliminarServicio = (aptitud) =>
   pedirAutenticado(`${API_URL_APTITUDES}/eliminarAptitud`, "DELETE", { aptitud });
+
+/* ============================================================
+ * ESPECIALIDADES (aptitudes específicas dentro de cada servicio)
+ * ============================================================ */
+
+const API_URL_ESPECIALIDADES = import.meta.env.DEV
+  ? "https://laburar-three.vercel.app/api"
+  : "/api";
+
+// GET /usuarios_aptitudes_especificas/misAptitudesEspecificas → [{ id, aptitud_especifica, aptitud, usuario_aptitudid, ... }]
+export const obtenerMisEspecialidades = async () => {
+  const resultado = await pedirAutenticado(`${API_URL_ESPECIALIDADES}/usuarios_aptitudes_especificas/misAptitudesEspecificas`, "GET");
+  return resultado.result || [];
+};
+
+// POST /usuarios_aptitudes_especificas/nuevaAptitudEspecifica → { aptitud_especifica, usuario_aptitudid, aptID }
+export const agregarEspecialidad = (texto, servicio) =>
+  pedirAutenticado(`${API_URL_ESPECIALIDADES}/usuarios_aptitudes_especificas/nuevaAptitudEspecifica`, "POST", {
+    aptitud_especifica: texto,
+    usuario_aptitudid: servicio.usuario_aptitudid,
+    aptID: servicio.id,
+  });
+
+// DELETE /usuarios_aptitudes_especificas/eliminarAptitudEspecifica → { filaid }
+export const eliminarEspecialidad = (filaid) =>
+  pedirAutenticado(`${API_URL_ESPECIALIDADES}/usuarios_aptitudes_especificas/eliminarAptitudEspecifica`, "DELETE", { filaid });
+
+// GET /aptitudes_especificas/buscarAptitudesEspecificas → todas (para sugerir)
+export const obtenerTodasLasEspecialidades = async () => {
+  const resultado = await pedirAutenticado(`${API_URL_ESPECIALIDADES}/aptitudes_especificas/buscarAptitudesEspecificas`, "GET");
+  return resultado.result || [];
+};
+
+// GET /usuarios/misNotificaciones → las mismas notificaciones que llegan al iniciar sesión, al día
+export const obtenerMisNotificaciones = async () => {
+  const resultado = await pedirAutenticado(`${API_URL}/misNotificaciones`, "GET");
+  return resultado.result || [];
+};
+
+// PUT /usuarios/cambiarContrasena → body: { contraseñaVieja, contraseñaNueva }
+export const cambiarContrasena = (contrasenaVieja, contrasenaNueva) =>
+  pedirAutenticado(`${API_URL}/cambiarContrasena`, "PUT", {
+    "contraseñaVieja": contrasenaVieja,
+    "contraseñaNueva": contrasenaNueva,
+  });
 
 // GET /usuarios/miPerfil → { result: { id, nombre_completo, foto_perfil, localidad, disponibilidad, ... } }
 export const obtenerMiPerfil = async () => {

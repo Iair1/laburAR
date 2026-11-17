@@ -18,6 +18,6 @@ router.get("/busquedaAA", verifyToken, SolicitudesController.busquedaAA)
 router.get("/misProblemas", verifyToken, SolicitudesController.misProblemas);
 
 router.get("/revisarTerminadas", SolicitudesController.revisarTerminadas);
-//router.put("/terminarTrabajo", verifyToken, SolicitudesController.terminarTrabajo);
+router.put("/terminarTrabajo", verifyToken, SolicitudesController.terminarTrabajo);
 
 export default router;

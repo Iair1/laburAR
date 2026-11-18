@@ -1,6 +1,6 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
-import { asegurarResenasYMensajes } from "../esquema.js";
+import { asegurarResenasYMensajes, columnasDeResena } from "../esquema.js";
 const {Client} = pkg;
 
 // Un trabajo (solicitud) se puede reseñar cuando terminó: el sistema lo marcó como
@@ -42,20 +42,21 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
         }
 
         const tabla = soyTrabajador ? "resena_al_contratador" : "resena_al_trabajador";
+        const c = columnasDeResena(tabla);
         const columnaPromedio = soyTrabajador ? "puntuacion_contratador" : "puntuacion_trabajador";
-        const columnaOtro = soyTrabajador ? "contratadorid" : "trabajadorid";
+        const columnaOtro = soyTrabajador ? c.contratadorid : c.trabajadorid;
 
         await client.query("BEGIN");
-        const anteriores = await client.query(`SELECT 1 FROM ${tabla} WHERE trabajo = $1`, [trabajo]);
+        const anteriores = await client.query(`SELECT 1 FROM ${tabla} WHERE ${c.trabajo} = $1`, [trabajo]);
         if(anteriores.rowCount > 0){
             await client.query("ROLLBACK");
             throw errorConEstado("Ya dejaste una reseña para este trabajo", 409);
         }
         const result = await client.query(
-            `INSERT INTO ${tabla} ("reseña", puntuacion, contratadorid, trabajadorid, trabajo) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            `INSERT INTO ${tabla} (${c.texto}, ${c.puntuacion}, ${c.contratadorid}, ${c.trabajadorid}, ${c.trabajo}) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
             [reseña, puntuacion, s.contratadorid, s.trabajadorid, trabajo]);
         const puntuacionActualizada = await client.query(
-            `UPDATE usuarios SET ${columnaPromedio} = (SELECT ROUND(AVG(puntuacion)::numeric, 1) FROM ${tabla} WHERE ${columnaOtro} = $1)
+            `UPDATE usuarios SET ${columnaPromedio} = (SELECT ROUND(AVG(${c.puntuacion})::numeric, 1) FROM ${tabla} WHERE ${columnaOtro} = $1)
              WHERE id = $1 RETURNING id, ${columnaPromedio}`, [otro]);
         const autor = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
         const estrellas = "★".repeat(puntuacion) + "☆".repeat(5 - puntuacion);
@@ -77,6 +78,8 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
  */
 async function pendientes(id) {
     await asegurarResenasYMensajes();
+    const ct = columnasDeResena("resena_al_trabajador");
+    const cc = columnasDeResena("resena_al_contratador");
     const client = new Client(config);
     try{
         await client.connect();
@@ -89,8 +92,8 @@ async function pendientes(id) {
             INNER JOIN usuarios o ON o.id = CASE WHEN s.trabajadorid = $1 THEN s.contratadorid ELSE s.trabajadorid END
             WHERE (s.contratadorid = $1 OR s.trabajadorid = $1) AND s.trabajadorid IS NOT NULL
               AND ${TRABAJO_TERMINADO}
-              AND NOT (s.trabajadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_contratador r WHERE r.trabajo = s.id))
-              AND NOT (s.contratadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_trabajador r WHERE r.trabajo = s.id))
+              AND NOT (s.trabajadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_contratador r WHERE r.${cc.trabajo} = s.id))
+              AND NOT (s.contratadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_trabajador r WHERE r.${ct.trabajo} = s.id))
             ORDER BY s.periodo[2] DESC, s.id DESC
             LIMIT 20`, [id]);
         return result.rows;
@@ -113,16 +116,19 @@ async function reseñasDe(userid) {
         if(usuario.rowCount === 0) {
             throw errorConEstado("Usuario no encontrado", 404);
         }
-        const consulta = (tabla, columnaUsuario, columnaAutor) => client.query(`
-            SELECT r.id, r.puntuacion, r."reseña" AS texto, r.fecha, r.trabajo, a.aptitud,
+        const consulta = (tabla, campoUsuario, campoAutor) => {
+            const c = columnasDeResena(tabla);
+            return client.query(`
+            SELECT r.id, r.${c.puntuacion} AS puntuacion, r.${c.texto} AS texto, r.fecha, r.${c.trabajo} AS trabajo, a.aptitud,
                 au.id AS autorid, au.nombre_completo AS autor_nombre, au.foto_perfil AS autor_foto
             FROM ${tabla} r
-            LEFT JOIN usuarios au ON au.id = r.${columnaAutor}
-            LEFT JOIN solicitudes s ON s.id = r.trabajo
+            LEFT JOIN usuarios au ON au.id = r.${c[campoAutor]}
+            LEFT JOIN solicitudes s ON s.id = r.${c.trabajo}
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
-            WHERE r.${columnaUsuario} = $1
+            WHERE r.${c[campoUsuario]} = $1
             ORDER BY r.fecha DESC NULLS LAST, r.id DESC
             LIMIT 50`, [userid]);
+        };
         const [comoTrabajador, comoCliente] = await Promise.all([
             consulta("resena_al_trabajador", "trabajadorid", "contratadorid"),
             consulta("resena_al_contratador", "contratadorid", "trabajadorid"),

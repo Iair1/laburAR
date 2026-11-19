@@ -4,8 +4,9 @@ import BarraNav from "../componentes/BarraNav";
 import Avatar from "../componentes/Avatar";
 import SelectorZona from "../componentes/SelectorZona";
 import { ResenasDeUsuario, ResumenPuntaje } from "../componentes/Resenas";
-import { obtenerSesionUsuario, cerrarSesionCompleta, actualizarFotoSesion } from "../sesion";
-import { obtenerMiPerfil, cambiarDatos, cambiarContrasena, subirFotoPerfil, TIPOS_FOTO_PERFIL } from "../api";
+import { obtenerSesionUsuario, cerrarSesionCompleta, actualizarFotoSesion, guardarSesionUsuario } from "../sesion";
+import { obtenerMiPerfil, cambiarDatos, cambiarContrasena, subirFotoPerfil, comprimirFoto, TIPOS_FOTO_PERFIL } from "../api";
+import { subirFotoDni, obtenerMisBloqueados, desbloquearUsuario, eliminarMiCuenta, EVENTO_BLOQUEOS } from "../cuentaApi";
 import { obtenerResenasDe } from "../resenasApi";
 import { normalizarZona } from "../zonas";
 
@@ -49,6 +50,19 @@ const estilos = `
     font-weight: 700; cursor: pointer; font-family: inherit;
   }
   .pestana-cuenta.activa { background: #7a2a2a; border-color: #570101; color: #fff; }
+  .estado-dni { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700; border-radius: 999px; padding: 4px 12px; margin-bottom: 0.6rem; }
+  .estado-dni.verificado { background: #e8f5e9; color: #1e5e22; }
+  .estado-dni.pendiente { background: #fff4e5; color: #8a4b00; }
+  .estado-dni.rechazado { background: #fbeceb; color: #b3261e; }
+  .estado-dni.sin { background: #f4eeee; color: #570101; }
+  .aviso-email-cuenta { background: #fff4e5; border: 1px solid #f0c48a; color: #6b3d00; border-radius: 12px; padding: 10px 14px; font-size: 0.8rem; margin-bottom: 1rem; line-height: 1.45; }
+  .lista-bloqueados { display: flex; flex-direction: column; gap: 8px; }
+  .fila-bloqueado { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; color: #222; }
+  .fila-bloqueado span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tarjeta-cuenta.peligro { border-color: #f0c2bf; background: #fffafa; }
+  .tarjeta-cuenta.peligro .titulo-tarjeta-cuenta { color: #b3261e; }
+  .boton-cuenta.peligro { background: #b3261e; border-color: #b3261e; }
+  .boton-cuenta.peligro:hover { background: #8f1d17; }
   .esqueleto-cuenta { height: 160px; border-radius: 16px; background: linear-gradient(90deg, #eee 25%, #f6f6f6 37%, #eee 63%); background-size: 400% 100%; animation: brillo-cuenta 1.3s ease infinite; }
   @keyframes brillo-cuenta { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
   @media (max-width: 760px) {
@@ -79,7 +93,12 @@ export default function MiCuenta() {
   const [estados, setEstados] = useState({});
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [rolResenas, setRolResenas] = useState("trabajador");
+  const [contacto, setContacto] = useState({ email: "", telefono: "" });
+  const [subiendoDni, setSubiendoDni] = useState(false);
+  const [bloqueados, setBloqueados] = useState(null);
+  const [confirmacionEliminar, setConfirmacionEliminar] = useState("");
   const elegirFoto = useRef(null);
+  const elegirDni = useRef(null);
 
   const vencida = (err) => {
     if (err?.status === 401) {
@@ -100,6 +119,12 @@ export default function MiCuenta() {
       .then((p) => {
         if (!activo || !p) return;
         setPerfil(p);
+        setContacto({ email: p.email || "", telefono: p.telefono || "" });
+        // La sesión guarda si es administrador (para el link al panel)
+        const actual = obtenerSesionUsuario();
+        if (actual && (actual.esAdmin !== (p.es_admin === true) || (p.email && actual.correo !== p.email))) {
+          guardarSesionUsuario({ ...actual, esAdmin: p.es_admin === true, correo: p.email || actual.correo });
+        }
         setZona(normalizarZona(p.localidad));
         setDireccion({ calle: p.direccion_calle || "", altura: p.direccion_altura || "", cp: p.codigo_postal || "" });
         setSobreMi(p.sobre_mi || "");
@@ -121,6 +146,16 @@ export default function MiCuenta() {
     const actualizar = () => setUsuario(obtenerSesionUsuario());
     window.addEventListener("laburar-sesion-cambio", actualizar);
     return () => window.removeEventListener("laburar-sesion-cambio", actualizar);
+  }, []);
+
+  // Personas que bloqueé
+  useEffect(() => {
+    if (!usuario) return undefined;
+    const cargar = () => obtenerMisBloqueados().then(setBloqueados).catch(() => setBloqueados([]));
+    cargar();
+    window.addEventListener(EVENTO_BLOQUEOS, cargar);
+    return () => window.removeEventListener(EVENTO_BLOQUEOS, cargar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const marcar = (clave, estado) => setEstados((e) => ({ ...e, [clave]: estado }));
@@ -159,13 +194,71 @@ export default function MiCuenta() {
 
   const guardarSobreMi = () => guardar("sobreMi", [{ dato: "sobre_mi", valor: sobreMi.trim() }], "Guardaste tu presentación");
 
+  const guardarContacto = async () => {
+    const email = contacto.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      marcar("contacto", { ok: false, texto: "Revisá el email: no parece válido." });
+      return;
+    }
+    await guardar("contacto", [{ dato: "email", valor: email }, { dato: "telefono", valor: contacto.telefono.trim() }], "Guardaste tu email y teléfono");
+    setPerfil((p) => ({ ...p, email }));
+  };
+
+  const cambiarDni = async (e) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    if (!TIPOS_FOTO_PERFIL.includes(archivo.type)) {
+      marcar("dni", { ok: false, texto: "Subí una foto JPG, PNG o WEBP." });
+      return;
+    }
+    setSubiendoDni(true);
+    marcar("dni", null);
+    try {
+      const base64 = await comprimirFoto(archivo, 1600);
+      const r = await subirFotoDni(base64);
+      setPerfil((p) => ({ ...p, dni_estado: r?.dni_estado || "pendiente", verificado: false }));
+      marcar("dni", { ok: true, texto: "Recibimos tu DNI. Lo vamos a revisar." });
+    } catch (err) {
+      if (!vencida(err)) marcar("dni", { ok: false, texto: err.message || "No se pudo subir el DNI." });
+    } finally {
+      setSubiendoDni(false);
+    }
+  };
+
+  const desbloquear = async (b) => {
+    try {
+      await desbloquearUsuario(b.id);
+      setBloqueados((lista) => (lista || []).filter((x) => x.id !== b.id));
+    } catch (err) {
+      if (!vencida(err)) marcar("bloqueos", { ok: false, texto: err.message || "No se pudo desbloquear." });
+    }
+  };
+
+  const eliminarCuenta = async () => {
+    if (confirmacionEliminar.trim().toUpperCase() !== "ELIMINAR") {
+      marcar("eliminar", { ok: false, texto: "Para confirmar, escribí ELIMINAR." });
+      return;
+    }
+    setGuardando("eliminar");
+    marcar("eliminar", null);
+    try {
+      await eliminarMiCuenta("ELIMINAR");
+      cerrarSesionCompleta();
+      navegar("/", { replace: true });
+    } catch (err) {
+      if (!vencida(err)) marcar("eliminar", { ok: false, texto: err.message || "No se pudo eliminar la cuenta." });
+      setGuardando("");
+    }
+  };
+
   const guardarContrasena = async () => {
     if (!contrasenas.actual || !contrasenas.nueva) {
       marcar("contrasena", { ok: false, texto: "Completá tu contraseña actual y la nueva." });
       return;
     }
-    if (contrasenas.nueva.length < 4) {
-      marcar("contrasena", { ok: false, texto: "La contraseña nueva tiene que tener al menos 4 caracteres." });
+    if (contrasenas.nueva.length < 6) {
+      marcar("contrasena", { ok: false, texto: "La contraseña nueva tiene que tener al menos 6 caracteres." });
       return;
     }
     if (contrasenas.nueva !== contrasenas.repetir) {
@@ -215,6 +308,11 @@ export default function MiCuenta() {
         <main className="contenido-cuenta">
           <h1 className="titulo-cuenta">Mi cuenta</h1>
           <p className="subtitulo-cuenta">Tus datos, dónde estás y lo que opinan de vos.</p>
+          {perfil && !perfil.email && (
+            <p className="aviso-email-cuenta" role="status">
+              <strong>Agregá tu email</strong> (más abajo): lo vas a necesitar para entrar y para recuperar tu contraseña si te la olvidás.
+            </p>
+          )}
 
           {error ? (
             <div className="tarjeta-cuenta"><span className="error-cuenta">{error}</span></div>
@@ -239,6 +337,46 @@ export default function MiCuenta() {
                     <input ref={elegirFoto} type="file" accept={TIPOS_FOTO_PERFIL.join(",")} style={{ display: "none" }} onChange={cambiarFoto} />
                     <Aviso estado={estados.foto} />
                   </div>
+                </div>
+              </section>
+
+              <section className="tarjeta-cuenta" aria-label="Email y teléfono">
+                <p className="titulo-tarjeta-cuenta">Email y teléfono</p>
+                <p className="ayuda-tarjeta-cuenta">Con el email entrás y recuperás tu contraseña. No se le muestran a nadie.</p>
+                <label className="etiqueta-cuenta" htmlFor="email-cuenta" style={{ marginTop: 0 }}>Email</label>
+                <input id="email-cuenta" type="email" className="entrada-cuenta" autoComplete="email" maxLength={254} value={contacto.email} onChange={(e) => { setContacto((c) => ({ ...c, email: e.target.value })); marcar("contacto", null); }} />
+                <label className="etiqueta-cuenta" htmlFor="telefono-cuenta">Teléfono</label>
+                <input id="telefono-cuenta" type="tel" className="entrada-cuenta" autoComplete="tel" maxLength={30} value={contacto.telefono} onChange={(e) => { setContacto((c) => ({ ...c, telefono: e.target.value })); marcar("contacto", null); }} />
+                <p className="privado-cuenta">🔒 Privados</p>
+                <div className="acciones-cuenta">
+                  <Aviso estado={estados.contacto} />
+                  <button className="boton-cuenta" onClick={guardarContacto} disabled={guardando === "contacto"}>{guardando === "contacto" ? "Guardando..." : "Guardar"}</button>
+                </div>
+              </section>
+
+              <section className="tarjeta-cuenta" aria-label="Verificación de identidad">
+                <p className="titulo-tarjeta-cuenta">Verificación de identidad</p>
+                <p className="ayuda-tarjeta-cuenta">
+                  Subí una foto del frente de tu DNI. La revisamos y, si está todo bien, tu perfil muestra "Identidad verificada".
+                  La foto se guarda de forma privada: solo la ve el equipo de LaburAR.
+                </p>
+                {perfil.verificado ? (
+                  <span className="estado-dni verificado">✓ Identidad verificada</span>
+                ) : perfil.dni_estado === "pendiente" ? (
+                  <span className="estado-dni pendiente">⏳ En revisión</span>
+                ) : perfil.dni_estado === "rechazado" ? (
+                  <span className="estado-dni rechazado">✕ No se pudo verificar: subí otra foto</span>
+                ) : (
+                  <span className="estado-dni sin">Sin verificar</span>
+                )}
+                <input ref={elegirDni} type="file" accept={TIPOS_FOTO_PERFIL.join(",")} style={{ display: "none" }} onChange={cambiarDni} />
+                <div className="acciones-cuenta">
+                  <Aviso estado={estados.dni} />
+                  {!perfil.verificado && (
+                    <button className="boton-cuenta" onClick={() => elegirDni.current?.click()} disabled={subiendoDni}>
+                      {subiendoDni ? "Subiendo..." : perfil.dni_estado ? "Subir otra foto" : "Subir foto del DNI"}
+                    </button>
+                  )}
                 </div>
               </section>
 
@@ -312,6 +450,48 @@ export default function MiCuenta() {
                   </button>
                 </div>
                 <ResenasDeUsuario key={rolResenas} userid={usuario.id} rol={rolResenas} limite={5} />
+              </section>
+
+              <section className="tarjeta-cuenta" aria-label="Usuarios bloqueados">
+                <p className="titulo-tarjeta-cuenta">Usuarios bloqueados</p>
+                <p className="ayuda-tarjeta-cuenta">No te pueden escribir ni mandarte solicitudes, y no los ves en las búsquedas.</p>
+                {bloqueados === null ? (
+                  <p className="ayuda-tarjeta-cuenta">Cargando...</p>
+                ) : bloqueados.length === 0 ? (
+                  <p className="ayuda-tarjeta-cuenta" style={{ marginBottom: 0 }}>No bloqueaste a nadie.</p>
+                ) : (
+                  <div className="lista-bloqueados">
+                    {bloqueados.map((b) => (
+                      <div className="fila-bloqueado" key={b.id}>
+                        <Avatar src={b.foto} nombre={b.nombre} tamano={32} />
+                        <span>{b.nombre}</span>
+                        <button className="boton-cuenta secundario" onClick={() => desbloquear(b)}>Desbloquear</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Aviso estado={estados.bloqueos} />
+                {usuario.esAdmin && (
+                  <div className="acciones-cuenta" style={{ justifyContent: "flex-start" }}>
+                    <button className="boton-cuenta secundario" onClick={() => navegar("/admin")}>Ir al panel de administración</button>
+                  </div>
+                )}
+              </section>
+
+              <section className="tarjeta-cuenta peligro" aria-label="Eliminar cuenta">
+                <p className="titulo-tarjeta-cuenta">Eliminar mi cuenta</p>
+                <p className="ayuda-tarjeta-cuenta">
+                  Se borran tus datos personales, tus servicios y tus problemas publicados, y se cancelan tus citas pendientes
+                  (les avisamos a las otras personas). No se puede deshacer.
+                </p>
+                <label className="etiqueta-cuenta" htmlFor="confirmar-eliminar" style={{ marginTop: 0 }}>Para confirmar, escribí ELIMINAR</label>
+                <input id="confirmar-eliminar" className="entrada-cuenta" value={confirmacionEliminar} autoComplete="off" onChange={(e) => { setConfirmacionEliminar(e.target.value); marcar("eliminar", null); }} />
+                <div className="acciones-cuenta">
+                  <Aviso estado={estados.eliminar} />
+                  <button className="boton-cuenta peligro" onClick={eliminarCuenta} disabled={guardando === "eliminar" || confirmacionEliminar.trim().toUpperCase() !== "ELIMINAR"}>
+                    {guardando === "eliminar" ? "Eliminando..." : "Eliminar mi cuenta"}
+                  </button>
+                </div>
               </section>
             </div>
           )}

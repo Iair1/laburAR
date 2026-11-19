@@ -47,7 +47,7 @@ const conseguirChat = async(req, res)=>{
     }
     try{
         const datos = await MensajesService.conseguirChat(id, otroid, despuesDe ? Number(despuesDe) : null)
-        res.status(201).json({message: "Mensajes encontrados exitosamente", result: datos.mensajes, otro: datos.otro, citas: datos.citas, puedeEscribir: datos.puedeEscribir, userid: id})
+        res.status(201).json({message: "Mensajes encontrados exitosamente", result: datos.mensajes, otro: datos.otro, citas: datos.citas, puedeEscribir: datos.puedeEscribir, yoBloquee: datos.yoBloquee, bloqueado: datos.bloqueado, userid: id})
     }catch(error){
         res.status(500).json({message: error.message})
     }

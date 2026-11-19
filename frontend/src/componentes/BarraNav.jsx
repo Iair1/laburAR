@@ -636,6 +636,11 @@ export default function BarraNav({ centro = null }) {
                     <button className="menu-avatar-item" onClick={() => ir("/mi-cuenta")}>
                       Mi cuenta
                     </button>
+                    {usuario?.esAdmin && (
+                      <button className="menu-avatar-item" onClick={() => ir("/admin")}>
+                        Panel de administración
+                      </button>
+                    )}
                     <button className="menu-avatar-item salir" onClick={manejarCerrarSesion}>
                       Cerrar sesión
                     </button>

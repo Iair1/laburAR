@@ -8,6 +8,7 @@ import {
   rechazarSolicitud,
 } from "../api";
 import { AceptarSolicitudModal } from "../componentes/ProblemaModales";
+import { MenuModeracion } from "../componentes/Moderacion";
 import { estilosProblemas } from "../estilosProblemas";
 import { textoPeriodo, textoDiasSemana, fechaLarga, fechasPosibles, leerTextoSolicitud, FRANJAS } from "../problemasDatos";
 import Avatar from "../componentes/Avatar";
@@ -228,6 +229,17 @@ export default function SolicitudesRecibidas() {
                       {s.puntuacion_contratador != null && (
                         <span className="puntuacion-contratador">★ {Number(s.puntuacion_contratador).toFixed(1)}</span>
                       )}
+                      <span style={{ marginLeft: "auto" }}>
+                        <MenuModeracion
+                          usuario={{ id: s.contratadorid, nombre: s.nombre_completo }}
+                          que="publicacion"
+                          solicitudid={s.id}
+                          etiqueta="Denunciar o bloquear"
+                          onCambioBloqueo={(bloqueado) => {
+                            if (bloqueado) setSolicitudes((lista) => lista.filter((x) => x.contratadorid !== s.contratadorid));
+                          }}
+                        />
+                      </span>
                     </div>
                     <p className="texto-solicitud">
                       {texto.titulo && <span className="titulo-texto-solicitud">{texto.titulo}</span>}

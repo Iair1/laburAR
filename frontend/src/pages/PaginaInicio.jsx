@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import SelectorZona from "../componentes/SelectorZona";
 import { textoLugar } from "../zonas";
-import { agregarAlHistorial, obtenerHistorial } from "../sesion";
+import { agregarAlHistorial, obtenerHistorial, sincronizarHistorial } from "../sesion";
 import iconoCarpinteria from "../assets/categorias/carpinteria.svg";
 import iconoJardineria from "../assets/categorias/jardineria.svg";
 import iconoMudanza from "../assets/categorias/mudanza.svg";
@@ -11,6 +11,7 @@ import iconoElectricidad from "../assets/categorias/electricidad.svg";
 import iconoPintura from "../assets/categorias/pintura.svg";
 import iconoPiletero from "../assets/categorias/piletero.svg";
 import iconoAlbanileria from "../assets/categorias/albanileria.svg";
+import PiePagina from "../componentes/PiePagina";
 
 const estilos = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -352,6 +353,7 @@ function PaginaInicio() {
 
   useEffect(() => {
     const actualizar = () => setHistorial(obtenerHistorial());
+    sincronizarHistorial();
     window.addEventListener("laburar-historial-cambio", actualizar);
     return () => window.removeEventListener("laburar-historial-cambio", actualizar);
   }, []);
@@ -507,6 +509,7 @@ function PaginaInicio() {
             </div>
           </section>
         </main>
+        <PiePagina />
       </div>
     </>
   );

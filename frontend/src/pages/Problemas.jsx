@@ -543,6 +543,7 @@ export default function Problemas() {
             onCerrar={() => setProblemaViendo(null)}
             onAgendar={abrirAgendar}
             onCancelarCita={(c) => { setErrorConfirmar(""); setCitaCancelando(c); }}
+            onBloqueado={(clienteId) => setProblemas((lista) => lista.filter((p) => String(p.cliente?.id) !== String(clienteId)))}
           />
         )}
         {problemaAgendando && (

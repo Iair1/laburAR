@@ -1,3 +1,5 @@
+import { revisarCuentaSuspendida } from "./servidor";
+
 const API_URL = import.meta.env.DEV
   ? "https://laburar-three.vercel.app/api/usuarios"
   : "/api/usuarios";
@@ -107,6 +109,8 @@ export const registrarUsuario = async (datosUsuario) => {
       foto_perfil: fotoBase64,
       foto_dni: fotoDniBase64,
       foto_aptitud: fotoAptitudBase64,
+      // Registro con Google: el backend verifica la cuenta y no hace falta contraseña
+      google_credential: datosUsuario.googleCredential || undefined,
     };
 
     console.log("📤 Datos que se envían al backend:", {
@@ -389,6 +393,7 @@ const pedirAutenticado = async (url, method, body) => {
   });
   const resultado = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
+    revisarCuentaSuspendida(respuesta.status, resultado);
     const error = new Error(resultado.message || "Error en el servidor");
     error.status = respuesta.status;
     throw error;
@@ -578,6 +583,7 @@ export const iniciarSesionConGoogle = async (credential) => {
   if (!respuesta.ok) {
     const error = new Error(resultado.message || "Error al iniciar sesión con Google");
     error.status = respuesta.status;
+    error.datos = resultado; // { registrarse, perfil } si todavía no tiene cuenta
     throw error;
   }
 

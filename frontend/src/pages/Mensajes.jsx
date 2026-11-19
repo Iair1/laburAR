@@ -6,7 +6,11 @@ import { ResenasModal, DejarResenaModal } from "../componentes/Resenas";
 import { usePendientesResenas } from "../usePendientesResenas";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { comprimirFoto, TIPOS_FOTO_PERFIL } from "../api";
-import { obtenerMisChats, obtenerContactos, obtenerChat, mandarMensaje, EVENTO_MENSAJES } from "../mensajesApi";
+import { obtenerMisChats, obtenerContactos, obtenerChat, mandarMensaje, borrarMensaje, EVENTO_MENSAJES } from "../mensajesApi";
+import { MenuModeracion, DenunciarModal } from "../componentes/Moderacion";
+import { desbloquearUsuario } from "../cuentaApi";
+import { ConfirmarModal } from "../componentes/ProblemaModales";
+import { estilosProblemas } from "../estilosProblemas";
 import { avisarCambio } from "../servidor";
 import { normalizarTexto } from "../constantes";
 import { fechaLarga, fechaCorta } from "../problemasDatos";
@@ -114,6 +118,26 @@ const estilos = `
   .burbuja.con-error { background: #fbeceb; color: #8f1d17; border-color: #f0c2bf; }
   .burbuja img { display: block; max-width: 100%; max-height: 280px; border-radius: 10px; margin: 2px 0 6px; cursor: zoom-in; }
   .pie-burbuja { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 0.62rem; opacity: 0.75; margin-top: 3px; }
+  .fila-mensaje { position: relative; }
+  .boton-opciones-mensaje {
+    align-self: center; width: 26px; height: 26px; border-radius: 50%; border: none; background: none; color: #8a7a7a;
+    cursor: pointer; font-size: 1rem; line-height: 1; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; font-family: inherit;
+  }
+  .fila-mensaje:hover .boton-opciones-mensaje, .boton-opciones-mensaje:focus-visible, .boton-opciones-mensaje.abierto { opacity: 1; }
+  .boton-opciones-mensaje:hover { background: #f4eeee; color: #570101; }
+  @media (hover: none) { .boton-opciones-mensaje { opacity: 0.55; } }
+  .menu-opciones-mensaje {
+    position: absolute; top: calc(100% - 2px); z-index: 20; background: #fff; border: 1px solid #e3d3d3; border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.14); padding: 4px; min-width: 150px;
+  }
+  .fila-mensaje.mio .menu-opciones-mensaje { right: 0; }
+  .fila-mensaje:not(.mio) .menu-opciones-mensaje { left: 0; }
+  .menu-opciones-mensaje button {
+    display: block; width: 100%; text-align: left; border: none; background: none; border-radius: 7px; padding: 8px 10px;
+    font-size: 0.8rem; font-weight: 600; color: #b3261e; cursor: pointer; font-family: inherit;
+  }
+  .menu-opciones-mensaje button:hover { background: #fbeceb; }
+  .aviso-redactar .enlace-desbloquear { background: none; border: none; color: #570101; font-weight: 800; cursor: pointer; padding: 0; font-family: inherit; font-size: inherit; text-decoration: underline; }
   .pie-burbuja .leido { color: #9fd3ff; opacity: 1; font-weight: 800; }
   .fila-mensaje:not(.mio) .pie-burbuja { color: #888; }
   .reintentar-mensaje { background: none; border: none; color: #8f1d17; font-weight: 700; text-decoration: underline; cursor: pointer; font-size: 0.66rem; }
@@ -385,6 +409,32 @@ function PanelSoporte({ nombre, onVolver }) {
 const CADA_CUANTO_CHAT = 3000; // ms
 const CADA_CUANTO_LISTA = 12000;
 
+// "Desbloquear" dentro del aviso del chat
+function MenuDesbloquear({ otro, onListo }) {
+  const [procesando, setProcesando] = useState(false);
+  if (!otro) return null;
+  return (
+    <button
+      type="button"
+      className="enlace-desbloquear"
+      disabled={procesando}
+      onClick={async () => {
+        setProcesando(true);
+        try {
+          await desbloquearUsuario(otro.id);
+          await onListo?.();
+        } catch {
+          /* se puede reintentar */
+        } finally {
+          setProcesando(false);
+        }
+      }}
+    >
+      {procesando ? "Desbloqueando..." : "Desbloquear"}
+    </button>
+  );
+}
+
 function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
   const [datos, setDatos] = useState(null); // { otro, citas, puedeEscribir, yo }
   const [mensajes, setMensajes] = useState([]);
@@ -396,6 +446,11 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
   const [fotoAbierta, setFotoAbierta] = useState(null);
   const [viendoResenas, setViendoResenas] = useState(false);
   const [calificando, setCalificando] = useState(null);
+  const [menuMensaje, setMenuMensaje] = useState(null); // id del mensaje con el menú abierto
+  const [borrando, setBorrando] = useState(null); // mensaje a borrar (confirmación)
+  const [procesandoBorrar, setProcesandoBorrar] = useState(false);
+  const [errorBorrar, setErrorBorrar] = useState("");
+  const [denunciandoMensaje, setDenunciandoMensaje] = useState(null);
   const pendientesResena = usePendientesResenas();
   const ultimoId = useRef(0);
   const mensajesRef = useRef([]);
@@ -416,7 +471,7 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
     obtenerChat(otroId)
       .then((d) => {
         if (!activo) return;
-        setDatos({ otro: d.otro, citas: d.citas, puedeEscribir: d.puedeEscribir, yo: d.yo });
+        setDatos({ otro: d.otro, citas: d.citas, puedeEscribir: d.puedeEscribir, yo: d.yo, yoBloquee: d.yoBloquee, bloqueado: d.bloqueado });
         setMensajes(d.mensajes);
         ultimoId.current = d.mensajes.length ? d.mensajes[d.mensajes.length - 1].id : 0;
         avisarCambio(EVENTO_MENSAJES); // se marcaron como leídos
@@ -472,6 +527,39 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
     if (!foto?.previa) return undefined;
     return () => URL.revokeObjectURL(foto.previa);
   }, [foto?.previa]);
+
+  // Después de bloquear/desbloquear: se vuelve a preguntar si se puede escribir
+  const recargarPermisos = async () => {
+    try {
+      const d = await obtenerChat(otroId);
+      setDatos((previo) => ({ ...(previo || {}), puedeEscribir: d.puedeEscribir, yoBloquee: d.yoBloquee, bloqueado: d.bloqueado }));
+    } catch {
+      /* queda como estaba */
+    }
+  };
+
+  // Cerrar el menú de un mensaje al tocar afuera
+  useEffect(() => {
+    if (menuMensaje == null) return undefined;
+    const cerrar = () => setMenuMensaje(null);
+    document.addEventListener("click", cerrar);
+    return () => document.removeEventListener("click", cerrar);
+  }, [menuMensaje]);
+
+  const confirmarBorrar = async () => {
+    setProcesandoBorrar(true);
+    setErrorBorrar("");
+    try {
+      await borrarMensaje(borrando.id);
+      setMensajes((lista) => lista.filter((m) => m.id !== borrando.id));
+      setBorrando(null);
+      onActividad?.(); // actualiza la lista de conversaciones (el último mensaje)
+    } catch (err) {
+      setErrorBorrar(err.message || "No se pudo borrar el mensaje.");
+    } finally {
+      setProcesandoBorrar(false);
+    }
+  };
 
   const enviar = async (reintento = null) => {
     const contenido = reintento ? reintento.texto : texto.trim();
@@ -552,6 +640,14 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
             ★<span className="texto-boton-cabecera"> Reseñas</span>
           </button>
         )}
+        {otro && (
+          <MenuModeracion
+            usuario={{ id: otro.id, nombre: otro.nombre }}
+            bloqueado={datos?.yoBloquee}
+            solicitudid={citaActiva?.id}
+            onCambioBloqueo={recargarPermisos}
+          />
+        )}
       </header>
 
       {datos?.citas?.length > 0 && (
@@ -595,6 +691,28 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
               <div key={m.id}>
                 {nuevoDia && <div className="separador-dia"><span>{etiquetaDia(fecha)}</span></div>}
                 <div className={`fila-mensaje ${mio ? "mio" : ""} ${nuevoGrupo ? "nuevo-grupo" : ""}`}>
+                  {mio && typeof m.id === "number" && !m.enviando && (
+                    <button
+                      type="button"
+                      className={`boton-opciones-mensaje ${menuMensaje === m.id ? "abierto" : ""}`}
+                      aria-label="Opciones del mensaje"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuMensaje(menuMensaje === m.id ? null : m.id);
+                      }}
+                    >
+                      ⋮
+                    </button>
+                  )}
+                  {menuMensaje === m.id && (
+                    <div className="menu-opciones-mensaje" role="menu" onClick={(e) => e.stopPropagation()}>
+                      {mio ? (
+                        <button role="menuitem" onClick={() => { setMenuMensaje(null); setErrorBorrar(""); setBorrando(m); }}>Eliminar mensaje</button>
+                      ) : (
+                        <button role="menuitem" onClick={() => { setMenuMensaje(null); setDenunciandoMensaje(m); }}>Denunciar mensaje</button>
+                      )}
+                    </div>
+                  )}
                   <div className={`burbuja ${m.enviando ? "enviando" : ""} ${m.error ? "con-error" : ""}`}>
                     {m.imagen && (
                       <img src={m.imagen} alt="Foto del chat" onClick={() => setFotoAbierta(m.imagen)} />
@@ -611,6 +729,19 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
                       )}
                     </div>
                   </div>
+                  {!mio && typeof m.id === "number" && (
+                    <button
+                      type="button"
+                      className={`boton-opciones-mensaje ${menuMensaje === m.id ? "abierto" : ""}`}
+                      aria-label="Opciones del mensaje"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuMensaje(menuMensaje === m.id ? null : m.id);
+                      }}
+                    >
+                      ⋮
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -620,7 +751,18 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
 
       <div className="redactar">
         {datos && !datos.puedeEscribir ? (
-          <p className="aviso-redactar">Solo podés escribirle a alguien con quien tenés una cita o una solicitud.</p>
+          <p className="aviso-redactar">
+            {datos.yoBloquee ? (
+              <>
+                Bloqueaste a {otro?.nombre?.split(" ")[0] || "esta persona"}: no se pueden escribir.{" "}
+                <MenuDesbloquear otro={otro} onListo={recargarPermisos} />
+              </>
+            ) : datos.bloqueado ? (
+              "No podés escribirle a este usuario."
+            ) : (
+              "Solo podés escribirle a alguien con quien tenés una cita o una solicitud."
+            )}
+          </p>
         ) : (
           <>
             {foto && (
@@ -665,6 +807,31 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
         )}
       </div>
 
+      {borrando && (
+        <>
+          <style>{estilosProblemas}</style>
+          <ConfirmarModal
+            titulo="¿Eliminar este mensaje?"
+            texto="Se borra para los dos. No se puede deshacer."
+            textoConfirmar="Eliminar"
+            peligro
+            procesando={procesandoBorrar}
+            error={errorBorrar}
+            onConfirmar={confirmarBorrar}
+            onCerrar={() => setBorrando(null)}
+          />
+        </>
+      )}
+      {denunciandoMensaje && otro && (
+        <DenunciarModal
+          usuario={{ id: otro.id, nombre: otro.nombre }}
+          que="mensaje"
+          mensajeid={denunciandoMensaje.id}
+          solicitudid={citaActiva?.id}
+          onCerrar={() => setDenunciandoMensaje(null)}
+          onBloqueado={recargarPermisos}
+        />
+      )}
       {fotoAbierta && (
         <div className="visor-foto-chat" onClick={() => setFotoAbierta(null)} role="dialog" aria-label="Foto ampliada">
           <img src={fotoAbierta} alt="Foto ampliada" />

@@ -79,7 +79,15 @@ export async function obtenerChat(otroid, despuesDe) {
       : null,
     citas: (resultado.citas || []).map(aCita),
     puedeEscribir: resultado.puedeEscribir !== false,
+    yoBloquee: resultado.yoBloquee === true, // yo bloqueé a esta persona
+    bloqueado: resultado.bloqueado === true, // hay un bloqueo (de cualquiera de los dos)
   };
+}
+
+/** Borra un mensaje propio. */
+export async function borrarMensaje(mensajeid) {
+  await pedirAlServidor("/mensajes/borrarMensaje", "DELETE", { mensaje: mensajeid });
+  avisarCambio(EVENTO_MENSAJES);
 }
 
 /** Manda un mensaje (texto y/o foto ya convertida a base64). */

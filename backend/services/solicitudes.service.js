@@ -1,5 +1,7 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
+import { asegurarCuentas } from "../esquema.js";
+import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar } from "../moderacion.js";
 const {Client} = pkg;
 
 /*async function entregarS (solicitudes) {
@@ -32,9 +34,14 @@ async function borrarSolicitud(id, solicitudid) {
 }
 
 async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida, aptitud) {
+    const cuentasListas = trabajadorid ? await asegurarCuentas() : false;
     const client = new Client(config);
     try {
         await client.connect();
+        if(cuentasListas) {
+            await verificarQuePuedenInteractuar(client, Number(id), Number(trabajadorid),
+                "No podés mandarle una solicitud a este trabajador.");
+        }
         // Si no vienen días (o vienen todos en false), se aceptan todos los días.
         // (Antes decía "diassemana = [...]", que asigna en vez de comparar y siempre pisaba los días.)
         if(!Array.isArray(diassemana) || diassemana.length !== 7 || diassemana.every((d) => !d)){
@@ -146,6 +153,7 @@ async function serviciosPendientes(id) {
 }
 
 async function busqueda(id) {
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     console.log(id);
     try {
@@ -177,7 +185,8 @@ async function busqueda(id) {
                 ON t.id = s.trabajoid
             INNER JOIN usuarios uc
                 ON uc.id = s.contratadorid
-            WHERE s.estado = 'por revisar'           
+            WHERE s.estado = 'por revisar'
+              ${cuentasListas ? `AND ${cuentaActiva("uc")} AND NOT ${hayBloqueo("uc.id", "$1")}` : ""}
             ORDER BY coincidencias DESC;`, [id]);
 
         return sUtiles.rows
@@ -190,9 +199,17 @@ async function busqueda(id) {
 }
 
 const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     try {
         await client.connect();
+        if(cuentasListas) {
+            const duenio = await client.query("SELECT contratadorid FROM solicitudes WHERE id = $1", [solicitudid]);
+            if(duenio.rows[0]?.contratadorid) {
+                await verificarQuePuedenInteractuar(client, Number(id), Number(duenio.rows[0].contratadorid),
+                    "No podés tomar el pedido de este usuario.");
+            }
+        }
         let result;
         if(dia){
             // El trabajador elige un día dentro del período y en los días de la semana pedidos.
@@ -401,6 +418,7 @@ const revisarTerminadas = async() => {
 //puede que la saque
 
 async function busquedaAA(id) {
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     console.log(id);
     try {
@@ -434,6 +452,7 @@ async function busquedaAA(id) {
             WHERE s.estado = 'por revisar' AND s.dirigida = FALSE
               AND s.contratadorid <> $1
               AND s.periodo[2] >= CURRENT_DATE - 1
+              ${cuentasListas ? `AND ${cuentaActiva("uc")} AND NOT ${hayBloqueo("uc.id", "$1")}` : ""}
             ORDER BY coincidencias DESC, s.id DESC;`, [id]);
 
         return sUtiles.rows

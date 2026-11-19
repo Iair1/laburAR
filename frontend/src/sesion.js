@@ -7,6 +7,8 @@
 // fetch/axios y el resto de la app sigue funcionando igual, porque todos los
 // componentes importan estas funciones y no localStorage directamente.
 
+import { obtenerHistorialServidor, guardarBusquedaServidor, borrarHistorialServidor } from "./cuentaApi";
+
 const CLAVE_SESION = "laburar_sesion";
 const CLAVE_PUBLICACIONES = "laburar_publicaciones";
 
@@ -32,6 +34,7 @@ export function actualizarFotoSesion(fotoPerfilURL) {
 export function cerrarSesionCompleta() {
   localStorage.removeItem(CLAVE_SESION);
   localStorage.removeItem("token");
+  localStorage.removeItem("laburar_historial"); // el historial de la cuenta queda guardado en la base
   localStorage.removeItem("laburar_notificaciones");
   localStorage.removeItem("laburar_notificaciones_leidas");
   window.dispatchEvent(new Event("laburar-sesion-cambio"));
@@ -60,20 +63,6 @@ export function archivoADataURL(archivo) {
     lector.onload = () => resolve(lector.result);
     lector.onerror = reject;
     lector.readAsDataURL(archivo);
-  });
-}
-
-// --- Google (simulado) ---
-// STUB para que "Continuar con Google" funcione de punta a punta en la demo.
-// Para producción hay que cambiarlo por una integración real (ver
-// INSTRUCCIONES.md): @react-oauth/google en el front + verificación del
-// id_token en el backend, que devuelva un usuario real.
-export function iniciarSesionConGoogleSimulado() {
-  return Promise.resolve({
-    nombre: "Usuario de Google",
-    correo: `usuario.google.${Date.now()}@gmail.com`,
-    fotoPerfilURL: "https://cdn-icons-png.flaticon.com/128/281/281764.png",
-    proveedor: "google",
   });
 }
 
@@ -121,7 +110,8 @@ export function marcarNotificacionesLeidas(claves) {
 }
 
 // --- Historial ("Retomá donde lo dejaste" en la página de inicio) ---
-// Guarda las últimas búsquedas y solicitudes del usuario en este navegador.
+// Guarda las últimas búsquedas y solicitudes en este navegador y, si hay sesión, también
+// en la base (historial_busqueda), así aparecen en cualquier dispositivo.
 const CLAVE_HISTORIAL = "laburar_historial";
 const MAXIMO_HISTORIAL = 6;
 
@@ -141,11 +131,51 @@ export function agregarAlHistorial(entrada) {
   const nuevo = [{ ...entrada, titulo, fecha: Date.now() }, ...previo].slice(0, MAXIMO_HISTORIAL);
   localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(nuevo));
   window.dispatchEvent(new Event("laburar-historial-cambio"));
+  if (localStorage.getItem("token")) {
+    const { tipo, zona, barrio, consulta, categoria } = entrada;
+    guardarBusquedaServidor(JSON.stringify({ tipo, titulo, zona, barrio, consulta, categoria })).catch(() => {});
+  }
 }
 
 export function borrarHistorial() {
   localStorage.removeItem(CLAVE_HISTORIAL);
   window.dispatchEvent(new Event("laburar-historial-cambio"));
+  if (localStorage.getItem("token")) borrarHistorialServidor().catch(() => {});
+}
+
+/** Trae el historial guardado en la base (si hay sesión) y lo deja en este navegador. */
+export async function sincronizarHistorial() {
+  if (!localStorage.getItem("token")) return;
+  try {
+    const filas = await obtenerHistorialServidor();
+    const ahora = Date.now();
+    const lista = filas
+      .map((fila, i) => {
+        let datos;
+        try {
+          datos = JSON.parse(fila.busqueda);
+        } catch {
+          datos = null;
+        }
+        if (!datos || typeof datos !== "object") datos = { tipo: "busqueda", titulo: fila.busqueda, consulta: fila.busqueda };
+        return datos.titulo ? { ...datos, fecha: ahora - i } : null;
+      })
+      .filter(Boolean)
+      .slice(0, MAXIMO_HISTORIAL);
+    const local = obtenerHistorial();
+    if (lista.length === 0 && local.length > 0) {
+      // Primera vez con la cuenta: se sube lo que había en este navegador (del más viejo al más nuevo)
+      for (const h of [...local].reverse()) {
+        const { tipo, titulo, zona, barrio, consulta, categoria } = h;
+        await guardarBusquedaServidor(JSON.stringify({ tipo, titulo, zona, barrio, consulta, categoria })).catch(() => {});
+      }
+      return;
+    }
+    localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(lista));
+    window.dispatchEvent(new Event("laburar-historial-cambio"));
+  } catch {
+    /* sin conexión: queda el historial de este navegador */
+  }
 }
 
 // --- Utilidad: lee el payload de un JWT (sin verificarlo, solo para mostrar datos) ---

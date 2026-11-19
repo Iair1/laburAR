@@ -21,6 +21,8 @@ export const RegistroProvider = ({ children }) => {
   // Se completa solo si el usuario entra con Google: se saltea la
   // validación de contraseña y se bloquea el campo de correo.
   const [registradoConGoogle, setRegistradoConGoogle] = useState(false);
+  // El "credential" que dio Google (el backend lo verifica al crear la cuenta)
+  const [credencialGoogle, setCredencialGoogle] = useState("");
 
   const limpiarDatos = () => {
     setNombre("");
@@ -35,6 +37,7 @@ export const RegistroProvider = ({ children }) => {
     setCodigoPostal("");
     setLocalidad("");
     setRegistradoConGoogle(false);
+    setCredencialGoogle("");
   };
 
   const value = {
@@ -48,6 +51,7 @@ export const RegistroProvider = ({ children }) => {
     domicilioCalle, setDomicilioCalle,
     domicilioAltura, setDomicilioAltura,
     codigoPostal, setCodigoPostal,
+    credencialGoogle, setCredencialGoogle,
     localidad, setLocalidad,
     registradoConGoogle, setRegistradoConGoogle,
     limpiarDatos,

@@ -1,18 +1,22 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { RegistroContext } from "../context/RegistroContext";
-import { registrarUsuario } from "../api";
-import {
-  guardarSesionUsuario,
-  iniciarSesionConGoogleSimulado,
-} from "../sesion";
+import { registrarUsuario, iniciarSesion, iniciarSesionConGoogle } from "../api";
+import { guardarSesionUsuario, guardarNotificaciones, leerPayloadJWT } from "../sesion";
+import { GOOGLE_CLIENT_ID, cargarGoogleIdentity } from "../google";
 import SelectorZona from "../componentes/SelectorZona";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
 
 
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 const estilos = `
   * { box-sizing: border-box; }
+  .fila-terminos-auth { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; font-size: 0.74rem; color: #333; line-height: 1.35; text-align: left; cursor: pointer; }
+  .fila-terminos-auth input { margin-top: 2px; width: 16px; height: 16px; accent-color: #570101; flex-shrink: 0; }
+  .fila-terminos-auth a { color: #3346c9; font-weight: 600; }
+  .contenedor-google-registro { display: flex; justify-content: center; margin-bottom: 4px; min-height: 40px; }
 
   .pagina-auth {
     position: relative;
@@ -231,14 +235,48 @@ export default function Paso1() {
     codigoPostal, setCodigoPostal,
     localidad, setLocalidad,
     registradoConGoogle, setRegistradoConGoogle,
+    credencialGoogle, setCredencialGoogle,
     limpiarDatos,
   } = useContext(RegistroContext);
 
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const [previewFoto, setPreviewFoto] = useState(null);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const referenciaEntrada = useRef(null);
+  const referenciaBotonGoogle = useRef(null);
   const navegar = useNavigate();
+
+  // Botón oficial de Google (solo si está configurado el Client ID)
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || registradoConGoogle) return;
+    let cancelado = false;
+    cargarGoogleIdentity()
+      .then((google) => {
+        if (cancelado || !referenciaBotonGoogle.current) return;
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          ux_mode: "popup",
+          callback: ({ credential }) => {
+            const perfil = leerPayloadJWT(credential) || {};
+            if (!credential || !perfil.email) return;
+            setCredencialGoogle(credential);
+            setCorreo(String(perfil.email).toLowerCase());
+            if (perfil.name) setNombre(perfil.name);
+            setRegistradoConGoogle(true);
+            setError("");
+          },
+        });
+        google.accounts.id.renderButton(referenciaBotonGoogle.current, {
+          type: "standard", theme: "outline", size: "large", text: "signup_with", shape: "rectangular",
+          logo_alignment: "center", locale: "es", width: Math.min(referenciaBotonGoogle.current.offsetWidth || 344, 400),
+        });
+      })
+      .catch((err) => console.error(err));
+    return () => {
+      cancelado = true;
+    };
+  }, [registradoConGoogle, setCorreo, setNombre, setRegistradoConGoogle, setCredencialGoogle]);
 
   // Previsualización de la foto elegida
   useEffect(() => {
@@ -256,14 +294,6 @@ export default function Paso1() {
     if (archivoElegido) setArchivo(archivoElegido);
   };
 
-  const manejarGoogle = async () => {
-    const perfil = await iniciarSesionConGoogleSimulado();
-    setNombre(perfil.nombre);
-    setCorreo(perfil.correo);
-    setRegistradoConGoogle(true);
-    setError("");
-  };
-
   const manejarRegistro = async () => {
     const faltanCampos =
       !nombre || !correo || !telefono || !dni ||
@@ -274,8 +304,20 @@ export default function Paso1() {
       setError("Por favor completá todos los campos");
       return;
     }
+    if (!EMAIL_VALIDO.test(correo.trim())) {
+      setError("Revisá el email: no parece válido.");
+      return;
+    }
+    if (!registradoConGoogle && contrasena.length < 6) {
+      setError("La contraseña tiene que tener al menos 6 caracteres.");
+      return;
+    }
     if (!registradoConGoogle && contrasena !== revalidar) {
       setError("Las contraseñas no coinciden");
+      return;
+    }
+    if (!aceptaTerminos) {
+      setError("Tenés que aceptar los términos y condiciones y la política de privacidad.");
       return;
     }
 
@@ -284,8 +326,9 @@ export default function Paso1() {
 
     try {
       const datosCompletos = {
-        nombre,
-        correo,
+        nombre: nombre.trim(),
+        correo: correo.trim(),
+        googleCredential: registradoConGoogle ? credencialGoogle : undefined,
         telefono,
         // Toda cuenta nueva arranca como "cliente" (puede buscar y contratar).
         // Se convierte en trabajador visible en las búsquedas recién cuando
@@ -300,21 +343,20 @@ export default function Paso1() {
         localidad,
       };
 
-      const respuesta = registradoConGoogle
-        ? { id: `google_${Date.now()}` }
-        : await registrarUsuario(datosCompletos);
+      await registrarUsuario(datosCompletos);
 
-      // El backend sube la foto a Cloudinary y devuelve la URL guardada en la base.
-      const fotoPerfilURL = registradoConGoogle
-        ? "https://cdn-icons-png.flaticon.com/128/281/281764.png"
-        : respuesta?.usuario?.foto_perfil || null;
-
+      // Cuenta creada: se inicia la sesión de una (con Google o con email y contraseña)
+      const sesion = registradoConGoogle
+        ? await iniciarSesionConGoogle(credencialGoogle)
+        : await iniciarSesion(correo.trim(), contrasena);
       guardarSesionUsuario({
-        id: respuesta?.usuario?.id ?? respuesta?.id ?? Date.now(),
-        nombre,
-        correo,
-        fotoPerfilURL,
+        id: sesion.usuario?.id,
+        nombre: sesion.usuario?.nombre_completo || nombre.trim(),
+        correo: sesion.usuario?.email || correo.trim(),
+        fotoPerfilURL: sesion.usuario?.foto_perfil || null,
+        esAdmin: sesion.usuario?.es_admin === true,
       });
+      guardarNotificaciones(sesion.notificaciones || []);
 
       limpiarDatos();
       navegar("/");
@@ -335,16 +377,8 @@ export default function Paso1() {
           <div className="tarjeta-auth">
             <h1 className="titulo-auth">Registrate en <b>LABURAR</b></h1>
 
-          {!registradoConGoogle && (
-            <button type="button" className="boton-google" onClick={manejarGoogle}>
-              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
-                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 7.1 29.6 5 24 5c-7.6 0-14.1 4.3-17.4 10.6z" />
-                <path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5c-2 1.5-4.6 2.4-7.6 2.4-5.2 0-9.6-3.3-11.2-7.9l-6.6 5.1C9.8 39.6 16.3 44 24 44z" />
-                <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.5 5.5C41.5 36 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z" />
-              </svg>
-              Continuar con Google
-            </button>
+          {GOOGLE_CLIENT_ID && !registradoConGoogle && (
+            <div className="contenedor-google-registro" ref={referenciaBotonGoogle} />
           )}
 
           {registradoConGoogle && (
@@ -353,7 +387,9 @@ export default function Paso1() {
             </p>
           )}
 
-          <p className="divisor-auth">{registradoConGoogle ? "Completá el resto de tus datos" : "O completá tus datos"}</p>
+          <p className="divisor-auth">
+            {registradoConGoogle ? "Completá el resto de tus datos" : GOOGLE_CLIENT_ID ? "O completá tus datos" : "Completá tus datos"}
+          </p>
 
           <div className="contenedor-icono-foto" onClick={() => referenciaEntrada.current.click()}>
             {previewFoto ? (
@@ -453,7 +489,8 @@ export default function Paso1() {
               <input
                 className="entrada-auth"
                 type="password"
-                placeholder="CONTRASEÑA"
+                placeholder="CONTRASEÑA (MÍNIMO 6)"
+                autoComplete="new-password"
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
               />
@@ -466,6 +503,14 @@ export default function Paso1() {
               />
             </>
           )}
+
+          <label className="fila-terminos-auth">
+            <input type="checkbox" checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)} />
+            <span>
+              Leí y acepto los <Link to="/terminos" target="_blank">Términos y condiciones</Link> y la{" "}
+              <Link to="/privacidad" target="_blank">Política de privacidad</Link>.
+            </span>
+          </label>
 
           {error && <p className="texto-error-auth">{error}</p>}
 

@@ -8,8 +8,10 @@ import {
   editarServicio,
   obtenerMiPerfil,
   subirFotoPerfil,
+  comprimirFoto,
   TIPOS_FOTO_PERFIL,
 } from "../api";
+import { subirFotoDni } from "../cuentaApi";
 import Avatar from "../componentes/Avatar";
 import SelectorZona from "../componentes/SelectorZona";
 import { normalizarZona } from "../zonas";
@@ -188,6 +190,8 @@ export default function OfrecerServicios() {
   const [tieneMatricula, setTieneMatricula] = useState(false);
   const [archivoMatricula, setArchivoMatricula] = useState(null);
   const [archivoDni, setArchivoDni] = useState(null);
+  // Estado de la verificación que ya tiene: null | "pendiente" | "verificado" | "rechazado"
+  const [estadoDni, setEstadoDni] = useState(null);
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState("");
@@ -224,6 +228,7 @@ export default function OfrecerServicios() {
     obtenerMiPerfil()
       .then((perfil) => {
         if (cancelado || !perfil) return;
+        setEstadoDni(perfil.verificado ? "verificado" : perfil.dni_estado || null);
         if (normalizarZona(perfil.localidad)) setZona((z) => z || normalizarZona(perfil.localidad));
         if (Array.isArray(perfil.disponibilidad) && perfil.disponibilidad.some(Boolean)) {
           setDiasDisponibles((d) => (d.length ? d : DIAS.filter((_, i) => perfil.disponibilidad[i])));
@@ -274,8 +279,9 @@ export default function OfrecerServicios() {
       setError("Subí una foto de perfil: es lo que va a aparecer en tu tarjeta y genera más confianza.");
       return;
     }
-    if (!archivoDni) {
-      setError("Subí tu DNI para verificar tu identidad. Es lo que le da confianza a los clientes.");
+    const yaMandoDni = estadoDni === "verificado" || estadoDni === "pendiente";
+    if (!archivoDni && !yaMandoDni) {
+      setError("Subí una foto de tu DNI para verificar tu identidad. Es lo que le da confianza a los clientes.");
       return;
     }
     if (!aceptaTerminos) {
@@ -307,7 +313,20 @@ export default function OfrecerServicios() {
         await agregarAptitud(categoria, datosServicio);
       }
 
-      // 3) La foto de perfil (si eligió una nueva). Se sube a Cloudinary y se guarda en la base.
+      // 3) El DNI (si eligió uno): se guarda privado y lo revisa un administrador
+      if (archivoDni) {
+        try {
+          await subirFotoDni(await comprimirFoto(archivoDni, 1600));
+          setEstadoDni("pendiente");
+          setArchivoDni(null);
+        } catch (errDni) {
+          if (errDni.status === 401) throw errDni;
+          setError(`Tu servicio se publicó, pero no pudimos guardar el DNI (${errDni.message || "error"}). Podés subirlo desde Mi cuenta.`);
+          return;
+        }
+      }
+
+      // 4) La foto de perfil (si eligió una nueva). Se sube a Cloudinary y se guarda en la base.
       if (fotoNueva) {
         try {
           const url = await subirFotoPerfil(fotoNueva);
@@ -350,8 +369,8 @@ export default function OfrecerServicios() {
           <div className="aviso-confianza">
             <span>🛡️</span>
             <span>
-              Verificamos tu identidad con el DNI que subas acá. Los clientes van a ver una
-              insignia de "perfil verificado" en tu tarjeta.
+              Verificamos tu identidad con el DNI que subas acá (se guarda privado, nadie más lo ve).
+              Cuando lo aprobamos, los clientes ven "Identidad verificada" en tu tarjeta.
             </span>
           </div>
 
@@ -463,7 +482,10 @@ export default function OfrecerServicios() {
             <p className="ayuda-seccion">Esto es lo que hace que un cliente confíe en contratarte.</p>
 
             <div className="campo">
-              <label className="etiqueta-campo">DNI (frente y contrafrente)</label>
+              <label className="etiqueta-campo">Foto del frente de tu DNI</label>
+              {estadoDni === "verificado" ? (
+                <div className="subida-texto-titulo subida-ok">✓ Tu identidad ya está verificada</div>
+              ) : (
               <div className="subida-caja" onClick={() => refDni.current.click()}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="M21 15l-5-5-9 9" />
@@ -471,21 +493,37 @@ export default function OfrecerServicios() {
                 <div>
                   {archivoDni ? (
                     <div className="subida-texto-titulo subida-ok">✓ {archivoDni.name}</div>
+                  ) : estadoDni === "pendiente" ? (
+                    <>
+                      <div className="subida-texto-titulo subida-ok">⏳ Ya recibimos tu DNI y lo estamos revisando</div>
+                      <div className="subida-texto-sub">Si querés, podés subir otra foto</div>
+                    </>
                   ) : (
                     <>
-                      <div className="subida-texto-titulo">Subir DNI</div>
-                      <div className="subida-texto-sub">Solo lo usamos para verificar tu identidad</div>
+                      <div className="subida-texto-titulo">{estadoDni === "rechazado" ? "Subí otra foto del DNI" : "Subir DNI"}</div>
+                      <div className="subida-texto-sub">Se guarda privado: solo lo usamos para verificar tu identidad</div>
                     </>
                   )}
                 </div>
                 <input
                   ref={refDni}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept={TIPOS_FOTO_PERFIL.join(",")}
                   style={{ display: "none" }}
-                  onChange={(e) => e.target.files[0] && setArchivoDni(e.target.files[0])}
+                  onChange={(e) => {
+                    const archivo = e.target.files[0];
+                    e.target.value = "";
+                    if (!archivo) return;
+                    if (!TIPOS_FOTO_PERFIL.includes(archivo.type)) {
+                      setError("El DNI tiene que ser una foto JPG, PNG o WEBP.");
+                      return;
+                    }
+                    setError("");
+                    setArchivoDni(archivo);
+                  }}
                 />
               </div>
+              )}
             </div>
 
             <div
@@ -535,7 +573,7 @@ export default function OfrecerServicios() {
               {aceptaTerminos && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
             </div>
             <span className="texto-terminos">
-              Acepto los términos y condiciones para ofrecer servicios en LABURAR.
+              Acepto los <a href="/terminos" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>términos y condiciones</a> para ofrecer servicios en LABURAR.
             </span>
           </div>
 

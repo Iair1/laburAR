@@ -1124,7 +1124,7 @@ function PaginaBusqueda() {
                     )}
                     <li className="item-meta-tarjeta">{Iconos.ubicacion}{t.zona}, Arg.</li>
                     {t.verificado && (
-                      <li className="item-meta-tarjeta">{Iconos.verificado}Trabajador verificado</li>
+                      <li className="item-meta-tarjeta" title="Revisamos su DNI">{Iconos.verificado}Identidad verificada</li>
                     )}
                   </ul>
 
@@ -1341,6 +1341,7 @@ function PaginaBusqueda() {
             trabajador={trabajadorParaVer}
             onCerrar={() => setTrabajadorParaVer(null)}
             onAgendar={manejarAgendarDesdePerfil}
+            onBloqueado={(id) => setTrabajadoresCrudos((lista) => lista.filter((u) => String(u.id) !== String(id)))}
           />
         )}
 

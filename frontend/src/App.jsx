@@ -19,6 +19,10 @@ import Problemas from "./pages/Problemas"
 import MisProblemas from "./pages/MisProblemas"
 import MiCuenta from "./pages/MiCuenta"
 import MisPedidos from "./pages/MisPedidos"
+import RecuperarContrasena from "./pages/RecuperarContrasena"
+import Legales from "./pages/Legales"
+import Admin from "./pages/Admin"
+import NoEncontrada from "./pages/NoEncontrada"
 import { AvisoResenasPendientes } from "./componentes/Resenas"
 
 function App() {
@@ -43,6 +47,12 @@ function App() {
         <Route path="/mis-problemas" element={<MisProblemas />} />
         <Route path="/mi-cuenta" element={<MiCuenta />} />
         <Route path="/mis-pedidos" element={<MisPedidos />} />
+        <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+        <Route path="/terminos" element={<Legales pagina="terminos" />} />
+        <Route path="/privacidad" element={<Legales pagina="privacidad" />} />
+        <Route path="/seguridad" element={<Legales pagina="seguridad" />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="*" element={<NoEncontrada />} />
 
       </Routes>
       {/* Cuando termina un trabajo, a los dos les aparece para dejar la reseña */}

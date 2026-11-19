@@ -204,3 +204,107 @@ export function asegurarResenasYMensajes() {
     }
     return promesaResenasYMensajes;
 }
+
+/* ------------------------------------------------------------------ */
+/* Cuentas y moderación (ver migraciones/003_cuentas_y_moderacion.sql) */
+/* ------------------------------------------------------------------ */
+
+const SENTENCIAS_CUENTAS = [
+    // Datos de la cuenta: email (para entrar y recuperar la contraseña), teléfono,
+    // administrador, suspensión, cuenta eliminada y verificación de identidad (DNI)
+    `ALTER TABLE usuarios
+        ADD COLUMN IF NOT EXISTS email text,
+        ADD COLUMN IF NOT EXISTS telefono text,
+        ADD COLUMN IF NOT EXISTS es_admin boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS suspendido boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS motivo_suspension text,
+        ADD COLUMN IF NOT EXISTS eliminado boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS dni_foto text,
+        ADD COLUMN IF NOT EXISTS dni_estado text,
+        ADD COLUMN IF NOT EXISTS verificado boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS fecha_alta timestamptz DEFAULT now()`,
+    // Denuncias de un usuario a otro (opcionalmente sobre un trabajo o un mensaje)
+    `CREATE TABLE IF NOT EXISTS denuncias (
+        id serial PRIMARY KEY,
+        denuncianteid integer NOT NULL,
+        denunciadoid integer NOT NULL,
+        motivo text NOT NULL,
+        detalle text,
+        solicitudid integer,
+        mensajeid integer,
+        estado text NOT NULL DEFAULT 'pendiente',
+        nota_admin text,
+        fecha timestamptz DEFAULT now(),
+        fecha_resuelta timestamptz
+    )`,
+    // Bloqueos: el bloqueado no puede escribirle ni mandarle solicitudes al que lo bloqueó (y viceversa)
+    `CREATE TABLE IF NOT EXISTS bloqueos (
+        id serial PRIMARY KEY,
+        bloqueadorid integer NOT NULL,
+        bloqueadoid integer NOT NULL,
+        fecha timestamptz DEFAULT now(),
+        UNIQUE (bloqueadorid, bloqueadoid)
+    )`,
+    // Intentos fallidos de inicio de sesión (para frenar a quien prueba contraseñas)
+    `CREATE TABLE IF NOT EXISTS intentos_login (
+        id serial PRIMARY KEY,
+        clave text NOT NULL,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // Códigos para recuperar la contraseña (se guarda el código hasheado, nunca el código)
+    `CREATE TABLE IF NOT EXISTS recuperaciones (
+        id serial PRIMARY KEY,
+        userid integer NOT NULL,
+        codigo text NOT NULL,
+        vence timestamptz NOT NULL,
+        intentos integer NOT NULL DEFAULT 0,
+        usado boolean NOT NULL DEFAULT false,
+        fecha timestamptz DEFAULT now()
+    )`,
+];
+
+const SENTENCIAS_CUENTAS_OPCIONALES = [
+    // Un email por cuenta (si ya hubiera repetidos, no se crea y se valida igual desde el código)
+    `CREATE UNIQUE INDEX IF NOT EXISTS usuarios_email_unico ON usuarios (lower(email)) WHERE email IS NOT NULL AND eliminado IS NOT TRUE`,
+    `CREATE INDEX IF NOT EXISTS denuncias_estado ON denuncias (estado, fecha DESC)`,
+    `CREATE INDEX IF NOT EXISTS intentos_login_clave ON intentos_login (clave, fecha)`,
+];
+
+let promesaCuentas = null;
+
+/**
+ * Se asegura (una sola vez por proceso) de que existan las columnas de cuentas
+ * (email, suspendido, verificado, etc.) y las tablas de denuncias, bloqueos,
+ * intentos de login y recuperación de contraseña. Nunca tira error: devuelve
+ * false si no pudo (y lo reintenta en el próximo pedido).
+ * @returns {Promise<boolean>}
+ */
+export function asegurarCuentas() {
+    if (!promesaCuentas) {
+        promesaCuentas = (async () => {
+            const client = new Client(config);
+            try {
+                await client.connect();
+                for (const sentencia of SENTENCIAS_CUENTAS) {
+                    await client.query(sentencia);
+                }
+                for (const sentencia of SENTENCIAS_CUENTAS_OPCIONALES) {
+                    await client.query(sentencia).catch((error) =>
+                        console.error("Aviso (no grave):", error.message)
+                    );
+                }
+                return true;
+            } catch (error) {
+                console.error(
+                    "No se pudieron preparar las cuentas/moderación. Corré backend/migraciones/003_cuentas_y_moderacion.sql en la base.",
+                    error.message
+                );
+                promesaCuentas = null;
+                return false;
+            } finally {
+                await client.end().catch(() => {});
+            }
+        })();
+    }
+    return promesaCuentas;
+}

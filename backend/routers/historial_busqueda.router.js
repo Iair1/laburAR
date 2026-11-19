@@ -6,5 +6,6 @@ const router = Router();
 
 router.get("/miHistorial", verifyToken, HistorialBusquedaController.miHistorial);
 router.post("/agregarBusqueda", verifyToken, HistorialBusquedaController.agregarBusqueda);
+router.delete("/borrarHistorial", verifyToken, HistorialBusquedaController.borrarHistorial);
 
 export default router;

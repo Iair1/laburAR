@@ -12,7 +12,8 @@ async function miHistorial(id){
                 FROM historial_busqueda
                 WHERE userid = $1
                 ORDER BY busqueda, id DESC
-            ) ORDER BY id DESC
+            ) h ORDER BY id DESC
+            LIMIT 20
         `, [id]);
         return result.rows;
     } catch(error){
@@ -35,9 +36,22 @@ async function agregarBusqueda(id, busqueda){
     }
 }
 
+// Borra todo el historial de búsquedas del usuario
+async function borrarHistorial(id){
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query("DELETE FROM historial_busqueda WHERE userid = $1", [id]);
+        return result.rowCount;
+    } finally{
+        await client.end();
+    }
+}
+
 const HistorialBusquedaService = {
     miHistorial,
-    agregarBusqueda
+    agregarBusqueda,
+    borrarHistorial
 }
 export default HistorialBusquedaService;
 

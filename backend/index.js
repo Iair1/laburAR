@@ -14,6 +14,9 @@ import HistorialBusquedaRouter from "./routers/historial_busqueda.router.js"
 import HistorialRouter from "./routers/historial.router.js"
 import ReseñaRouter from "./routers/reseña.router.js"
 import ImagenesTrabajosRouter from "./routers/imagenes_trabajos.router.js"
+import DenunciasRouter from "./routers/denuncias.router.js"
+import BloqueosRouter from "./routers/bloqueos.router.js"
+import AdminRouter from "./routers/admin.router.js"
 
 
 
@@ -28,6 +31,21 @@ const app = express();
 // Vercel igual corta los requests de más de 4.5mb.
 app.use(express.json({ limit: "5mb" }));
 app.use(cors());
+
+// Los errores internos de la base (nombres de tablas/columnas, conexión, etc.) no se le
+// muestran a la gente: se guardan en el log y se responde un mensaje general.
+const ERROR_INTERNO = /column|relation|syntax error|malformed|value too long|violates|duplicate key|does not exist|invalid input|null value|operator does not exist|cannot cast|out of range|ECONN|ETIMEDOUT|ENOTFOUND|timeout|SSL|password authentication|too many clients|remaining connection|Connection terminated/i;
+app.use((req, res, next) => {
+    const json = res.json.bind(res);
+    res.json = (cuerpo) => {
+        if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && ERROR_INTERNO.test(cuerpo.message)) {
+            console.error(`Error interno en ${req.method} ${req.path}:`, cuerpo.message);
+            cuerpo = { ...cuerpo, message: "Hubo un problema en el servidor. Probá de nuevo en un rato." };
+        }
+        return json(cuerpo);
+    };
+    next();
+});
 
 app.get("/api", (__, res) => res.send("Bienvenido a laburAR"));
 
@@ -59,6 +77,9 @@ app.use("/api/historial", HistorialRouter);
 app.use("/api/reseñas", ReseñaRouter);
 app.use("/api/resenas", ReseñaRouter); // sin ñ: es la que usa el navegador
 app.use("/api/imagenes_trabajos", ImagenesTrabajosRouter);
+app.use("/api/denuncias", DenunciasRouter);
+app.use("/api/bloqueos", BloqueosRouter);
+app.use("/api/admin", AdminRouter);
 /*
 app.use("/api/tdr", TdrRouter);
 app.use("/api/trabajos", TrabajosRouter);

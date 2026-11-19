@@ -1,7 +1,8 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
 import {v2 as cloudinary} from "cloudinary";
-import { asegurarResenasYMensajes } from "../esquema.js";
+import { asegurarResenasYMensajes, asegurarCuentas } from "../esquema.js";
+import { hayBloqueo, cuentaActiva } from "../moderacion.js";
 const {Client} = pkg;
 
 function errorConEstado(mensaje, status) {
@@ -35,12 +36,21 @@ async function mandarMensaje(id, receptor, texto, imagen = null) {
         throw errorConEstado("No se puede mandar un mensaje a ese usuario", 400);
     }
     await asegurarResenasYMensajes();
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     try {
         await client.connect();
         const permiso = await client.query(`SELECT (${PUEDEN_HABLAR}) AS puede`, [id, receptor]);
         if(!permiso.rows[0].puede) {
             throw errorConEstado("Solo podés escribirle a alguien con quien tenés una cita o una solicitud", 403);
+        }
+        if(cuentasListas) {
+            const bloqueo = await client.query(`
+                SELECT ${hayBloqueo("$1::int", "$2::int")} AS bloqueado,
+                    (SELECT ${cuentaActiva("u")} FROM usuarios u WHERE u.id = $2::int) AS activa`, [id, receptor]);
+            if(bloqueo.rows[0].bloqueado || bloqueo.rows[0].activa === false) {
+                throw errorConEstado("No podés escribirle a este usuario.", 403);
+            }
         }
         const imagenUrl = imagen ? await subirImagenMensaje(imagen) : null;
         const result = await client.query(
@@ -76,6 +86,7 @@ async function conseguirChat(id, otroid, despuesDe = null) {
     id = Number(id);
     otroid = Number(otroid);
     await asegurarResenasYMensajes();
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     try{
         await client.connect();
@@ -103,11 +114,24 @@ async function conseguirChat(id, otroid, despuesDe = null) {
             ORDER BY s.id DESC
             LIMIT 5`, [id, otroid]);
         const permiso = await client.query(`SELECT (${PUEDEN_HABLAR}) AS puede`, [id, otroid]);
+        // Bloqueos: "yoBloquee" para mostrar "Desbloquear"; si hay bloqueo (de cualquiera) no se puede escribir
+        let yoBloquee = false, bloqueado = false, otroActivo = true;
+        if(cuentasListas) {
+            const b = await client.query(`
+                SELECT EXISTS (SELECT 1 FROM bloqueos WHERE bloqueadorid = $1 AND bloqueadoid = $2) AS yo,
+                    ${hayBloqueo("$1::int", "$2::int")} AS alguno,
+                    (SELECT ${cuentaActiva("u")} FROM usuarios u WHERE u.id = $2::int) AS activa`, [id, otroid]);
+            yoBloquee = b.rows[0].yo;
+            bloqueado = b.rows[0].alguno;
+            otroActivo = b.rows[0].activa !== false;
+        }
         return {
             mensajes: mensajes.rows,
             otro: otro.rows[0] || null,
             citas: citas.rows,
-            puedeEscribir: permiso.rows[0].puede,
+            puedeEscribir: permiso.rows[0].puede && !bloqueado && otroActivo,
+            yoBloquee,
+            bloqueado,
         };
     }finally{
         await client.end();

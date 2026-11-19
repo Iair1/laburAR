@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Avatar from "./Avatar";
 import { FotosDelTrabajador } from "./FotosTrabajos";
 import { ResenasDeUsuario } from "./Resenas";
+import { MenuModeracion } from "./Moderacion";
 
 const estilos = `
   .fondo-modal-perfil {
@@ -40,7 +41,7 @@ const estilos = `
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 1.2rem;
-    padding-right: 18px;
+    padding-right: 84px;
   }
   .fila-identidad-perfil { display: flex; align-items: center; gap: 14px; min-width: 0; }
   .avatar-perfil {
@@ -98,6 +99,7 @@ const estilos = `
     transition: background 0.15s;
   }
   .cerrar-modal-perfil:hover { background: #f0f0ee; color: #1a1a1a; }
+  .moderacion-perfil { position: absolute; top: 10px; right: 52px; z-index: 2; }
 
   .chips-categoria-perfil { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.1rem; }
   .chip-categoria-perfil {
@@ -214,7 +216,7 @@ function EstrellasPerfil({ valor }) {
  *  - onCerrar(): cierra el modal
  *  - onAgendar(trabajador): el usuario quiere agendar con este trabajador
  */
-export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar }) {
+export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar, onBloqueado }) {
   const [descripcionExpandida, setDescripcionExpandida] = useState(false);
 
   useEffect(() => {
@@ -259,6 +261,16 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
           onClick={(e) => e.stopPropagation()}
         >
           <button className="cerrar-modal-perfil" onClick={onCerrar} aria-label="Cerrar">✕</button>
+          <div className="moderacion-perfil">
+            <MenuModeracion
+              usuario={{ id: trabajador.id, nombre: trabajador.nombre }}
+              onCambioBloqueo={(bloqueado) => {
+                if (!bloqueado) return;
+                onBloqueado?.(trabajador.id);
+                onCerrar?.();
+              }}
+            />
+          </div>
 
           <div className="encabezado-perfil">
             <div className="fila-identidad-perfil">
@@ -302,7 +314,7 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar 
               <span className="chip-categoria-perfil" key={a}>{a}</span>
             ))}
             {trabajador.verificado && (
-              <span className="chip-verificado-perfil">✓ Trabajador verificado</span>
+              <span className="chip-verificado-perfil" title="Revisamos su DNI">✓ Identidad verificada</span>
             )}
           </div>
 

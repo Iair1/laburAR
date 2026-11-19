@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { RegistroContext } from "../context/RegistroContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { iniciarSesion, iniciarSesionConGoogle } from "../api";
 import { guardarSesionUsuario, guardarNotificaciones, leerPayloadJWT } from "../sesion";
@@ -6,7 +7,7 @@ import { GOOGLE_CLIENT_ID, cargarGoogleIdentity } from "../google";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
 
-const estilos = `
+export const estilosAuth = `
   * { box-sizing: border-box; }
 
   .pagina-auth {
@@ -150,6 +151,12 @@ const estilos = `
   }
 
   .enlace-centro-auth { text-align: center; margin: 0 0 6px; font-size: 0.78rem; }
+  .aviso-auth {
+    background: #fff4e5; border: 1px solid #f0c48a; color: #6b3d00; border-radius: 8px;
+    padding: 10px 12px; font-size: 0.8rem; line-height: 1.4; margin: 0 0 14px;
+  }
+  .legal-auth { text-align: center; font-size: 0.68rem; color: #666; margin: 10px 0 0; line-height: 1.4; }
+  .legal-auth a { color: #3346c9; }
   .enlace-azul-auth { color: #3346c9; font-weight: 600; cursor: pointer; }
   .enlace-azul-auth:hover { text-decoration: underline; }
   .texto-gris-auth { color: #2b2b2b; }
@@ -165,7 +172,7 @@ const estilos = `
   }
 `;
 
-function LogoLaburar({ onClick }) {
+export function LogoLaburar({ onClick }) {
   return (
     <div className="logo-laburar" onClick={onClick}>
       <img src={logoIcono} alt="" className="logo-icono" />
@@ -180,9 +187,12 @@ export default function Login() {
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const navegar = useNavigate();
+  const registro = useContext(RegistroContext);
   // Si llegó desde una página que pide sesión (ej: /login?volver=/subir-problema), vuelve ahí
   const [parametros] = useSearchParams();
   const volver = parametros.get("volver") || "";
+  const vieneSuspendida = parametros.get("suspendida") === "1";
+  const vieneDeRecuperar = parametros.get("recuperada") === "1";
   const destino = volver.startsWith("/") && !volver.startsWith("//") && !volver.includes("\\") ? volver : "/";
 
   // Guarda la sesión con lo que devuelve el backend (token + notificaciones).
@@ -192,8 +202,9 @@ export default function Login() {
     guardarSesionUsuario({
       id: respuesta?.usuario?.id ?? payload?.userid ?? Date.now(),
       nombre: respuesta?.usuario?.nombre_completo || payload?.nombre_completo || datosExtra.nombre || "",
-      correo: respuesta?.usuario?.correo || datosExtra.correo || "",
+      correo: respuesta?.usuario?.email || respuesta?.usuario?.correo || datosExtra.correo || "",
       fotoPerfilURL: respuesta?.usuario?.foto_perfil || datosExtra.fotoPerfilURL || null,
+      esAdmin: respuesta?.usuario?.es_admin === true,
     });
     guardarNotificaciones(respuesta?.notificaciones || []);
   };
@@ -246,8 +257,15 @@ export default function Login() {
       navegar(destino);
     } catch (err) {
       console.error("Error en login con Google:", err);
-      if (err.status === 404) {
-        setError("El inicio de sesión con Google todavía no está habilitado en el servidor. Por ahora ingresá con tu usuario y contraseña.");
+      if (err.status === 404 && err.datos?.registrarse) {
+        // Todavía no tiene cuenta: se completan los datos del registro con lo que dio Google
+        registro.setCredencialGoogle(credential);
+        registro.setCorreo(err.datos.perfil?.email || perfil.email || "");
+        registro.setNombre(err.datos.perfil?.nombre || perfil.name || "");
+        registro.setRegistradoConGoogle(true);
+        navegar("/paso1");
+      } else if (err.status === 404) {
+        setError("El inicio de sesión con Google todavía no está habilitado en el servidor. Por ahora ingresá con tu email y contraseña.");
       } else {
         setError(err.message || "No se pudo iniciar sesión con Google.");
       }
@@ -295,13 +313,10 @@ export default function Login() {
     };
   }, []);
 
-  const manejarGoogleSinConfigurar = () => {
-    setError("Falta configurar el inicio de sesión con Google (VITE_GOOGLE_CLIENT_ID).");
-  };
 
   return (
     <>
-      <style>{estilos}</style>
+      <style>{estilosAuth}</style>
       <div className="pagina-auth">
         <div className="contenedor-auth">
           <LogoLaburar onClick={() => navegar("/")} />
@@ -309,10 +324,20 @@ export default function Login() {
           <div className="tarjeta-auth">
           <h1 className="titulo-auth">Iniciar sesión en <b>LABURAR</b></h1>
 
+          {vieneSuspendida && (
+            <p className="aviso-auth" role="alert">
+              Tu cuenta está suspendida, por eso se cerró la sesión. Si creés que es un error, escribinos.
+            </p>
+          )}
+          {vieneDeRecuperar && (
+            <p className="aviso-auth" role="status">Listo, ya podés entrar con tu contraseña nueva.</p>
+          )}
+
+          {GOOGLE_CLIENT_ID && (
           <div className="contenedor-google">
             <div ref={referenciaBotonGoogle} style={{ display: googleListo ? "flex" : "none" }} />
             {!googleListo && (
-              <button className="boton-google" onClick={manejarGoogleSinConfigurar} disabled={cargando}>
+              <button className="boton-google" disabled>
                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                   <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
                   <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 7.1 29.6 5 24 5c-7.6 0-14.1 4.3-17.4 10.6z" />
@@ -323,13 +348,15 @@ export default function Login() {
               </button>
             )}
           </div>
+          )}
 
-          <p className="divisor-auth">O</p>
+          {GOOGLE_CLIENT_ID && <p className="divisor-auth">O</p>}
 
           <input
             className="entrada-auth"
             type="text"
-            placeholder="EMAIL/USUARIO"
+            placeholder="EMAIL O NOMBRE COMPLETO"
+            aria-label="Email o nombre completo"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             onKeyDown={manejarTecla}
@@ -340,6 +367,7 @@ export default function Login() {
             className="entrada-auth"
             type="password"
             placeholder="CONTRASEÑA"
+            aria-label="Contraseña"
             value={contrasena}
             onChange={(e) => setContrasena(e.target.value)}
             onKeyDown={manejarTecla}
@@ -367,6 +395,10 @@ export default function Login() {
             <span className="enlace-azul-bold-auth" onClick={() => navegar("/paso1")}>
               REGISTRARME
             </span>
+          </p>
+          <p className="legal-auth">
+            Al usar LaburAR aceptás los <a href="/terminos">Términos y condiciones</a> y la{" "}
+            <a href="/privacidad">Política de privacidad</a>.
           </p>
           </div>
         </div>

@@ -48,7 +48,7 @@ const aceptarSolicitud = async(req, res)=>{
         const result = await SolicitudesService.aceptarSolicitud(id, solicitudid, dia, hora || null);
         res.status(200).json({ message: "Solicitud aceptada exitosamente", result });
     } catch(error){
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 }
 
@@ -130,6 +130,10 @@ const cancelarTrabajo = async(req, res)=>{
 }
 
 const revisarTerminadas = async(req, res)=>{
+    // Si en Vercel está la variable CRON_SECRET, solo el cron de Vercel (que la manda) puede correrla
+    if(process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+        return res.status(401).json({ message: "No autorizado" });
+    }
     try{
         const result = await SolicitudesService.revisarTerminadas();
         res.status(200).json({ message: "Revisión de solicitudes terminadas exitosa", result });

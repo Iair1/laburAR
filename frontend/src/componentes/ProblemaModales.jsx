@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Avatar from "./Avatar";
 import { ResenasModal } from "./Resenas";
+import { MenuModeracion } from "./Moderacion";
 import { ImagenProblema, ChipEstado, ChipUrgencia, Calendario, Modal } from "./ProblemasUI";
 import {
   FRANJAS,
@@ -47,7 +48,7 @@ const estilosModales = `
 /*  - paraCliente: lo ve quien lo publicó ("Mis problemas")            */
 /* ------------------------------------------------------------------ */
 
-export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelarCita, paraCliente = false }) {
+export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelarCita, onBloqueado, paraCliente = false }) {
   const [viendoResenas, setViendoResenas] = useState(false);
   const estado = estadoVisible(problema);
   const esCita = problema.estado === "pendiente" || problema.estado === "terminada";
@@ -79,6 +80,17 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
           <button type="button" className="enlace-resenas-detalle" onClick={() => setViendoResenas(true)}>
             Ver reseñas
           </button>
+          <MenuModeracion
+            usuario={{ id: problema.cliente.id, nombre: problema.cliente.nombre }}
+            que="publicacion"
+            solicitudid={problema.id}
+            etiqueta="Denunciar o bloquear"
+            onCambioBloqueo={(bloqueado) => {
+              if (!bloqueado) return;
+              onBloqueado?.(problema.cliente.id);
+              onCerrar?.();
+            }}
+          />
         </div>
       )}
       {viendoResenas && problema.cliente && (

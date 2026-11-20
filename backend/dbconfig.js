@@ -10,5 +10,7 @@ const config = {
     PUSHER_KEY: process.env.PUSHER_KEY,
     PUSHER_SECRET: process.env.PUSHER_SECRET,
     PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+    timeout: 5000,
+    useTLS: true
 }
 export default config;

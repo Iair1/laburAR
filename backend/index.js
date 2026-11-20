@@ -7,6 +7,8 @@ import Pusher from "pusher";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 //termnona lo de pusher
+import config from "./dbconfig.js";
+
 
 import UsuariosRouter from "./routers/usuarios.router.js"
 import SolicitudesRouter from "./routers/solicitudes.router.js"
@@ -82,14 +84,7 @@ console.log("Variables de Pusher disponibles", {
   PUSHER_CLUSTER: Boolean(process.env.PUSHER_CLUSTER),
 });
 
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER,
-  useTLS: true,
-  timeout: 5000,
-});
+const pusher = new Pusher(config);
 // El navegador recibe únicamente la configuración pública.
 app.get("/config", (req, res) => {
   res.json({

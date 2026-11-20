@@ -118,7 +118,7 @@ app.post("/api/avisos", async (req, res) => {
     console.error("Error al publicar en Pusher:", error.message);
 
     res.status(502).json({
-      error: "No se pudo confirmar la publicación.",
+      error: error.message,
     });
   }
 });

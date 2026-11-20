@@ -553,7 +553,11 @@ export const mandarAviso = async (canal, mensaje) => {
     });
     const resultado = await respuesta.json();
     if (!respuesta.ok) {
-      throw new Error(resultado.message || "Error al mandar el aviso");
+      throw new Error(
+        resultado.error ||
+        resultado.message ||
+        `Error HTTP ${respuesta.status}`
+      );
     }
     return resultado;
 }

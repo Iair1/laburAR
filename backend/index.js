@@ -84,7 +84,14 @@ console.log("Variables de Pusher disponibles", {
   PUSHER_CLUSTER: Boolean(process.env.PUSHER_CLUSTER),
 });
 
-const pusher = new Pusher(config);
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
+  useTLS: true,
+  timeout: 5000,
+});
 // El navegador recibe únicamente la configuración pública.
 app.get("/config", (req, res) => {
   res.json({

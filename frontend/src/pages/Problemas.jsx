@@ -4,15 +4,33 @@ import BarraNav from "../componentes/BarraNav";
 import { estilosTarjetas } from "../estilosTarjetas";
 import { estilosProblemas } from "../estilosProblemas";
 import { TarjetaProblema, Icono } from "../componentes/ProblemasUI";
-import { DetalleProblemaModal, AgendarCitaModal, ConfirmarModal } from "../componentes/ProblemaModales";
-import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
+import { DetalleProblemaModal, ConfirmarModal } from "../componentes/ProblemaModales";
+import {
+  ProponerModal,
+  TarjetaOferta,
+  ContraofertaModal,
+  RechazarOfertaModal,
+  AceptarOfertaModal,
+  estilosOfertas,
+} from "../componentes/Ofertas";
+import { obtenerSesionUsuario, cerrarSesionCompleta, obtenerNotificaciones } from "../sesion";
 import { obtenerMisAptitudes, obtenerMiPerfil } from "../api";
 import AccionesCita from "../componentes/AccionesCita";
 import { usePendientesResenas } from "../usePendientesResenas";
 import { CATEGORIAS, normalizarTexto } from "../constantes";
 import SelectorZona from "../componentes/SelectorZona";
 import { coincideLugar, lugarDesdeParametros, normalizarZona, textoLugar } from "../zonas";
-import { obtenerProblemasDisponibles, obtenerMisCitas, agendarCita, cancelarCita } from "../problemasApi";
+import { obtenerProblemasDisponibles, obtenerMisCitas, cancelarCita } from "../problemasApi";
+import {
+  obtenerMisPropuestas,
+  mandarPropuesta,
+  aceptarPropuesta,
+  contraofertar,
+  rechazarPropuesta,
+  estadoDeOferta,
+  formatearPesos,
+  textoCuando,
+} from "../ofertasApi";
 import { URGENCIAS, fechasPosibles, hoyStr, sumarDias, fechaLarga, estadoVisible } from "../problemasDatos";
 
 const estilos = `
@@ -23,6 +41,18 @@ const estilos = `
   .chips-urgencia-filtro { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .cta-vacio { margin-top: 12px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
   .nota-citas { font-size: 0.74rem; color: #555; margin: -4px 0 12px; }
+  .caja-propuesta-enviada {
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; font-size: 0.74rem; line-height: 1.45;
+    background: #f1f6fc; border: 1px solid #bcd3ef; color: #1d4f8c;
+  }
+  .caja-propuesta-enviada.responder { background: #fbf1f1; border-color: #e3bcbc; color: #8a0f0f; }
+  .caja-propuesta-enviada strong { font-weight: 800; }
+  .grupo-propuestas + .grupo-propuestas { margin-top: 1.4rem; }
+  .titulo-grupo-propuestas { font-size: 0.78rem; font-weight: 800; color: #3b1e0d; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.6rem; }
+  .lista-propuestas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .lista-propuestas .oferta + .oferta { margin-top: 0; }
+  .titulo-problema-oferta { font-size: 0.9rem; font-weight: 800; color: #1a1a1a; line-height: 1.3; }
+  .categoria-problema-oferta { font-size: 0.7rem; color: #777; margin-top: 1px; }
 `;
 
 const OPCIONES_FECHA = [
@@ -51,7 +81,8 @@ export default function Problemas() {
   const navegar = useNavigate();
   const ubicacion = useLocation();
   const [parametros, setParametros] = useSearchParams();
-  const vista = parametros.get("vista") === "citas" ? "citas" : "problemas";
+  const vista = ["citas", "propuestas"].includes(parametros.get("vista")) ? parametros.get("vista") : "problemas";
+  const ofertaResaltada = parametros.get("oferta");
 
   const [usuario] = useState(() => obtenerSesionUsuario());
   const pendientesResenas = usePendientesResenas(Boolean(usuario));
@@ -63,6 +94,7 @@ export default function Problemas() {
   const [filtroCategoria, setFiltroCategoria] = useState(CATEGORIAS.includes(parametros.get("categoria")) ? parametros.get("categoria") : "");
   const [soloMisServicios, setSoloMisServicios] = useState(false);
   const [misServicios, setMisServicios] = useState([]);
+  const [tarifas, setTarifas] = useState({});
   const [filtroUrgencia, setFiltroUrgencia] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
   const [fechaManual, setFechaManual] = useState("");
@@ -72,12 +104,15 @@ export default function Problemas() {
 
   const [problemas, setProblemas] = useState([]);
   const [citas, setCitas] = useState([]);
+  const [propuestas, setPropuestas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
   const [problemaViendo, setProblemaViendo] = useState(null);
   const [problemaAgendando, setProblemaAgendando] = useState(null);
+  // Responder una propuesta: { tipo: "aceptar" | "contraoferta" | "rechazar", oferta }
+  const [respondiendo, setRespondiendo] = useState(null);
   const [citaCancelando, setCitaCancelando] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [errorConfirmar, setErrorConfirmar] = useState("");
@@ -94,9 +129,14 @@ export default function Problemas() {
 
   const cargar = useCallback(async () => {
     try {
-      const [disponibles, misCitas] = await Promise.all([obtenerProblemasDisponibles(), obtenerMisCitas()]);
+      const [disponibles, misCitas, misPropuestas] = await Promise.all([
+        obtenerProblemasDisponibles(),
+        obtenerMisCitas(),
+        obtenerMisPropuestas().catch(() => []),
+      ]);
       setProblemas(disponibles);
       setCitas(misCitas);
+      setPropuestas(misPropuestas);
       setError("");
     } catch (err) {
       if (err.status === 401) {
@@ -117,7 +157,10 @@ export default function Problemas() {
     cargar();
     // Servicios que ofrece el trabajador (los de "Mis servicios"), para el filtro
     obtenerMisAptitudes()
-      .then((lista) => setMisServicios(lista.map((a) => a.aptitud)))
+      .then((lista) => {
+        setMisServicios(lista.map((a) => a.aptitud));
+        setTarifas(Object.fromEntries(lista.filter((a) => Number(a.cobro_por_hora) > 0).map((a) => [a.aptitud, Number(a.cobro_por_hora)])));
+      })
       .catch(() => setMisServicios([]));
     // Su zona: para mostrar primero los problemas cerca y el filtro "Solo en mi zona"
     obtenerMiPerfil()
@@ -126,10 +169,35 @@ export default function Problemas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cuando llega una notificación nueva (alguien respondió una propuesta), se actualiza la pantalla
+  useEffect(() => {
+    if (!usuario) return undefined;
+    let ultima = obtenerNotificaciones().at(-1)?.id;
+    const alCambiar = () => {
+      const nueva = obtenerNotificaciones().at(-1)?.id;
+      if (nueva !== ultima) {
+        ultima = nueva;
+        cargar();
+      }
+    };
+    window.addEventListener("laburar-notificaciones-cambio", alCambiar);
+    return () => window.removeEventListener("laburar-notificaciones-cambio", alCambiar);
+  }, [usuario, cargar]);
+
+  // Si se llega desde una notificación a una propuesta puntual, se baja hasta ella
+  useEffect(() => {
+    if (cargando || vista !== "propuestas" || !ofertaResaltada) return undefined;
+    const temporizador = setTimeout(() => {
+      document.getElementById(`oferta-${ofertaResaltada}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+    return () => clearTimeout(temporizador);
+  }, [cargando, vista, ofertaResaltada]);
+
   const cambiarVista = (nueva) => {
     const siguientes = new URLSearchParams(parametros);
-    if (nueva === "citas") siguientes.set("vista", "citas");
-    else siguientes.delete("vista");
+    if (nueva === "problemas") siguientes.delete("vista");
+    else siguientes.set("vista", nueva);
+    siguientes.delete("oferta");
     setParametros(siguientes);
   };
 
@@ -194,27 +262,88 @@ export default function Problemas() {
   const coincidenConMisServicios = problemas.filter((p) => p.coincidencias > 0 && fechasPosibles(p).length > 0).length;
   const proximaCita = citas.map((c) => c.dia).filter((d) => d && d >= hoyStr()).sort()[0];
 
+  // Propuestas: la abierta de cada problema, y los grupos de la pestaña "Mis propuestas"
+  const propuestaAbiertaDe = useMemo(
+    () => new Map(propuestas.filter((o) => o.estado === "pendiente").map((o) => [o.solicitudid, o])),
+    [propuestas]
+  );
+  const paraResponder = propuestas.filter((o) => o.estado === "pendiente" && !o.vencida && o.turno === "trabajador");
+  const esperandoRespuesta = propuestas.filter((o) => o.estado === "pendiente" && !o.vencida && o.turno === "cliente");
+  const propuestasAnteriores = propuestas.filter((o) => !paraResponder.includes(o) && !esperandoRespuesta.includes(o));
+  const abiertas = paraResponder.length + esperandoRespuesta.length;
+
   const abrirAgendar = (problema) => {
     setProblemaViendo(null);
     setProblemaAgendando(problema);
   };
 
-  const confirmarCita = async (problema, dia, hora) => {
+  const verPropuesta = (oferta) => {
+    setProblemaViendo(null);
+    const siguientes = new URLSearchParams(parametros);
+    siguientes.set("vista", "propuestas");
+    siguientes.set("oferta", String(oferta.id));
+    setParametros(siguientes);
+  };
+
+  // Los errores de "ya no está disponible" (409) recargan la pantalla
+  const manejarError = (err, cerrar) => {
+    if (err.status === 401) {
+      cerrar?.();
+      irAlLogin();
+      return true;
+    }
+    if (err.status === 409) cargar();
+    return false;
+  };
+
+  const confirmarPropuesta = async (problema, datos) => {
     try {
-      await agendarCita(problema.id, dia, hora);
+      await mandarPropuesta({ solicitudid: problema.id, ...datos });
     } catch (err) {
-      if (err.status === 401) {
-        setProblemaAgendando(null);
-        irAlLogin();
-        return;
-      }
-      if (err.noDisponible) cargar();
+      if (manejarError(err, () => setProblemaAgendando(null))) return;
       throw err;
     }
     setProblemaAgendando(null);
-    mostrarToast(`¡Cita agendada para el ${fechaLarga(dia)} a las ${hora} hs! Le avisamos a ${problema.cliente?.nombre || "quien lo publicó"}.`);
+    mostrarToast(`¡Listo! Le mandaste tu propuesta de ${formatearPesos(datos.precio)} a ${problema.cliente?.nombre?.split(" ")[0] || "quien lo publicó"}. Te avisamos cuando responda.`);
+    await cargar();
+    cambiarVista("propuestas");
+  };
+
+  const confirmarAceptar = async (oferta) => {
+    try {
+      await aceptarPropuesta(oferta.id);
+    } catch (err) {
+      if (manejarError(err, () => setRespondiendo(null))) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(`¡Cita agendada! ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}. Le avisamos a ${oferta.cliente?.nombre?.split(" ")[0] || "el cliente"}.`);
     await cargar();
     cambiarVista("citas");
+  };
+
+  const confirmarContraoferta = async (oferta, precio, mensaje) => {
+    try {
+      await contraofertar(oferta.id, precio, mensaje);
+    } catch (err) {
+      if (manejarError(err, () => setRespondiendo(null))) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(`Le propusiste ${formatearPesos(precio)}. Te avisamos cuando responda.`);
+    await cargar();
+  };
+
+  const confirmarRechazo = async (oferta) => {
+    try {
+      await rechazarPropuesta(oferta.id);
+    } catch (err) {
+      if (manejarError(err, () => setRespondiendo(null))) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(oferta.turno === "cliente" ? "Retiraste tu propuesta." : "Rechazaste la contraoferta. Le avisamos al cliente.");
+    await cargar();
   };
 
   const confirmarCancelarCita = async () => {
@@ -296,21 +425,99 @@ export default function Problemas() {
           </div>
         ) : (
           <div className="lista-tarjetas">
-            {resultados.map((p) => (
-              <TarjetaProblema
-                key={p.id}
-                problema={p}
-                vista="trabajador"
-                acciones={
-                  <>
-                    <button className="boton-ver-perfil" onClick={() => setProblemaViendo(p)}>Ver problema</button>
-                    <button className="boton-agendar" onClick={() => abrirAgendar(p)}>Agendar cita</button>
-                  </>
-                }
-              />
-            ))}
+            {resultados.map((p) => {
+              const propuesta = propuestaAbiertaDe.get(p.id);
+              const estado = propuesta ? estadoDeOferta(propuesta, "trabajador") : null;
+              return (
+                <TarjetaProblema
+                  key={p.id}
+                  problema={p}
+                  vista="trabajador"
+                  extra={
+                    propuesta && (
+                      <div className={`caja-propuesta-enviada ${estado.meToca ? "responder" : ""}`}>
+                        Tu propuesta: <strong>{formatearPesos(propuesta.precio)}</strong> · {estado.etiqueta}
+                      </div>
+                    )
+                  }
+                  acciones={
+                    <>
+                      <button className="boton-ver-perfil" onClick={() => setProblemaViendo(p)}>Ver problema</button>
+                      {propuesta ? (
+                        <button className="boton-agendar" onClick={() => verPropuesta(propuesta)}>Ver mi propuesta</button>
+                      ) : (
+                        <button className="boton-agendar" onClick={() => abrirAgendar(p)}>Enviar propuesta</button>
+                      )}
+                    </>
+                  }
+                />
+              );
+            })}
           </div>
         )}
+      </>
+    );
+  };
+
+  const tarjetaPropuesta = (o) => {
+    const problema = problemas.find((p) => p.id === o.solicitudid);
+    return (
+      <TarjetaOferta
+        key={o.id}
+        oferta={o}
+        rol="trabajador"
+        resaltada={String(o.id) === String(ofertaResaltada)}
+        titulo={
+          <>
+            <div className="titulo-problema-oferta">{o.titulo}</div>
+            {o.problema?.categoria && <div className="categoria-problema-oferta">{o.problema.categoria}{o.problema.localidad ? ` · ${[o.problema.barrio, o.problema.localidad].filter(Boolean).join(", ")}` : ""}</div>}
+          </>
+        }
+        onAceptar={(oferta) => setRespondiendo({ tipo: "aceptar", oferta })}
+        onContraofertar={(oferta) => setRespondiendo({ tipo: "contraoferta", oferta })}
+        onRechazar={(oferta) => setRespondiendo({ tipo: "rechazar", oferta })}
+        onMensaje={(otro) => navegar(`/mensajes?con=${encodeURIComponent(otro.id)}`)}
+        extraAcciones={
+          o.estado === "aceptada" ? (
+            <button type="button" className="accion-oferta suave" onClick={() => cambiarVista("citas")}>Ver en mis citas</button>
+          ) : problema ? (
+            <button type="button" className="accion-oferta suave" onClick={() => setProblemaViendo(problema)}>Ver problema</button>
+          ) : null
+        }
+      />
+    );
+  };
+
+  const renderPropuestas = () => {
+    if (cargando) return esqueletos;
+    if (error) return <div className="estado-error">{error}</div>;
+    if (propuestas.length === 0) {
+      return (
+        <div className="sin-resultados">
+          Todavía no mandaste propuestas. Elegí un problema y proponé día, hora y precio.
+          <div className="cta-vacio">
+            <button className="boton-agendar" style={botonChico} onClick={() => cambiarVista("problemas")}>Ver problemas publicados</button>
+          </div>
+        </div>
+      );
+    }
+    const grupos = [
+      ["Te respondieron: te toca a vos", paraResponder],
+      ["Esperando respuesta del cliente", esperandoRespuesta],
+      ["Anteriores", propuestasAnteriores],
+    ].filter(([, lista]) => lista.length > 0);
+    return (
+      <>
+        <p className="resumen-resultados">
+          <strong>{abiertas}</strong> {abiertas === 1 ? "propuesta abierta" : "propuestas abiertas"}
+          {paraResponder.length > 0 && <> · <strong>{paraResponder.length}</strong> para responder</>}
+        </p>
+        {grupos.map(([titulo, lista]) => (
+          <section className="grupo-propuestas" key={titulo} aria-label={titulo}>
+            <h2 className="titulo-grupo-propuestas">{titulo}</h2>
+            <div className="lista-propuestas">{lista.map(tarjetaPropuesta)}</div>
+          </section>
+        ))}
       </>
     );
   };
@@ -379,6 +586,7 @@ export default function Problemas() {
     <>
       <style>{estilosTarjetas}</style>
       <style>{estilosProblemas}</style>
+      <style>{estilosOfertas}</style>
       <style>{estilos}</style>
       <div className="pagina-problemas">
         <BarraNav centro={buscador} />
@@ -396,7 +604,7 @@ export default function Problemas() {
                       : "Esperando a alguien que los resuelva"}
                   </div>
                   <div className="separador-resumen" />
-                  <p className="ayuda-resumen">Elegí un problema, agendá una cita en uno de los días que pidió el cliente y le llega el aviso</p>
+                  <p className="ayuda-resumen">Elegí un problema y proponé día, hora y precio. Si el cliente acepta, queda la cita agendada</p>
                 </div>
 
                 <div className="caja-filtro">
@@ -506,6 +714,16 @@ export default function Problemas() {
                   </div>
                 </div>
               </>
+            ) : vista === "propuestas" ? (
+              <div className="caja-filtro caja-resumen" style={{ textAlign: "center" }}>
+                <p className="titulo-caja-filtro">MIS PROPUESTAS</p>
+                <div className="contador-solicitudes">{cargando ? "–" : abiertas}</div>
+                <p className="ayuda-resumen">{abiertas === 1 ? "propuesta abierta" : "propuestas abiertas"}</p>
+                <div className="separador-resumen" />
+                <p className="ayuda-resumen">
+                  Cuando el cliente te responde, te avisamos. Podés aceptar su precio, hacerle una contraoferta o rechazarla
+                </p>
+              </div>
             ) : (
               <div className="caja-filtro caja-resumen" style={{ textAlign: "center" }}>
                 <p className="titulo-caja-filtro">MIS CITAS</p>
@@ -526,6 +744,9 @@ export default function Problemas() {
               <button role="tab" aria-selected={vista === "problemas"} className={`pestana-busqueda ${vista === "problemas" ? "activa" : ""}`} onClick={() => cambiarVista("problemas")}>
                 Problemas
               </button>
+              <button role="tab" aria-selected={vista === "propuestas"} className={`pestana-busqueda ${vista === "propuestas" ? "activa" : ""}`} onClick={() => cambiarVista("propuestas")}>
+                Mis propuestas{abiertas > 0 ? ` (${abiertas})` : ""}
+              </button>
               <button role="tab" aria-selected={vista === "citas"} className={`pestana-busqueda ${vista === "citas" ? "activa" : ""}`} onClick={() => cambiarVista("citas")}>
                 Mis citas{citas.length > 0 ? ` (${citas.length})` : ""}
               </button>
@@ -533,7 +754,7 @@ export default function Problemas() {
                 {filtrosAbiertos ? "Ocultar filtros" : "Filtros"}
               </button>
             </div>
-            {vista === "problemas" ? renderProblemas() : renderCitas()}
+            {vista === "problemas" ? renderProblemas() : vista === "propuestas" ? renderPropuestas() : renderCitas()}
           </div>
         </div>
 
@@ -542,16 +763,28 @@ export default function Problemas() {
             problema={problemaViendo}
             onCerrar={() => setProblemaViendo(null)}
             onAgendar={abrirAgendar}
+            propuesta={propuestaAbiertaDe.get(problemaViendo.id) || null}
+            onVerPropuesta={verPropuesta}
             onCancelarCita={(c) => { setErrorConfirmar(""); setCitaCancelando(c); }}
             onBloqueado={(clienteId) => setProblemas((lista) => lista.filter((p) => String(p.cliente?.id) !== String(clienteId)))}
           />
         )}
         {problemaAgendando && (
-          <AgendarCitaModal
+          <ProponerModal
             problema={problemaAgendando}
+            tarifa={tarifas[problemaAgendando.categoria] || null}
             onCerrar={() => setProblemaAgendando(null)}
-            onConfirmar={confirmarCita}
+            onConfirmar={(datos) => confirmarPropuesta(problemaAgendando, datos)}
           />
+        )}
+        {respondiendo?.tipo === "aceptar" && (
+          <AceptarOfertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarAceptar} />
+        )}
+        {respondiendo?.tipo === "contraoferta" && (
+          <ContraofertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarContraoferta} />
+        )}
+        {respondiendo?.tipo === "rechazar" && (
+          <RechazarOfertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarRechazo} />
         )}
         {citaCancelando && (
           <ConfirmarModal

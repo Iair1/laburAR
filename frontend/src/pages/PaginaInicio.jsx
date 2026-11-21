@@ -435,7 +435,7 @@ function PaginaInicio() {
               Subir un problema
             </button>
             <p className="texto-subir-problema">
-              Contá qué necesitás arreglar y qué días pueden ir: un trabajador agenda una cita y va a arreglarlo.
+              Contá qué necesitás arreglar y qué días pueden ir: los trabajadores te mandan propuestas con día y precio.
             </p>
           </section>
 
@@ -491,19 +491,19 @@ function PaginaInicio() {
               </div>
               <div className="paso-como-funciona">
                 <span className="numero-paso">2</span>
-                <h3>Un trabajador agenda una cita</h3>
-                <p>Los trabajadores ven tu problema y uno elige qué día va, dentro de los que pusiste.</p>
+                <h3>Te llegan propuestas</h3>
+                <p>Los trabajadores te proponen día, hora y precio. Aceptás, les hacés una contraoferta o las rechazás.</p>
               </div>
               <div className="paso-como-funciona">
                 <span className="numero-paso">3</span>
                 <h3>Listo</h3>
-                <p>Te avisamos quién va y qué día. Lo ves todo en "Mis problemas".</p>
+                <p>Cuando aceptás una, queda la cita agendada. Lo ves todo en "Mis problemas".</p>
               </div>
             </div>
             <div className="banda-trabajadores">
               <div>
                 <strong>¿Sos trabajador?</strong>
-                <span>Encontrá problemas para resolver y agendá una cita para ir a arreglarlos.</span>
+                <span>Encontrá problemas para resolver y mandá tu propuesta con día, hora y precio.</span>
               </div>
               <button className="boton-banda" onClick={() => navegar("/problemas")}>Ver problemas publicados</button>
             </div>

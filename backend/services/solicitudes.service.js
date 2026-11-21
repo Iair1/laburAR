@@ -1,7 +1,9 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
-import { asegurarCuentas } from "../esquema.js";
-import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar } from "../moderacion.js";
+import { asegurarCuentas, asegurarOfertas } from "../esquema.js";
+import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar, errorConEstado } from "../moderacion.js";
+import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia } from "../notificaciones.js";
+import { cerrarOfertasDelProblema } from "./ofertas.service.js";
 const {Client} = pkg;
 
 /*async function entregarS (solicitudes) {
@@ -18,14 +20,22 @@ const {Client} = pkg;
     } 
 }*/
 async function borrarSolicitud(id, solicitudid) {
+    const conOfertas = await asegurarOfertas();
     const client = new Client(config);
     try{
         await client.connect();
+        await client.query("BEGIN");
         const result = await client.query("DELETE FROM solicitudes WHERE contratadorid = $1 AND id = $2 RETURNING *", [id, solicitudid]);
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea borrar no existe o no le pertenece a este usuario");
         }
+        // Si era un problema con propuestas abiertas, se cierran y se les avisa a esos trabajadores
+        if(conOfertas && result.rows[0].dirigida === false) {
+            await cerrarOfertasDelProblema(client, result.rows[0].id, { titulo: tituloDeSolicitud(result.rows[0].solicitud), motivo: "eliminado" });
+        }
+        await client.query("COMMIT");
     } catch(error){
+        await client.query("ROLLBACK").catch(() => {});
         console.error("Error al borrar la solicitud:", error);
         throw error;
     } finally{
@@ -59,6 +69,19 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
             "INSERT INTO solicitudes (contratadorid, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
             [id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, trabajadorid, dirigida]
         );
+        // Un pedido directo a un trabajador: le llega el aviso
+        if(trabajadorid) {
+            const cliente = await nombreDe(client, id);
+            await notificar(client, {
+                userid: Number(trabajadorid),
+                tipo: "solicitud-nueva",
+                titulo: `${primerNombre(cliente)} te mandó una solicitud`,
+                contenido: `«${tituloDeSolicitud(solicitud)}»${aptitud ? ` · ${aptitud}` : ""}`,
+                enlace: "/solicitudes-recibidas",
+                otroid: Number(id),
+                solicitudid: result.rows[0].id,
+            });
+        }
         return result.rows[0];
     }catch(error){
         console.error("Error en la busqueda:", error);
@@ -203,6 +226,12 @@ const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
     const client = new Client(config);
     try {
         await client.connect();
+        // Un problema publicado (dirigida = false) no se agenda directo: el trabajador manda una
+        // propuesta con día, hora y precio, y el cliente la acepta (ver ofertas.service.js)
+        const tipo = await client.query("SELECT dirigida FROM solicitudes WHERE id = $1", [solicitudid]);
+        if(tipo.rows[0]?.dirigida === false) {
+            throw errorConEstado("Para tomar un problema publicado, mandale una propuesta al cliente con el día, la hora y tu precio.", 400);
+        }
         if(cuentasListas) {
             const duenio = await client.query("SELECT contratadorid FROM solicitudes WHERE id = $1", [solicitudid]);
             if(duenio.rows[0]?.contratadorid) {
@@ -244,30 +273,19 @@ const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
             throw new Error("La solicitud que desea aceptar no existe, no le pertenece a este usuario, o no coincide con las fechas propuestas por el usuario.-");
         }
         const s = result.rows[0];
-        let avisotxt;
-        if(s.dirigida === false){
-            const trabajador = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
-            const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-            avisotxt=`${trabajador.rows[0]?.nombre_completo || "Un trabajador"} agendó una cita para tu problema
-                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
-                        Problema: ${s.solicitud}`;
-        } else if(dia){
-            const fecha = new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-            avisotxt=`Su solicitud ha sido aceptada por el trabajador
-                        Día: ${fecha}${hora ? ` a las ${hora} hs` : ""}
-                        Solicitud: ${s.solicitud}`;
-        } else {
-            avisotxt=`Su solicitud ha sido aceptada por el trabajador
-                        Solicitud: ${s.solicitud}
-                        Periodo: ${s.periodo}`;
-        }
-        const aviso = await client.query(`
-            INSERT INTO notificaciones (tipo, userid, contenido)
-            VALUES('solicitud-aceptada', $1
-            , $2)`, [s.contratadorid, avisotxt]);
-        return{solicitud: s, aviso: aviso.rows[0]};
+        const trabajador = await nombreDe(client, id, "El trabajador");
+        const aviso = await notificar(client, {
+            userid: s.contratadorid,
+            tipo: "solicitud-aceptada",
+            titulo: `${primerNombre(trabajador)} aceptó tu solicitud`,
+            contenido: `${dia ? `Cita: ${textoDia(dia, hora)} · ` : ""}«${tituloDeSolicitud(s.solicitud)}»`,
+            enlace: "/mis-pedidos?vista=aceptados",
+            otroid: Number(id),
+            solicitudid: s.id,
+        });
+        return{solicitud: s, aviso};
     } catch(error) {
-        console.error("Error al aceptar la solicitud:", error);
+        if(!error.status) console.error("Error al aceptar la solicitud:", error);
         throw error;
     } finally {
         await client.end();
@@ -282,14 +300,17 @@ const rechazarSolicitud = async(id, solicitudid) => {
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea rechazar no existe o no le pertenece a este usuario");
         }
-        const avisotxt=`Su solicitud ha sido rechazada por el trabajador
-                        Solicitud: ${result.rows[0].solicitud}
-                        Periodo: ${result.rows[0].periodo}`;
-        const aviso = await client.query(`
-            INSERT INTO notificaciones (tipo, userid, contenido)
-            VALUES('solicitud-rechazada', $1
-            , $2)`, [result.rows[0].contratadorid, avisotxt]);
-        return{solicitud: result.rows[0], aviso: aviso.rows[0]};
+        const trabajador = await nombreDe(client, id, "El trabajador");
+        const aviso = await notificar(client, {
+            userid: result.rows[0].contratadorid,
+            tipo: "solicitud-rechazada",
+            titulo: `${primerNombre(trabajador)} no puede tomar tu pedido`,
+            contenido: `«${tituloDeSolicitud(result.rows[0].solicitud)}» · Buscá otro trabajador`,
+            enlace: "/buscar",
+            otroid: Number(id),
+            solicitudid: result.rows[0].id,
+        });
+        return{solicitud: result.rows[0], aviso};
     } catch(error) {
         console.error("Error al rechazar la solicitud:", error);
         throw error;
@@ -312,19 +333,23 @@ const cancelarTrabajo = async(id, solicitudid) => {
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea cancelar no existe o no le pertenece a este usuario");
         }
-        let otro = result.rows[0].contratadorid
-        if(result.rows[0].contratadorid === id){
-            otro = result.rows[0].trabajadorid
-        }
-        const avisotxt=`El trabajo ha sido cancelado por el usuario
-                        Solicitud: ${result.rows[0].solicitud}
-                        Periodo: ${result.rows[0].periodo}
-                        Usuario que cancela: ${result.rows[0].nombre_completo}`;
-        const aviso = await client.query(`
-            INSERT INTO notificaciones (tipo, userid, contenido, otroid)
-            VALUES('trabajo-cancelado', $1, $2, $3)`, 
-            [otro, avisotxt, result.rows[0].id]);
-        return result.rows[0];
+        const c = result.rows[0];
+        const canceloElCliente = c.contratadorid === Number(id);
+        const otro = canceloElCliente ? c.trabajadorid : c.contratadorid;
+        // A dónde lleva el aviso: a donde la otra persona veía esa cita
+        const enlace = c.dirigida === false
+            ? (canceloElCliente ? "/problemas?vista=citas" : "/mis-problemas?vista=historial")
+            : (canceloElCliente ? "/trabajos-pendientes" : "/mis-pedidos");
+        await notificar(client, {
+            userid: otro,
+            tipo: "trabajo-cancelado",
+            titulo: `${primerNombre(c.nombre_completo)} canceló la cita`,
+            contenido: `«${tituloDeSolicitud(c.solicitud)}» · ${textoDia(Array.isArray(c.periodo) ? c.periodo[0] : null)}`.replace(/ · $/, ""),
+            enlace,
+            otroid: Number(id),
+            solicitudid: c.id,
+        });
+        return c;
     } catch(error) {
         console.error("Error al cancelar el trabajo:", error);
         throw error;
@@ -354,12 +379,16 @@ const terminarTrabajo = async(id, solicitudid) => {
         }
         const s = result.rows[0];
         const otro = s.contratadorid === Number(id) ? s.trabajadorid : s.contratadorid;
-        const yo = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
-        await client.query(`
-            INSERT INTO notificaciones (tipo, userid, contenido, otroid)
-            VALUES ('trabajo-terminado', $1, $2, $3)`,
-            [otro, `${yo.rows[0]?.nombre_completo || "La otra persona"} marcó el trabajo como terminado. ¿Querés dejarle una reseña?
-                        Solicitud: ${s.solicitud}`, id]);
+        const yo = await nombreDe(client, id, "La otra persona");
+        await notificar(client, {
+            userid: otro,
+            tipo: "trabajo-terminado",
+            titulo: `${primerNombre(yo)} marcó el trabajo como terminado`,
+            contenido: `«${tituloDeSolicitud(s.solicitud)}» · Dejale una reseña`,
+            enlace: `resena:${s.id}`,
+            otroid: Number(id),
+            solicitudid: s.id,
+        });
         return s;
     } finally {
         await client.end();
@@ -375,9 +404,10 @@ const revisarTerminadas = async() => {
                 UPDATE solicitudes
                 SET estado = 'terminada'
                 WHERE estado = 'pendiente' AND periodo[2] < CURRENT_DATE
-                RETURNING trabajadorid, contratadorid, solicitud
+                RETURNING id, trabajadorid, contratadorid, solicitud
             )
             SELECT 
+                s.id,
                 s.trabajadorid, 
                 ut.nombre_completo AS trabajador_nombre,
                 s.contratadorid, 
@@ -389,22 +419,26 @@ const revisarTerminadas = async() => {
         `);
         let notificaciones=[]
         for(const trabajo of result.rows){
-            const avisotxtC=`Su tabajo con ${trabajo.trabajador_nombre} sido marcada como terminada por el sistema
-                            Solicitud: ${trabajo.solicitud}
-                            ¿Quieres dejar una reseña?`;
-            const avisoC = await client.query(`
-                INSERT INTO notificaciones (tipo, userid, contenido, otroid)
-                VALUES('solicitudes', $1
-                , $2, $3)`, [trabajo.contratadorid, avisotxtC, trabajo.trabajadorid]);
-
-            const avisotxtT=`Su tabajo con ${trabajo.contratador_nombre} sido marcada como terminada por el sistema
-                            Solicitud: ${trabajo.solicitud}
-                            ¿Quieres dejar una reseña?`;
-            const avisoT = await client.query(`
-                INSERT INTO notificaciones (tipo, userid, contenido, otroid)
-                VALUES('solicitudes', $1
-                , $2, $3)`, [trabajo.trabajadorid, avisotxtT, trabajo.contratadorid]);
-            notificaciones.push({avisoC: avisoC.rows[0], avisoT: avisoT.rows[0]});
+            const titulo = tituloDeSolicitud(trabajo.solicitud);
+            const avisoC = await notificar(client, {
+                userid: trabajo.contratadorid,
+                tipo: "trabajo-terminado",
+                titulo: `¿Cómo te fue con ${primerNombre(trabajo.trabajador_nombre)}?`,
+                contenido: `«${titulo}» terminó · Dejale una reseña`,
+                enlace: `resena:${trabajo.id}`,
+                otroid: trabajo.trabajadorid,
+                solicitudid: trabajo.id,
+            });
+            const avisoT = await notificar(client, {
+                userid: trabajo.trabajadorid,
+                tipo: "trabajo-terminado",
+                titulo: `¿Cómo te fue con ${primerNombre(trabajo.contratador_nombre)}?`,
+                contenido: `«${titulo}» terminó · Dejale una reseña`,
+                enlace: `resena:${trabajo.id}`,
+                otroid: trabajo.contratadorid,
+                solicitudid: trabajo.id,
+            });
+            notificaciones.push({avisoC, avisoT});
         }
         return notificaciones.rows;
     }catch(error) {

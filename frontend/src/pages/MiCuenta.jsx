@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import Avatar from "../componentes/Avatar";
 import SelectorZona from "../componentes/SelectorZona";
@@ -99,6 +99,16 @@ export default function MiCuenta() {
   const [confirmacionEliminar, setConfirmacionEliminar] = useState("");
   const elegirFoto = useRef(null);
   const elegirDni = useRef(null);
+  const ubicacion = useLocation();
+
+  // Si se llega con #resenas o #identidad (desde una notificación), se baja hasta esa parte
+  useEffect(() => {
+    if (!perfil || !ubicacion.hash) return undefined;
+    const temporizador = setTimeout(() => {
+      document.getElementById(decodeURIComponent(ubicacion.hash.slice(1)))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => clearTimeout(temporizador);
+  }, [perfil, ubicacion.hash]);
 
   const vencida = (err) => {
     if (err?.status === 401) {
@@ -354,7 +364,7 @@ export default function MiCuenta() {
                 </div>
               </section>
 
-              <section className="tarjeta-cuenta" aria-label="Verificación de identidad">
+              <section className="tarjeta-cuenta" aria-label="Verificación de identidad" id="identidad">
                 <p className="titulo-tarjeta-cuenta">Verificación de identidad</p>
                 <p className="ayuda-tarjeta-cuenta">
                   Subí una foto del frente de tu DNI. La revisamos y, si está todo bien, tu perfil muestra "Identidad verificada".
@@ -438,7 +448,7 @@ export default function MiCuenta() {
                 </div>
               </section>
 
-              <section className="tarjeta-cuenta ancha" aria-label="Mis reseñas">
+              <section className="tarjeta-cuenta ancha" aria-label="Mis reseñas" id="resenas">
                 <p className="titulo-tarjeta-cuenta">Lo que opinan de vos</p>
                 <p className="ayuda-tarjeta-cuenta">Las reseñas que te dejaron después de cada trabajo. Las ve cualquiera que entre a tu perfil.</p>
                 <div className="pestanas-cuenta" role="tablist">

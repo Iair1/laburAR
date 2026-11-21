@@ -275,13 +275,13 @@ export default function SubirProblema() {
           <header className="encabezado-subir">
             <h1 className="titulo-subir">{copiado ? "Volver a publicar" : "Subí tu problema"}</h1>
             <p className="subtitulo-subir">
-              Contá qué necesitás arreglar y qué días pueden ir. Un trabajador de la categoría va a agendar una cita
-              en uno de esos días y te llega el aviso.
+              Contá qué necesitás arreglar y qué días pueden ir. Los trabajadores de la categoría te mandan
+              propuestas con día, hora y precio, y vos elegís la que más te sirve.
             </p>
             <div className="pasos-subir">
               <span className="paso-subir"><b>1</b> Publicás tu problema</span>
-              <span className="paso-subir"><b>2</b> Un trabajador agenda una cita</span>
-              <span className="paso-subir"><b>3</b> Va ese día y lo arregla</span>
+              <span className="paso-subir"><b>2</b> Te llegan propuestas con precio</span>
+              <span className="paso-subir"><b>3</b> Aceptás una y queda la cita</span>
             </div>
           </header>
 

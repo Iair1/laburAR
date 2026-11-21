@@ -15,6 +15,7 @@ import {
   horasEntre,
   horaPreferida,
 } from "../problemasDatos";
+import { formatearPesos } from "../ofertasApi";
 
 const estilosModales = `
   .encabezado-detalle { display: flex; gap: 14px; align-items: center; padding-right: 24px; margin-bottom: 0.9rem; }
@@ -48,7 +49,7 @@ const estilosModales = `
 /*  - paraCliente: lo ve quien lo publicó ("Mis problemas")            */
 /* ------------------------------------------------------------------ */
 
-export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelarCita, onBloqueado, paraCliente = false }) {
+export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelarCita, onBloqueado, paraCliente = false, propuesta = null, onVerPropuesta }) {
   const [viendoResenas, setViendoResenas] = useState(false);
   const estado = estadoVisible(problema);
   const esCita = problema.estado === "pendiente" || problema.estado === "terminada";
@@ -112,6 +113,7 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
           ) : estado === "terminada" ? "Fuiste el " : "Tu cita es el "}
           <strong>{fechaLarga(problema.dia)}</strong>
           {problema.hora ? <> a las <strong>{problema.hora} hs</strong></> : franja ? ` · ${franja.etiqueta} (${franja.detalle})` : ""}
+          {problema.precio > 0 && <><br />Precio acordado: <strong>{formatearPesos(problema.precio)}</strong></>}
         </div>
       )}
 
@@ -143,9 +145,18 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
         <p className="texto-seccion-modal">{[problema.barrio, problema.localidad].filter(Boolean).join(", ") || "Sin definir"}</p>
       </div>
 
-      {onAgendar && estado === "por revisar" && (
-        <button className="boton-grande-modal" onClick={() => onAgendar(problema)}>Agendar cita</button>
-      )}
+      {onAgendar && estado === "por revisar" && (propuesta ? (
+        <div className="cita-detalle" style={{ textAlign: "center", marginBottom: 0 }}>
+          Ya le mandaste una propuesta de <strong>{formatearPesos(propuesta.precio)}</strong>.
+          {onVerPropuesta && (
+            <div style={{ marginTop: 8 }}>
+              <button className="boton-pill secundario" onClick={() => onVerPropuesta(propuesta)}>Ver mi propuesta</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button className="boton-grande-modal" onClick={() => onAgendar(problema)}>Enviar propuesta</button>
+      ))}
       {onCancelarCita && problema.estado === "pendiente" && estado === "pendiente" && (
         <div className="acciones-modal" style={{ justifyContent: "center" }}>
           <button className="boton-pill peligro" onClick={() => onCancelarCita(problema)}>Cancelar cita</button>

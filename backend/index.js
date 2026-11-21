@@ -17,6 +17,7 @@ import ImagenesTrabajosRouter from "./routers/imagenes_trabajos.router.js"
 import DenunciasRouter from "./routers/denuncias.router.js"
 import BloqueosRouter from "./routers/bloqueos.router.js"
 import AdminRouter from "./routers/admin.router.js"
+import OfertasRouter from "./routers/ofertas.router.js"
 
 
 
@@ -80,6 +81,7 @@ app.use("/api/reseñas", ReseñaRouter);
 app.use("/api/resenas", ReseñaRouter); // sin ñ: es la que usa el navegador
 app.use("/api/imagenes_trabajos", ImagenesTrabajosRouter);
 app.use("/api/denuncias", DenunciasRouter);
+app.use("/api/ofertas", OfertasRouter);
 app.use("/api/bloqueos", BloqueosRouter);
 app.use("/api/admin", AdminRouter);
 /*

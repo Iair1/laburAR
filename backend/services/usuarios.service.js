@@ -4,7 +4,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {v2 as cloudinary} from "cloudinary";
 import crypto from "crypto";
-import { asegurarColumnasServicio, asegurarCuentas } from "../esquema.js";
+import { asegurarColumnasServicio, asegurarCuentas, asegurarNotificaciones } from "../esquema.js";
+import { notificar, tituloDeSolicitud } from "../notificaciones.js";
 import { enviarEmail, escaparHTML } from "../email.js";
 import { verificarCredencialGoogle } from "../google.js";
 import { hayBloqueo, cuentaActiva, errorConEstado } from "../moderacion.js";
@@ -176,6 +177,28 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
 
 const MAXIMO_INTENTOS_LOGIN = 5;
 
+// Las últimas 60 notificaciones del usuario (de la más vieja a la más nueva), con la foto y el
+// nombre de la otra persona cuando la notificación es del formato nuevo (con título).
+async function leerNotificaciones(client, id) {
+    if (!(await asegurarNotificaciones())) {
+        const result = await client.query("SELECT * FROM notificaciones WHERE userid = $1", [id]);
+        return result.rows;
+    }
+    const result = await client.query(`
+        SELECT * FROM (
+            SELECT n.*,
+                CASE WHEN n.titulo IS NOT NULL THEN o.foto_perfil END AS otro_foto,
+                CASE WHEN n.titulo IS NOT NULL THEN o.nombre_completo END AS otro_nombre
+            FROM notificaciones n
+            LEFT JOIN usuarios o ON o.id = n.otroid
+            WHERE n.userid = $1
+            ORDER BY n.id DESC
+            LIMIT 60
+        ) ultimas
+        ORDER BY id`, [id]);
+    return result.rows;
+}
+
 // Arma la respuesta de un inicio de sesión correcto: token (7 días), notificaciones y datos públicos
 async function emitirSesion(client, dbUser) {
     if (dbUser.suspendido) {
@@ -186,7 +209,7 @@ async function emitirSesion(client, dbUser) {
         JWT_SECRET,
         { expiresIn: "7d" }
     );
-    const notificaciones= await client.query("SELECT * FROM notificaciones WHERE userid = $1", [dbUser.id]);
+    const notificaciones = await leerNotificaciones(client, dbUser.id).catch(() => []);
     // Datos públicos del usuario para que el front muestre su nombre y foto
     const usuario = {
         id: dbUser.id,
@@ -195,7 +218,7 @@ async function emitirSesion(client, dbUser) {
         email: dbUser.email || null,
         es_admin: dbUser.es_admin === true,
     };
-    return {token, notificaciones: notificaciones.rows, usuario};
+    return {token, notificaciones, usuario};
 }
 
 /**
@@ -390,13 +413,21 @@ const eliminarCuenta = async (id) => {
         const citas = await client.query(`
             UPDATE solicitudes SET estado = 'cancelado'
             WHERE estado = 'pendiente' AND (contratadorid = $1 OR trabajadorid = $1)
-            RETURNING id, solicitud, contratadorid, trabajadorid`, [id]).catch(() => ({ rows: [] }));
+            RETURNING id, solicitud, contratadorid, trabajadorid, dirigida`, [id]).catch(() => ({ rows: [] }));
         for (const cita of citas.rows) {
             const otro = cita.contratadorid === id ? cita.trabajadorid : cita.contratadorid;
             if (!otro) continue;
-            await client.query(
-                "INSERT INTO notificaciones (tipo, userid, contenido) VALUES ('trabajo-cancelado', $1, $2)",
-                [otro, `Se canceló una cita porque la otra persona eliminó su cuenta.\n                        Solicitud: ${cita.solicitud}`]).catch(() => {});
+            const eraElCliente = cita.contratadorid === id;
+            await notificar(client, {
+                userid: otro,
+                tipo: "trabajo-cancelado",
+                titulo: "Se canceló una cita",
+                contenido: `«${tituloDeSolicitud(cita.solicitud)}» · La otra persona eliminó su cuenta`,
+                enlace: eraElCliente
+                    ? (cita.dirigida === false ? "/problemas?vista=citas" : "/trabajos-pendientes")
+                    : (cita.dirigida === false ? "/mis-problemas?vista=historial" : "/mis-pedidos"),
+                solicitudid: cita.id,
+            });
         }
         // Lo que ya no tiene sentido que quede publicado (si alguna tabla no existe, se sigue)
         const borrar = [
@@ -410,6 +441,8 @@ const eliminarCuenta = async (id) => {
             ["DELETE FROM notificaciones WHERE userid = $1"],
             ["DELETE FROM bloqueos WHERE bloqueadorid = $1"],
             ["DELETE FROM recuperaciones WHERE userid = $1"],
+            // Propuestas de precio abiertas (como trabajador o como cliente): se cierran
+            ["UPDATE ofertas SET estado = 'cerrada', actualizada = now() WHERE estado = 'pendiente' AND (trabajadorid = $1 OR contratadorid = $1)"],
         ];
         for (const [sql] of borrar) {
             await client.query(sql, [id]).catch((error) => console.error("Aviso al eliminar cuenta:", error.message));
@@ -419,9 +452,13 @@ const eliminarCuenta = async (id) => {
             "DELETE FROM solicitudes WHERE trabajadorid = $1 AND estado = 'por revisar' RETURNING contratadorid, solicitud", [id])
             .catch(() => ({ rows: [] }));
         for (const s of dirigidas.rows) {
-            await client.query(
-                "INSERT INTO notificaciones (tipo, userid, contenido) VALUES ('solicitud-rechazada', $1, $2)",
-                [s.contratadorid, `Tu solicitud se cerró porque el trabajador eliminó su cuenta.\n                        Solicitud: ${s.solicitud}`]).catch(() => {});
+            await notificar(client, {
+                userid: s.contratadorid,
+                tipo: "solicitud-rechazada",
+                titulo: "Se cerró una solicitud tuya",
+                contenido: `«${tituloDeSolicitud(s.solicitud)}» · El trabajador eliminó su cuenta`,
+                enlace: "/buscar",
+            });
         }
         if (actual.dni_foto) {
             cloudinary.uploader.destroy(actual.dni_foto, { type: "authenticated", invalidate: true })
@@ -543,8 +580,23 @@ const misNotificaciones = async(id)=>{
     const client = new Client(config);
     try{
         await client.connect();
-        const result = await client.query("SELECT * FROM notificaciones WHERE userid = $1 ORDER BY id", [id]);
-        return result.rows;
+        return await leerNotificaciones(client, id);
+    }finally{
+        await client.end();
+    }
+}
+
+// Marca como leídas las notificaciones del usuario (todas, o solo las de `ids`)
+const leerMisNotificaciones = async(id, ids = null)=>{
+    if (!(await asegurarNotificaciones())) return 0;
+    const client = new Client(config);
+    try{
+        await client.connect();
+        const result = await client.query(`
+            UPDATE notificaciones SET leida = true
+            WHERE userid = $1 AND leida IS NOT TRUE ${ids ? "AND id = ANY($2::int[])" : ""}`,
+            ids ? [id, ids] : [id]);
+        return result.rowCount;
     }finally{
         await client.end();
     }
@@ -583,6 +635,7 @@ const UsuariosService={
     cambiarContraseña,
     buscarTrabajadores,
     miPerfil,
-    misNotificaciones
+    misNotificaciones,
+    leerMisNotificaciones
 }
 export default UsuariosService;

@@ -460,3 +460,150 @@ export function asegurarCuentas() {
     }
     return promesaCuentas;
 }
+
+/* ------------------------------------------------------------------ */
+/* Notificaciones (ver migraciones/004_notificaciones_y_ofertas.sql)   */
+/* ------------------------------------------------------------------ */
+
+let promesaNotificaciones = null;
+
+/**
+ * Columnas nuevas de notificaciones: fecha, si ya se leyó, un título corto, a dónde lleva
+ * (enlace) y de qué trabajo es. Las que ya existían quedan como leídas (antes se marcaban
+ * en el navegador) y sin fecha (no se sabe cuándo llegaron). Nunca tira error.
+ * @returns {Promise<boolean>}
+ */
+export function asegurarNotificaciones() {
+    if (!promesaNotificaciones) {
+        promesaNotificaciones = (async () => {
+            const client = new Client(config);
+            try {
+                await client.connect();
+                // Si otra conexión está usando la tabla, mejor fallar rápido (y reintentar después) que quedar esperando
+                await client.query("SET lock_timeout = '5s'");
+                const { rows } = await client.query(
+                    `SELECT column_name FROM information_schema.columns
+                     WHERE table_name = 'notificaciones' AND table_schema = ANY (current_schemas(false))`);
+                const existentes = new Set(rows.map((c) => c.column_name));
+                if (!existentes.has("id")) {
+                    await client.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS id serial");
+                }
+                if (!existentes.has("leida")) {
+                    await client.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS leida boolean");
+                    await client.query("UPDATE notificaciones SET leida = true WHERE leida IS NULL");
+                }
+                await client.query(`
+                    ALTER TABLE notificaciones
+                        ADD COLUMN IF NOT EXISTS fecha timestamptz,
+                        ADD COLUMN IF NOT EXISTS titulo text,
+                        ADD COLUMN IF NOT EXISTS enlace text,
+                        ADD COLUMN IF NOT EXISTS solicitudid integer`);
+                await client.query(`
+                    ALTER TABLE notificaciones
+                        ALTER COLUMN leida SET DEFAULT false,
+                        ALTER COLUMN fecha SET DEFAULT now()`);
+                await client.query("CREATE INDEX IF NOT EXISTS notificaciones_usuario ON notificaciones (userid, id DESC)")
+                    .catch((error) => console.error("Aviso (no grave):", error.message));
+                return true;
+            } catch (error) {
+                console.error(
+                    "No se pudieron preparar las notificaciones. Corré backend/migraciones/004_notificaciones_y_ofertas.sql en la base.",
+                    error.message
+                );
+                promesaNotificaciones = null;
+                return false;
+            } finally {
+                await client.end().catch(() => {});
+            }
+        })();
+    }
+    return promesaNotificaciones;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ofertas de precio en los problemas (ver migraciones/004_...)        */
+/* ------------------------------------------------------------------ */
+
+const SENTENCIAS_OFERTAS = [
+    // Una propuesta de un trabajador para un problema: día, hora y precio. Mientras está
+    // "pendiente" va y viene (contraofertas) hasta que alguien acepta o rechaza.
+    //  · estado: pendiente | aceptada | rechazada | retirada | cerrada (el problema se tomó o se borró)
+    //  · turno: quién tiene que responder ahora ('cliente' o 'trabajador')
+    //  · titulo: el título del problema al momento de la propuesta (por si después se borra)
+    `CREATE TABLE IF NOT EXISTS ofertas (
+        id serial PRIMARY KEY,
+        solicitudid integer NOT NULL,
+        trabajadorid integer NOT NULL,
+        contratadorid integer NOT NULL,
+        dia date NOT NULL,
+        hora text,
+        precio integer NOT NULL,
+        mensaje text,
+        titulo text,
+        estado text NOT NULL DEFAULT 'pendiente',
+        turno text NOT NULL DEFAULT 'cliente',
+        rechazada_por text,
+        fecha timestamptz DEFAULT now(),
+        actualizada timestamptz DEFAULT now()
+    )`,
+    // Cada paso de la negociación (para mostrar el ida y vuelta)
+    `CREATE TABLE IF NOT EXISTS ofertas_historial (
+        id serial PRIMARY KEY,
+        ofertaid integer NOT NULL,
+        autorid integer NOT NULL,
+        rol text NOT NULL,
+        accion text NOT NULL,
+        precio integer,
+        mensaje text,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // El precio que quedó acordado (cuando el cliente o el trabajador aceptan)
+    `ALTER TABLE solicitudes ADD COLUMN IF NOT EXISTS precio_acordado integer`,
+];
+
+const SENTENCIAS_OFERTAS_OPCIONALES = [
+    // Un trabajador tiene a lo sumo una propuesta abierta por problema
+    `CREATE UNIQUE INDEX IF NOT EXISTS ofertas_una_abierta ON ofertas (solicitudid, trabajadorid) WHERE estado = 'pendiente'`,
+    `CREATE INDEX IF NOT EXISTS ofertas_solicitud ON ofertas (solicitudid)`,
+    `CREATE INDEX IF NOT EXISTS ofertas_trabajador ON ofertas (trabajadorid, id DESC)`,
+    `CREATE INDEX IF NOT EXISTS ofertas_contratador ON ofertas (contratadorid, id DESC)`,
+    `CREATE INDEX IF NOT EXISTS ofertas_historial_oferta ON ofertas_historial (ofertaid, id)`,
+];
+
+let promesaOfertas = null;
+
+/**
+ * Se asegura (una vez por proceso) de que existan las tablas de ofertas y la columna
+ * solicitudes.precio_acordado. Nunca tira error: devuelve false si no pudo.
+ * @returns {Promise<boolean>}
+ */
+export function asegurarOfertas() {
+    if (!promesaOfertas) {
+        promesaOfertas = (async () => {
+            const client = new Client(config);
+            try {
+                await client.connect();
+                await client.query("SET lock_timeout = '5s'");
+                for (const sentencia of SENTENCIAS_OFERTAS) {
+                    await client.query(sentencia);
+                }
+                for (const sentencia of SENTENCIAS_OFERTAS_OPCIONALES) {
+                    await client.query(sentencia).catch((error) =>
+                        console.error("Aviso (no grave):", error.message)
+                    );
+                }
+                return true;
+            } catch (error) {
+                console.error(
+                    "No se pudieron preparar las ofertas. Corré backend/migraciones/004_notificaciones_y_ofertas.sql en la base.",
+                    error.message
+                );
+                promesaOfertas = null;
+                return false;
+            } finally {
+                await client.end().catch(() => {});
+            }
+        })();
+    }
+    return promesaOfertas;
+}

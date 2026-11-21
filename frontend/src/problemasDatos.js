@@ -1,5 +1,5 @@
 // Datos y utilidades de "problemas": lo que publica un cliente para que un
-// trabajador agende una cita y lo vaya a arreglar.
+// trabajador le mande una propuesta (día, hora y precio) y lo vaya a arreglar.
 //
 // En el backend un problema es una fila de `solicitudes` con dirigida = false:
 //  · solicitud: el texto (acá le damos formato, ver armarTextoProblema)
@@ -26,7 +26,7 @@ export const URGENCIAS = {
 
 // solicitudes.estado (+ "vencido", que se calcula acá)
 export const ESTADOS_PROBLEMA = {
-  "por revisar": { etiqueta: "Esperando un trabajador", tono: "abierto" },
+  "por revisar": { etiqueta: "Esperando propuestas", tono: "abierto" },
   pendiente: { etiqueta: "Cita agendada", tono: "agendado" },
   terminada: { etiqueta: "Terminado", tono: "terminado" },
   cancelado: { etiqueta: "Cancelado", tono: "cancelado" },

@@ -4,7 +4,8 @@
 // Un problema es una solicitud con dirigida = false (no va a un trabajador puntual):
 //  · el cliente lo publica ............ POST   /subirSolicitud      { dirigida: false, aptitud, solicitud, periodo, diassemana, localidad }
 //  · los trabajadores lo ven .......... GET    /busquedaAA          (abiertos, sin los propios, ordenados por coincidencia con sus servicios)
-//  · un trabajador agenda la cita ..... POST   /aceptarSolicitud    { solicitudid, dia }  → queda "pendiente" ese día
+//  · un trabajador manda una propuesta  POST   /ofertas/nueva       (día, hora y precio; ver ofertasApi.js)
+//    y cuando el cliente la acepta, el problema queda "pendiente" ese día y con ese precio
 //  · el cliente ve los suyos .......... GET    /misProblemas
 //  · el trabajador ve sus citas ....... GET    /trabajosPendientes
 //  · cancelar ......................... DELETE /borrarSolicitud (si nadie lo agendó) · PUT /cancelarTrabajo (si ya hay cita)
@@ -52,6 +53,7 @@ export function aProblema(fila) {
     barrio: texto.barrio,
     urgencia: texto.urgencia,
     hora: texto.hora || null, // la que eligió el trabajador al agendar
+    precio: fila.precio_acordado != null ? Number(fila.precio_acordado) : null, // el que se acordó en la propuesta
     categoria: fila.aptitud || "",
     aptitudid: fila.aptitudid ?? null,
     localidad: fila.localidad || "",

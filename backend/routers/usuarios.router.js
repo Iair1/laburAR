@@ -16,5 +16,6 @@ router.put("/cambiarContrasena", verifyToken, UsuariosController.cambiarContrase
 router.post("/buscarTrabajadores", verifyToken, UsuariosController.buscarTrabajadores)
 router.get("/miPerfil", verifyToken, UsuariosController.miPerfil)
 router.get("/misNotificaciones", verifyToken, UsuariosController.misNotificaciones)
+router.put("/leerNotificaciones", verifyToken, UsuariosController.leerNotificaciones)
 
 export default router;

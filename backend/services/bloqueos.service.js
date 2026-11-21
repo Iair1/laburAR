@@ -35,6 +35,12 @@ async function bloquear(id, otroid) {
         await client.query(
             "INSERT INTO bloqueos (bloqueadorid, bloqueadoid) VALUES ($1, $2) ON CONFLICT (bloqueadorid, bloqueadoid) DO NOTHING",
             [id, otroid]);
+        // Las propuestas de precio abiertas entre los dos se cierran (si la tabla todavía no existe, no pasa nada)
+        await client.query(`
+            UPDATE ofertas SET estado = 'cerrada', actualizada = now()
+            WHERE estado = 'pendiente'
+              AND ((trabajadorid = $1 AND contratadorid = $2) OR (trabajadorid = $2 AND contratadorid = $1))`, [id, otroid])
+            .catch(() => {});
         return { bloqueadoid: otroid };
     } finally {
         await client.end();

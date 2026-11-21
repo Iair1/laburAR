@@ -1,7 +1,7 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
 import {v2 as cloudinary} from "cloudinary";
-import { asegurarResenasYMensajes, asegurarCuentas } from "../esquema.js";
+import { asegurarResenasYMensajes, asegurarCuentas, asegurarOfertas } from "../esquema.js";
 import { hayBloqueo, cuentaActiva } from "../moderacion.js";
 const {Client} = pkg;
 
@@ -18,6 +18,12 @@ const PUEDEN_HABLAR = `
               AND ((s.contratadorid = $1 AND s.trabajadorid = $2) OR (s.contratadorid = $2 AND s.trabajadorid = $1)))
     OR EXISTS (SELECT 1 FROM mensajes m
                WHERE (m.emisorid = $1 AND m.receptorid = $2) OR (m.emisorid = $2 AND m.receptorid = $1))`;
+// ...o están negociando una propuesta de precio (para preguntar detalles antes de aceptar)
+const NEGOCIAN = `
+    OR EXISTS (SELECT 1 FROM ofertas o
+               WHERE o.estado IN ('pendiente', 'aceptada')
+                 AND ((o.trabajadorid = $1 AND o.contratadorid = $2) OR (o.trabajadorid = $2 AND o.contratadorid = $1)))`;
+const puedenHablar = async () => PUEDEN_HABLAR + ((await asegurarOfertas()) ? NEGOCIAN : "");
 
 // Fotos del chat: se achican hasta 1200px sin recortarlas
 async function subirImagenMensaje(imagen) {
@@ -40,7 +46,7 @@ async function mandarMensaje(id, receptor, texto, imagen = null) {
     const client = new Client(config);
     try {
         await client.connect();
-        const permiso = await client.query(`SELECT (${PUEDEN_HABLAR}) AS puede`, [id, receptor]);
+        const permiso = await client.query(`SELECT (${await puedenHablar()}) AS puede`, [id, receptor]);
         if(!permiso.rows[0].puede) {
             throw errorConEstado("Solo podés escribirle a alguien con quien tenés una cita o una solicitud", 403);
         }
@@ -113,7 +119,7 @@ async function conseguirChat(id, otroid, despuesDe = null) {
               AND ((s.contratadorid = $1 AND s.trabajadorid = $2) OR (s.contratadorid = $2 AND s.trabajadorid = $1))
             ORDER BY s.id DESC
             LIMIT 5`, [id, otroid]);
-        const permiso = await client.query(`SELECT (${PUEDEN_HABLAR}) AS puede`, [id, otroid]);
+        const permiso = await client.query(`SELECT (${await puedenHablar()}) AS puede`, [id, otroid]);
         // Bloqueos: "yoBloquee" para mostrar "Desbloquear"; si hay bloqueo (de cualquiera) no se puede escribir
         let yoBloquee = false, bloqueado = false, otroActivo = true;
         if(cuentasListas) {

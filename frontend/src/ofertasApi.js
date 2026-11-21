@@ -61,6 +61,7 @@ export function aOferta(fila) {
     precio: Number(fila.precio),
     mensaje: fila.mensaje || "",
     titulo: fila.titulo || texto?.titulo || "Problema",
+    dirigida: fila.dirigida !== false, // true: presupuesto de una solicitud directa
     estado: fila.estado,
     turno: fila.turno,
     rechazadaPor: fila.rechazada_por || null,

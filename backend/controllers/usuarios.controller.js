@@ -1,4 +1,60 @@
 import UsuariosService from "../services/usuarios.service.js";
+import { ipDe } from "../limites.js";
+import EstadisticasService from "../services/estadisticas.service.js";
+
+// Datos para confiar en alguien: trabajos hechos, cancelaciones, tiempo de respuesta, verificaciones
+const estadisticas = async (req, res) => {
+    const userid = Number(req.params.userid);
+    if (!Number.isInteger(userid) || userid <= 0) return res.status(400).json({ message: "Usuario inválido" });
+    try {
+        res.status(200).json({ message: "Estadísticas", result: await EstadisticasService.estadisticas(userid) });
+    } catch (error) {
+        res.status(error.status || 500).json({ message: error.message });
+    }
+};
+
+const responder = (res, error) => res.status(error.status || 500).json({ message: error.message });
+
+// Confirmar el email con el link (no hace falta estar logueado)
+const verificarEmail = async (req, res) => {
+    const token = String(req.body?.token || "");
+    if (!/^[a-f0-9]{64}$/.test(token)) return res.status(400).json({ message: "El link no es válido. Pedí uno nuevo desde Mi cuenta." });
+    try {
+        const result = await UsuariosService.verificarEmail(token);
+        res.status(200).json({ message: "¡Listo! Confirmaste tu email.", result });
+    } catch (error) {
+        responder(res, error);
+    }
+};
+
+const reenviarVerificacion = async (req, res) => {
+    try {
+        const result = await UsuariosService.reenviarVerificacion(req.id);
+        res.status(200).json({ message: `Te mandamos un link a ${result.email}.`, result });
+    } catch (error) {
+        responder(res, error);
+    }
+};
+
+const enviarCodigoTelefono = async (req, res) => {
+    try {
+        const result = await UsuariosService.enviarCodigoTelefono(req.id);
+        res.status(200).json({ message: "Te mandamos un código por SMS.", result });
+    } catch (error) {
+        responder(res, error);
+    }
+};
+
+const verificarTelefono = async (req, res) => {
+    const codigo = String(req.body?.codigo || "").trim();
+    if (!/^\d{6}$/.test(codigo)) return res.status(400).json({ message: "El código tiene 6 números." });
+    try {
+        const result = await UsuariosService.verificarTelefono(req.id, codigo);
+        res.status(200).json({ message: "¡Listo! Verificamos tu teléfono.", result });
+    } catch (error) {
+        responder(res, error);
+    }
+};
 
 const cambiarContraseña = async(req, res)=>{
     try{
@@ -35,7 +91,8 @@ const cambiarDato = async(req, res)=>{
             "sobre_mi",
             "cobro_por_hora",
             "email",
-            "telefono"
+            "telefono",
+            "avisos_email"
         ]);
         for (const item of inf) {
             if (!allowed.has(item.dato)) {
@@ -61,7 +118,7 @@ const crearCuenta = async (req, res) => {
             return res.status(400).json({ message: "La contraseña tiene que tener al menos 6 caracteres" });
         }
         const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad,
-            undefined, undefined, { email: email || correo, telefono, googleCredential: google_credential });
+            undefined, undefined, { email: email || correo, telefono, googleCredential: google_credential, ip: ipDe(req) });
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){
@@ -198,6 +255,11 @@ const leerNotificaciones = async(req, res)=>{
 }
 
 const UsuariosController={
+    estadisticas,
+    verificarEmail,
+    reenviarVerificacion,
+    enviarCodigoTelefono,
+    verificarTelefono,
     misNotificaciones,
     leerNotificaciones,
     crearCuenta,

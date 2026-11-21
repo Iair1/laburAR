@@ -1,6 +1,6 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
-const {Client} = pkg;
+import { Client } from "../db.js";
+
 
 async function nuevaAptitudEspecifica(id, aptitud_especifica, matricula_numero, matricula_jurisdiccion, matricula_categoria, usuario_aptitudid, aptID) {
     const client = new Client(config);

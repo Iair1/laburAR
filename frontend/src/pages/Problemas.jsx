@@ -4,7 +4,7 @@ import BarraNav from "../componentes/BarraNav";
 import { estilosTarjetas } from "../estilosTarjetas";
 import { estilosProblemas } from "../estilosProblemas";
 import { TarjetaProblema, Icono } from "../componentes/ProblemasUI";
-import { DetalleProblemaModal, ConfirmarModal } from "../componentes/ProblemaModales";
+import { DetalleProblemaModal, CancelarCitaModal } from "../componentes/ProblemaModales";
 import {
   ProponerModal,
   TarjetaOferta,
@@ -346,11 +346,11 @@ export default function Problemas() {
     await cargar();
   };
 
-  const confirmarCancelarCita = async () => {
+  const confirmarCancelarCita = async (motivo) => {
     setProcesando(true);
     setErrorConfirmar("");
     try {
-      await cancelarCita(citaCancelando);
+      await cancelarCita(citaCancelando, motivo);
       setCitaCancelando(null);
       setProblemaViendo(null);
       mostrarToast("Cancelaste la cita. Le avisamos al cliente.");
@@ -470,7 +470,9 @@ export default function Problemas() {
         titulo={
           <>
             <div className="titulo-problema-oferta">{o.titulo}</div>
-            {o.problema?.categoria && <div className="categoria-problema-oferta">{o.problema.categoria}{o.problema.localidad ? ` · ${[o.problema.barrio, o.problema.localidad].filter(Boolean).join(", ")}` : ""}</div>}
+            <div className="categoria-problema-oferta">
+              {[o.dirigida ? "Pedido directo" : "", o.problema?.categoria, [o.problema?.barrio, o.problema?.localidad].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+            </div>
           </>
         }
         onAceptar={(oferta) => setRespondiendo({ tipo: "aceptar", oferta })}
@@ -479,7 +481,9 @@ export default function Problemas() {
         onMensaje={(otro) => navegar(`/mensajes?con=${encodeURIComponent(otro.id)}`)}
         extraAcciones={
           o.estado === "aceptada" ? (
-            <button type="button" className="accion-oferta suave" onClick={() => cambiarVista("citas")}>Ver en mis citas</button>
+            <button type="button" className="accion-oferta suave" onClick={() => (o.dirigida ? navegar("/trabajos-pendientes") : cambiarVista("citas"))}>Ver en mis citas</button>
+          ) : o.dirigida && o.estado === "pendiente" ? (
+            <button type="button" className="accion-oferta suave" onClick={() => navegar("/solicitudes-recibidas")}>Ver el pedido</button>
           ) : problema ? (
             <button type="button" className="accion-oferta suave" onClick={() => setProblemaViendo(problema)}>Ver problema</button>
           ) : null
@@ -787,11 +791,9 @@ export default function Problemas() {
           <RechazarOfertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarRechazo} />
         )}
         {citaCancelando && (
-          <ConfirmarModal
-            titulo="¿Cancelar la cita?"
+          <CancelarCitaModal
+            rol="trabajador"
             texto={`La cita del ${fechaLarga(citaCancelando.dia)}${citaCancelando.hora ? ` a las ${citaCancelando.hora} hs` : ""} se cancela y le avisamos a ${citaCancelando.cliente?.nombre || "el cliente"}.`}
-            textoConfirmar="Sí, cancelar"
-            peligro
             procesando={procesando}
             error={errorConfirmar}
             onConfirmar={confirmarCancelarCita}

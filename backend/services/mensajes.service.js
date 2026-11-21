@@ -1,9 +1,11 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import {v2 as cloudinary} from "cloudinary";
 import { asegurarResenasYMensajes, asegurarCuentas, asegurarOfertas } from "../esquema.js";
-import { hayBloqueo, cuentaActiva } from "../moderacion.js";
-const {Client} = pkg;
+import { hayBloqueo, cuentaActiva, exigirEmailVerificado } from "../moderacion.js";
+import { controlarLimite } from "../limites.js";
+import { avisarPorEmail, nombreDe, primerNombre } from "../notificaciones.js";
+
 
 function errorConEstado(mensaje, status) {
     const error = new Error(mensaje);
@@ -46,6 +48,7 @@ async function mandarMensaje(id, receptor, texto, imagen = null) {
     const client = new Client(config);
     try {
         await client.connect();
+        await exigirEmailVerificado(client, id);
         const permiso = await client.query(`SELECT (${await puedenHablar()}) AS puede`, [id, receptor]);
         if(!permiso.rows[0].puede) {
             throw errorConEstado("Solo podés escribirle a alguien con quien tenés una cita o una solicitud", 403);
@@ -58,10 +61,29 @@ async function mandarMensaje(id, receptor, texto, imagen = null) {
                 throw errorConEstado("No podés escribirle a este usuario.", 403);
             }
         }
+        await controlarLimite(client, `mensajes:${id}`, [{ maximo: 30, intervalo: "10 minutes" }, { maximo: 300, intervalo: "1 day" }],
+            "Mandaste muchos mensajes seguidos. Esperá unos minutos y probá de nuevo.");
         const imagenUrl = imagen ? await subirImagenMensaje(imagen) : null;
         const result = await client.query(
             "INSERT INTO mensajes (emisorid, receptorid, contenido, imagen) VALUES ($1, $2, $3, $4) RETURNING *",
             [id, receptor, texto || "", imagenUrl]);
+        // Aviso por email, solo con el primer mensaje de una tanda (si ya tenía mensajes tuyos
+        // sin leer de la última media hora, no se manda otro)
+        const tanda = await client.query(`
+            SELECT 1 FROM mensajes
+            WHERE emisorid = $1 AND receptorid = $2 AND id <> $3 AND leido IS NOT TRUE AND fecha > now() - interval '30 minutes'
+            LIMIT 1`, [id, receptor, result.rows[0].id]).catch(() => ({ rowCount: 1 }));
+        if (tanda.rowCount === 0) {
+            const yo = await nombreDe(client, id);
+            const vistaPrevia = String(texto || "").trim().replace(/\s+/g, " ");
+            await avisarPorEmail(client, receptor, {
+                asunto: `${primerNombre(yo)} te mandó un mensaje`,
+                titulo: `${primerNombre(yo)} te mandó un mensaje`,
+                detalle: vistaPrevia ? `“${vistaPrevia.length > 160 ? `${vistaPrevia.slice(0, 159)}…` : vistaPrevia}”` : "Te mandó una foto.",
+                enlace: `/mensajes?con=${id}`,
+                boton: "Responder",
+            });
+        }
         return result.rows[0];
     }finally{
         await client.end();

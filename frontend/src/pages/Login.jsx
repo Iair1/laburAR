@@ -205,6 +205,8 @@ export default function Login() {
       correo: respuesta?.usuario?.email || respuesta?.usuario?.correo || datosExtra.correo || "",
       fotoPerfilURL: respuesta?.usuario?.foto_perfil || datosExtra.fotoPerfilURL || null,
       esAdmin: respuesta?.usuario?.es_admin === true,
+      // false = falta confirmar el email (aparece el aviso arriba); null/true = no hace falta
+      emailVerificado: typeof respuesta?.usuario?.email_verificado === "boolean" ? respuesta.usuario.email_verificado : null,
     });
     guardarNotificaciones(respuesta?.notificaciones || []);
   };

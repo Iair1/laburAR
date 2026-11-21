@@ -1,12 +1,12 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client, HOY } from "../db.js";
 import { asegurarResenasYMensajes, columnasDeResena, sqlResena } from "../esquema.js";
 import { notificar, primerNombre } from "../notificaciones.js";
-const {Client} = pkg;
+
 
 // Un trabajo (solicitud) se puede reseñar cuando terminó: el sistema lo marcó como
 // "terminada" o el día de la cita ya pasó (el cron revisarTerminadas tarda hasta 2 días).
-const TRABAJO_TERMINADO = `(s.estado = 'terminada' OR (s.estado = 'pendiente' AND s.periodo[2] < CURRENT_DATE))`;
+const TRABAJO_TERMINADO = `(s.estado = 'terminada' OR (s.estado = 'pendiente' AND s.periodo[2] < ${HOY}))`;
 
 function errorConEstado(mensaje, status) {
     const error = new Error(mensaje);

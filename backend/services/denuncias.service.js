@@ -1,8 +1,8 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import { asegurarCuentas } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
-const {Client} = pkg;
+
 
 export const MOTIVOS_DENUNCIA = [
     "Estafa o fraude",
@@ -13,6 +13,9 @@ export const MOTIVOS_DENUNCIA = [
     "Perfil falso o se hace pasar por otra persona",
     "Contenido ofensivo",
     "Spam o publicidad",
+    // Reclamos sobre un trabajo
+    "Cobró distinto a lo acordado",
+    "Causó daños o roturas",
     "Otro",
 ];
 

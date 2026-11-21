@@ -14,6 +14,7 @@ import { subirFotoPerfil, TIPOS_FOTO_PERFIL, obtenerMisNotificaciones } from "..
 import { contarNoLeidos, EVENTO_MENSAJES } from "../mensajesApi";
 import { presentarNotificacion, tiempoRelativo, marcarLeidasEnServidor, abrirResena } from "../notificacionesDatos";
 import Avatar from "./Avatar";
+import AvisoConfirmarEmail from "./AvisoConfirmarEmail";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
 
@@ -453,9 +454,11 @@ export default function BarraNav({ centro = null }) {
       setLeidas(obtenerNotificacionesLeidas());
     };
     window.addEventListener("laburar-sesion-cambio", actualizarSesion);
+    window.addEventListener("storage", actualizarSesion);
     window.addEventListener("laburar-notificaciones-cambio", actualizarNotificaciones);
     return () => {
       window.removeEventListener("laburar-sesion-cambio", actualizarSesion);
+      window.removeEventListener("storage", actualizarSesion);
       window.removeEventListener("laburar-notificaciones-cambio", actualizarNotificaciones);
     };
   }, []);
@@ -788,6 +791,7 @@ export default function BarraNav({ centro = null }) {
           )}
         </nav>
       </header>
+      {usuario && <AvisoConfirmarEmail />}
     </>
   );
 }

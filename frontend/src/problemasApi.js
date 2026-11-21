@@ -132,12 +132,12 @@ export async function agendarCita(problemaId, dia, hora) {
 }
 
 /** Cancela un problema propio: si nadie lo agendó se borra; si ya tiene cita, se cancela (le avisa al trabajador). */
-export async function cancelarProblema(problema) {
-  if (problema.estado === "pendiente") return pedir("/cancelarTrabajo", "PUT", { solicitudid: problema.id });
+export async function cancelarProblema(problema, motivo) {
+  if (problema.estado === "pendiente") return pedir("/cancelarTrabajo", "PUT", { solicitudid: problema.id, motivo });
   return pedir("/borrarSolicitud", "DELETE", { solicitudid: problema.id });
 }
 
 /** El trabajador cancela una cita que había agendado (le llega el aviso al cliente). */
-export async function cancelarCita(problema) {
-  return pedir("/cancelarTrabajo", "PUT", { solicitudid: problema.id });
+export async function cancelarCita(problema, motivo) {
+  return pedir("/cancelarTrabajo", "PUT", { solicitudid: problema.id, motivo });
 }

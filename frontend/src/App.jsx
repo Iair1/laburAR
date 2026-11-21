@@ -22,6 +22,7 @@ import MisPedidos from "./pages/MisPedidos"
 import RecuperarContrasena from "./pages/RecuperarContrasena"
 import Legales from "./pages/Legales"
 import Admin from "./pages/Admin"
+import VerificarEmail from "./pages/VerificarEmail"
 import NoEncontrada from "./pages/NoEncontrada"
 import { AvisoResenasPendientes } from "./componentes/Resenas"
 
@@ -52,6 +53,7 @@ function App() {
         <Route path="/privacidad" element={<Legales pagina="privacidad" />} />
         <Route path="/seguridad" element={<Legales pagina="seguridad" />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/verificar-email" element={<VerificarEmail />} />
         <Route path="*" element={<NoEncontrada />} />
 
       </Routes>

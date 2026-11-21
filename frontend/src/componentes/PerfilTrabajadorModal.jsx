@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Avatar from "./Avatar";
 import { FotosDelTrabajador } from "./FotosTrabajos";
 import { ResenasDeUsuario } from "./Resenas";
+import ResumenConfianza from "./ResumenConfianza";
 import { MenuModeracion } from "./Moderacion";
 
 const estilos = `
@@ -316,6 +317,9 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar,
             {trabajador.verificado && (
               <span className="chip-verificado-perfil" title="Revisamos su DNI">✓ Identidad verificada</span>
             )}
+          </div>
+          <div style={{ marginBottom: "0.9rem" }}>
+            <ResumenConfianza userid={trabajador.id} rol="trabajador" />
           </div>
 
           {descripcion && (

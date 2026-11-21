@@ -34,13 +34,15 @@ app.use(cors());
 
 // Los errores internos de la base (nombres de tablas/columnas, conexión, etc.) no se le
 // muestran a la gente: se guardan en el log y se responde un mensaje general.
+// A los administradores (usuarios.es_admin) sí se les agrega el detalle, para poder arreglarlo.
 const ERROR_INTERNO = /column|relation|syntax error|malformed|value too long|violates|duplicate key|does not exist|invalid input|null value|operator does not exist|cannot cast|out of range|ECONN|ETIMEDOUT|ENOTFOUND|timeout|SSL|password authentication|too many clients|remaining connection|Connection terminated/i;
 app.use((req, res, next) => {
     const json = res.json.bind(res);
     res.json = (cuerpo) => {
         if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && ERROR_INTERNO.test(cuerpo.message)) {
             console.error(`Error interno en ${req.method} ${req.path}:`, cuerpo.message);
-            cuerpo = { ...cuerpo, message: "Hubo un problema en el servidor. Probá de nuevo en un rato." };
+            const detalle = req.esAdmin ? ` (Detalle para administradores: ${cuerpo.message})` : "";
+            cuerpo = { ...cuerpo, message: `Hubo un problema en el servidor. Probá de nuevo en un rato.${detalle}` };
         }
         return json(cuerpo);
     };

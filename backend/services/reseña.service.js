@@ -1,6 +1,6 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
-import { asegurarResenasYMensajes, columnasDeResena } from "../esquema.js";
+import { asegurarResenasYMensajes, columnasDeResena, sqlResena } from "../esquema.js";
 const {Client} = pkg;
 
 // Un trabajo (solicitud) se puede reseñar cuando terminó: el sistema lo marcó como
@@ -11,6 +11,21 @@ function errorConEstado(mensaje, status) {
     const error = new Error(mensaje);
     error.status = status;
     return error;
+}
+
+// Un paso que no es imprescindible (el puntaje promedio, el aviso): si falla, la reseña
+// igual se guarda. Va dentro de un SAVEPOINT para no arruinar la transacción.
+async function pasoOpcional(client, que, consulta) {
+    await client.query("SAVEPOINT paso_opcional");
+    try {
+        const resultado = await consulta();
+        await client.query("RELEASE SAVEPOINT paso_opcional");
+        return resultado;
+    } catch (error) {
+        await client.query("ROLLBACK TO SAVEPOINT paso_opcional").catch(() => {});
+        console.error(`Aviso (no grave): la reseña se guardó, pero no se pudo ${que}:`, error.message);
+        return null;
+    }
 }
 
 /**
@@ -43,28 +58,39 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
 
         const tabla = soyTrabajador ? "resena_al_contratador" : "resena_al_trabajador";
         const c = columnasDeResena(tabla);
+        const r = sqlResena(tabla, "r");
         const columnaPromedio = soyTrabajador ? "puntuacion_contratador" : "puntuacion_trabajador";
-        const columnaOtro = soyTrabajador ? c.contratadorid : c.trabajadorid;
+        const campoOtro = soyTrabajador ? "contratadorid" : "trabajadorid";
 
         await client.query("BEGIN");
-        const anteriores = await client.query(`SELECT 1 FROM ${tabla} WHERE ${c.trabajo} = $1`, [trabajo]);
+        const anteriores = await client.query(`SELECT 1 FROM ${tabla} r WHERE ${r.igual("trabajo", "$1::integer")} LIMIT 1`, [trabajo]);
         if(anteriores.rowCount > 0){
             await client.query("ROLLBACK");
             throw errorConEstado("Ya dejaste una reseña para este trabajo", 409);
         }
-        const result = await client.query(
-            `INSERT INTO ${tabla} (${c.texto}, ${c.puntuacion}, ${c.contratadorid}, ${c.trabajadorid}, ${c.trabajo}) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [reseña, puntuacion, s.contratadorid, s.trabajadorid, trabajo]);
-        const puntuacionActualizada = await client.query(
-            `UPDATE usuarios SET ${columnaPromedio} = (SELECT ROUND(AVG(${c.puntuacion})::numeric, 1) FROM ${tabla} WHERE ${columnaOtro} = $1)
-             WHERE id = $1 RETURNING id, ${columnaPromedio}`, [otro]);
-        const autor = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
-        const estrellas = "★".repeat(puntuacion) + "☆".repeat(5 - puntuacion);
-        await client.query(
-            "INSERT INTO notificaciones (tipo, userid, contenido, otroid) VALUES ('reseña', $1, $2, $3)",
-            [otro, `${autor.rows[0]?.nombre_completo || "Alguien"} te dejó una reseña: ${estrellas}\n"${reseña}"`, id]);
+        let result;
+        try {
+            result = await client.query(
+                `INSERT INTO ${tabla} (${c.texto}, ${c.puntuacion}, ${c.contratadorid}, ${c.trabajadorid}, ${c.trabajo}) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+                [reseña, puntuacion, s.contratadorid, s.trabajadorid, trabajo]);
+        } catch (error) {
+            if (error.code === "23505") throw errorConEstado("Ya dejaste una reseña para este trabajo", 409);
+            console.error(`No se pudo guardar la reseña en ${tabla} (columnas: ${JSON.stringify(c)}):`, error.message);
+            throw error;
+        }
+        // Lo que sigue no es imprescindible: si falla, la reseña igual queda guardada
+        const puntuacionActualizada = await pasoOpcional(client, "actualizar el puntaje promedio", () => client.query(
+            `UPDATE usuarios SET ${columnaPromedio} = (SELECT ROUND(AVG(${r.puntos}), 1) FROM ${tabla} r WHERE ${r.igual(campoOtro, "$1::integer")})
+             WHERE id = $1::integer RETURNING id, ${columnaPromedio}`, [otro]));
+        await pasoOpcional(client, "avisarle a la otra persona", async () => {
+            const autor = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
+            const estrellas = "★".repeat(puntuacion) + "☆".repeat(5 - puntuacion);
+            await client.query(
+                "INSERT INTO notificaciones (tipo, userid, contenido, otroid) VALUES ('reseña', $1, $2, $3)",
+                [otro, `${autor.rows[0]?.nombre_completo || "Alguien"} te dejó una reseña: ${estrellas}\n"${reseña}"`, id]);
+        });
         await client.query("COMMIT");
-        return { message: "Reseña agregada exitosamente", result: result.rows[0], puntuacionActualizada: puntuacionActualizada.rows[0] };
+        return { message: "Reseña agregada exitosamente", result: result.rows[0], puntuacionActualizada: puntuacionActualizada?.rows[0] ?? null };
     } catch(error){
         await client.query("ROLLBACK").catch(() => {});
         throw error;
@@ -78,8 +104,8 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
  */
 async function pendientes(id) {
     await asegurarResenasYMensajes();
-    const ct = columnasDeResena("resena_al_trabajador");
-    const cc = columnasDeResena("resena_al_contratador");
+    const rt = sqlResena("resena_al_trabajador", "r");
+    const rc = sqlResena("resena_al_contratador", "r");
     const client = new Client(config);
     try{
         await client.connect();
@@ -92,10 +118,13 @@ async function pendientes(id) {
             INNER JOIN usuarios o ON o.id = CASE WHEN s.trabajadorid = $1 THEN s.contratadorid ELSE s.trabajadorid END
             WHERE (s.contratadorid = $1 OR s.trabajadorid = $1) AND s.trabajadorid IS NOT NULL
               AND ${TRABAJO_TERMINADO}
-              AND NOT (s.trabajadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_contratador r WHERE r.${cc.trabajo} = s.id))
-              AND NOT (s.contratadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_trabajador r WHERE r.${ct.trabajo} = s.id))
+              AND NOT (s.trabajadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_contratador r WHERE ${rc.igual("trabajo", "s.id")}))
+              AND NOT (s.contratadorid = $1 AND EXISTS (SELECT 1 FROM resena_al_trabajador r WHERE ${rt.igual("trabajo", "s.id")}))
             ORDER BY s.periodo[2] DESC, s.id DESC
-            LIMIT 20`, [id]);
+            LIMIT 20`, [id]).catch((error) => {
+                console.error(`No se pudieron buscar las reseñas pendientes (columnas: ${JSON.stringify(columnasDeResena("resena_al_trabajador"))} / ${JSON.stringify(columnasDeResena("resena_al_contratador"))}):`, error.message);
+                throw error;
+            });
         return result.rows;
     } finally{
         await client.end();
@@ -117,17 +146,20 @@ async function reseñasDe(userid) {
             throw errorConEstado("Usuario no encontrado", 404);
         }
         const consulta = (tabla, campoUsuario, campoAutor) => {
-            const c = columnasDeResena(tabla);
+            const r = sqlResena(tabla, "r");
             return client.query(`
-            SELECT r.id, r.${c.puntuacion} AS puntuacion, r.${c.texto} AS texto, r.fecha, r.${c.trabajo} AS trabajo, a.aptitud,
+            SELECT ${r.id} AS id, ${r.puntos} AS puntuacion, ${r.col("texto")} AS texto, ${r.fecha} AS fecha, ${r.col("trabajo")} AS trabajo, a.aptitud,
                 au.id AS autorid, au.nombre_completo AS autor_nombre, au.foto_perfil AS autor_foto
             FROM ${tabla} r
-            LEFT JOIN usuarios au ON au.id = r.${c[campoAutor]}
-            LEFT JOIN solicitudes s ON s.id = r.${c.trabajo}
+            LEFT JOIN usuarios au ON ${r.igual(campoAutor, "au.id")}
+            LEFT JOIN solicitudes s ON ${r.igual("trabajo", "s.id")}
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
-            WHERE r.${c[campoUsuario]} = $1
-            ORDER BY r.fecha DESC NULLS LAST, r.id DESC
-            LIMIT 50`, [userid]);
+            WHERE ${r.igual(campoUsuario, "$1::integer")}
+            ORDER BY 4 DESC NULLS LAST, 1 DESC
+            LIMIT 50`, [userid]).catch((error) => {
+                console.error(`No se pudieron leer las reseñas de ${tabla} (columnas: ${JSON.stringify(columnasDeResena(tabla))}):`, error.message);
+                throw error;
+            });
         };
         const [comoTrabajador, comoCliente] = await Promise.all([
             consulta("resena_al_trabajador", "trabajadorid", "contratadorid"),

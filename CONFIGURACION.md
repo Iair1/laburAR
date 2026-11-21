@@ -51,6 +51,15 @@ UPDATE usuarios SET es_admin = true WHERE email = 'tu-email@ejemplo.com';
 
 Después esa persona tiene que cerrar sesión y volver a entrar para ver "Panel de administración" en su menú.
 
+## Si aparece "Hubo un problema en el servidor"
+
+Ese mensaje tapa el error real de la base (para no mostrarle detalles internos a la gente). Para verlo:
+
+- **Entrando con una cuenta de administrador**: el mismo mensaje agrega al final
+  "(Detalle para administradores: …)" con el error exacto.
+- **En Vercel**: el proyecto → *Logs*, y buscar `Error interno` o `Reseñas:` (al arrancar, el
+  backend anota qué columnas de las tablas de reseñas está usando).
+
 ## Base de datos
 
 El backend crea solo las tablas y columnas nuevas la primera vez que las necesita

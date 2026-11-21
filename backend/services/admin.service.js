@@ -4,6 +4,7 @@ import {v2 as cloudinary} from "cloudinary";
 import { asegurarCuentas } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
 import { olvidarEstadoCuenta } from "../auth.middleware.js";
+import { notificar } from "../notificaciones.js";
 const {Client} = pkg;
 
 // Abre una conexión, corre la función y la cierra siempre
@@ -167,11 +168,17 @@ async function verificarDni(userid, aprobado, nota) {
             [userid, aprobado ? "verificado" : "rechazado", aprobado === true]);
         if (result.rowCount === 0) throw errorConEstado("Ese usuario no subió su DNI", 404);
         const motivo = String(nota ?? "").trim().slice(0, 300);
-        const aviso = aprobado
-            ? "¡Listo! Verificamos tu identidad. Ahora tu perfil muestra la insignia de identidad verificada."
-            : `No pudimos verificar tu identidad${motivo ? `: ${motivo}` : ""}. Subí otra foto del DNI desde Mi cuenta.`;
-        await client.query("INSERT INTO notificaciones (tipo, userid, contenido) VALUES ('verificacion', $1, $2)", [userid, aviso])
-            .catch(() => {});
+        await notificar(client, aprobado
+            ? {
+                userid, tipo: "verificacion", enlace: "/mi-cuenta#identidad",
+                titulo: "Verificamos tu identidad",
+                contenido: "Tu perfil ya muestra la insignia de identidad verificada",
+            }
+            : {
+                userid, tipo: "verificacion", enlace: "/mi-cuenta#identidad",
+                titulo: "No pudimos verificar tu identidad",
+                contenido: motivo ? `${motivo} · Subí otra foto del DNI` : "Subí otra foto del DNI desde Mi cuenta",
+            });
         return result.rows[0];
     });
 }

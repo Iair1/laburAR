@@ -1,6 +1,7 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
 import { asegurarResenasYMensajes, columnasDeResena, sqlResena } from "../esquema.js";
+import { notificar, primerNombre } from "../notificaciones.js";
 const {Client} = pkg;
 
 // Un trabajo (solicitud) se puede reseñar cuando terminó: el sistema lo marcó como
@@ -85,9 +86,16 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
         await pasoOpcional(client, "avisarle a la otra persona", async () => {
             const autor = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
             const estrellas = "★".repeat(puntuacion) + "☆".repeat(5 - puntuacion);
-            await client.query(
-                "INSERT INTO notificaciones (tipo, userid, contenido, otroid) VALUES ('reseña', $1, $2, $3)",
-                [otro, `${autor.rows[0]?.nombre_completo || "Alguien"} te dejó una reseña: ${estrellas}\n"${reseña}"`, id]);
+            const texto = reseña.length > 70 ? `${reseña.slice(0, 69).trim()}…` : reseña;
+            await notificar(client, {
+                userid: otro,
+                tipo: "reseña",
+                titulo: `${primerNombre(autor.rows[0]?.nombre_completo)} te dejó una reseña`,
+                contenido: `${estrellas} “${texto}”`,
+                enlace: "/mi-cuenta#resenas",
+                otroid: id,
+                solicitudid: trabajo,
+            }, { transaccion: true });
         });
         await client.query("COMMIT");
         return { message: "Reseña agregada exitosamente", result: result.rows[0], puntuacionActualizada: puntuacionActualizada?.rows[0] ?? null };

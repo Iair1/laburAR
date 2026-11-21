@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Avatar from "./Avatar";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { obtenerResenasPendientes, dejarResena, obtenerResenasDe, EVENTO_RESENAS } from "../resenasApi";
+import { EVENTO_ABRIR_RESENA } from "../notificacionesDatos";
 
 const estilos = `
   .estrellas-resena { display: inline-flex; gap: 1px; vertical-align: middle; }
@@ -81,6 +82,11 @@ const estilos = `
   .pestana-resenas.activa { background: #7a2a2a; border-color: #570101; color: #fff; }
 
   /* aviso flotante de reseñas pendientes */
+  .toast-resena {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 160; background: #1e5e22; color: #fff;
+    border-radius: 999px; padding: 10px 18px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 8px 22px rgba(0,0,0,0.2);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: calc(100vw - 32px); text-align: center;
+  }
   .aviso-resena-pendiente {
     position: fixed; right: 18px; bottom: 18px; z-index: 150; width: 330px; max-width: calc(100vw - 24px);
     background: #fff; border: 1.5px solid #570101; border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.2);
@@ -415,6 +421,35 @@ export function AvisoResenasPendientes() {
   const [pendientes, setPendientes] = useState([]);
   const [pospuestas, setPospuestas] = useState(leerPospuestas);
   const [abierta, setAbierta] = useState(null);
+  const [aviso, setAviso] = useState("");
+
+  // Desde una notificación ("Dejale una reseña"): abre la ventana de ese trabajo
+  useEffect(() => {
+    let temporizador;
+    const alPedir = async (evento) => {
+      const trabajo = evento.detail?.trabajo || null;
+      let lista = [];
+      try {
+        lista = await obtenerResenasPendientes();
+        setPendientes(lista);
+      } catch {
+        return;
+      }
+      const elegida = trabajo ? lista.find((p) => String(p.trabajo) === String(trabajo)) : lista[0];
+      if (elegida) {
+        setAbierta(elegida);
+      } else {
+        setAviso(trabajo ? "Ya dejaste la reseña de ese trabajo. ¡Gracias!" : "No tenés reseñas pendientes.");
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => setAviso(""), 3500);
+      }
+    };
+    window.addEventListener(EVENTO_ABRIR_RESENA, alPedir);
+    return () => {
+      window.removeEventListener(EVENTO_ABRIR_RESENA, alPedir);
+      clearTimeout(temporizador);
+    };
+  }, []);
 
   useEffect(() => {
     const actualizar = () => setUsuario(obtenerSesionUsuario());
@@ -473,6 +508,12 @@ export function AvisoResenasPendientes() {
             <button className="secundario" onClick={posponer}>Más tarde</button>
             <button className="principal" onClick={() => setAbierta(actual)}>Dejar reseña</button>
           </div>
+        </div>
+      )}
+      {aviso && (
+        <div className="toast-resena" role="status">
+          <style>{estilos}</style>
+          {aviso}
         </div>
       )}
       {abierta && (

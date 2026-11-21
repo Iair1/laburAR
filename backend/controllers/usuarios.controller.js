@@ -183,8 +183,23 @@ const misNotificaciones = async(req, res)=>{
     }
 }
 
+// Marca como leídas las notificaciones: { ids: [1, 2] } o, sin ids, todas
+const leerNotificaciones = async(req, res)=>{
+    const { ids } = req.body || {};
+    if (ids !== undefined && (!Array.isArray(ids) || ids.length > 500 || !ids.every((n) => Number.isInteger(Number(n)) && Number(n) > 0))) {
+        return res.status(400).json({ message: "Las notificaciones no son válidas" });
+    }
+    try{
+        const result = await UsuariosService.leerMisNotificaciones(req.id, ids ? ids.map(Number) : null);
+        res.status(200).json({ message: "Notificaciones leídas", result });
+    }catch(error){
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const UsuariosController={
     misNotificaciones,
+    leerNotificaciones,
     crearCuenta,
     iniciarSesion,
     iniciarSesionGoogle,

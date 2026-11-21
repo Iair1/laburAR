@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Avatar from "./Avatar";
 import { ICONOS_CATEGORIAS } from "../iconosCategorias";
 import {
@@ -12,6 +12,7 @@ import {
   textoDiasSemana,
   estadoVisible,
 } from "../problemasDatos";
+import { formatearPesos } from "../ofertasApi";
 
 
 const ICONOS = {
@@ -43,6 +44,11 @@ const ICONOS = {
   check: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  ),
+  precio: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v18M16.5 7.5c-.6-1.4-2.2-2.3-4.3-2.3-2.6 0-4.2 1.3-4.2 3.1 0 4.3 8.7 2.4 8.7 7 0 1.9-1.8 3.3-4.5 3.3-2.3 0-4-.9-4.7-2.5" />
     </svg>
   ),
   lupa: (
@@ -183,12 +189,12 @@ export function Calendario({ modo = "rango", inicio, fin, valor, habilitadas, on
  *  - vista "cita": la cita que agendó el trabajador (día + cliente)
  *  - extra: contenido opcional antes de los botones
  */
-export function TarjetaProblema({ problema, vista = "trabajador", acciones = null, extra = null }) {
+export function TarjetaProblema({ problema, vista = "trabajador", acciones = null, extra = null, id }) {
   const franja = FRANJAS[problema.franja];
   const estado = estadoVisible(problema);
   const hayCita = problema.dia && (problema.estado === "pendiente" || problema.estado === "terminada");
   return (
-    <div className="tarjeta-trabajador tarjeta-problema">
+    <div className="tarjeta-trabajador tarjeta-problema" id={id}>
       <div className="cabecera-tarjeta">
         <ImagenProblema problema={problema} />
         <div className="identidad-trabajador">
@@ -247,8 +253,11 @@ export function TarjetaProblema({ problema, vista = "trabajador", acciones = nul
               ? `${textoPeriodo(problema.periodo)} · ${textoDiasSemana(problema.diassemana)}`
               : "Fechas sin definir"}
         </li>
-        {franja && (
+        {franja && !(hayCita && problema.hora) && (
           <li className="item-meta-tarjeta">{ICONOS.reloj}{franja.etiqueta} ({franja.detalle})</li>
+        )}
+        {hayCita && problema.precio > 0 && (
+          <li className="item-meta-tarjeta">{ICONOS.precio}<span>Precio acordado: <strong>{formatearPesos(problema.precio)}</strong></span></li>
         )}
       </ul>
 
@@ -258,22 +267,26 @@ export function TarjetaProblema({ problema, vista = "trabajador", acciones = nul
   );
 }
 
-// Cierra con Escape
-function useEscape(alPresionar) {
+// Cierra con Escape (solo la ventana de más arriba, si hay una encima de otra)
+function useEscape(alPresionar, referencia) {
   useEffect(() => {
     const manejar = (e) => {
-      if (e.key === "Escape") alPresionar?.();
+      if (e.key !== "Escape") return;
+      const abiertas = document.querySelectorAll(".fondo-modal-problema");
+      if (referencia?.current && abiertas[abiertas.length - 1] !== referencia.current) return;
+      alPresionar?.();
     };
     document.addEventListener("keydown", manejar);
     return () => document.removeEventListener("keydown", manejar);
-  }, [alPresionar]);
+  }, [alPresionar, referencia]);
 }
 
 /** Ventana modal con el mismo marco que "Ver perfil" / "Agendar". */
 export function Modal({ etiqueta, onCerrar, children, ancho }) {
-  useEscape(onCerrar);
+  const fondo = useRef(null);
+  useEscape(onCerrar, fondo);
   return (
-    <div className="fondo-modal-problema" onClick={onCerrar}>
+    <div className="fondo-modal-problema" ref={fondo} onClick={onCerrar}>
       <div
         className="tarjeta-modal-problema"
         style={ancho ? { maxWidth: ancho } : undefined}

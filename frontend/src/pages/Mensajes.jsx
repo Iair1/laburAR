@@ -284,7 +284,7 @@ const PREGUNTAS_FRECUENTES = [
   {
     pregunta: "¿Cómo subo un problema?",
     claves: ["subo", "subir", "publicar", "problema", "arreglar"],
-    respuesta: "Tocá \"Subir un problema\" en el inicio o en el menú de tu foto. Contá qué pasa, elegí tu zona y barrio, entre qué fechas y en qué horario pueden ir. Un trabajador elige un día y una hora, y te llega el aviso en la campanita.",
+    respuesta: "Tocá \"Subir un problema\" en el inicio o en el menú de tu foto. Contá qué pasa, elegí tu zona y barrio, entre qué fechas y en qué horario pueden ir. Los trabajadores te mandan propuestas con día, hora y precio: las ves en \"Mis problemas\" y te llega el aviso en la campanita.",
   },
   {
     pregunta: "¿Cómo ofrezco mis servicios?",
@@ -293,13 +293,18 @@ const PREGUNTAS_FRECUENTES = [
   },
   {
     pregunta: "¿Cómo agendo una cita para arreglar un problema?",
-    claves: ["agendo", "agendar", "cita", "trabajar", "ver problemas"],
-    respuesta: "Entrá a \"Ver problemas\" (arriba, al lado de \"Ofrecer mi servicio\"). Elegí uno, tocá \"Agendar cita\" y marcá el día y la hora, dentro de los que puso el cliente.",
+    claves: ["agendo", "agendar", "cita", "trabajar", "ver problemas", "propuesta", "precio"],
+    respuesta: "Entrá a \"Ver problemas\" (arriba, al lado de \"Ofrecer mi servicio\"). Elegí uno, tocá \"Enviar propuesta\" y poné el día, la hora y cuánto cobrarías. Si el cliente acepta, queda la cita agendada; también te puede hacer una contraoferta. Lo seguís en \"Mis propuestas\".",
+  },
+  {
+    pregunta: "¿Cómo se acuerda el precio?",
+    claves: ["precio", "cobrar", "cobra", "pago", "pagar", "contraoferta", "oferta", "presupuesto", "cuanto"],
+    respuesta: "En los problemas publicados, cada trabajador propone día, hora y precio. El cliente puede aceptar, mandarle una contraoferta con otro precio o rechazarla (y elegir si mantiene o elimina la publicación). Cuando alguien acepta, queda la cita con ese precio. El pago lo arreglan entre ustedes: LaburAR no cobra comisión.",
   },
   {
     pregunta: "¿Con quién puedo chatear?",
     claves: ["chatear", "chat", "mensaje", "escribir", "hablar"],
-    respuesta: "Con las personas con las que tenés una cita o una solicitud. Las encontrás acá, en \"Personas con citas\", o con el botón \"Escribirle\" en cada cita.",
+    respuesta: "Con las personas con las que tenés una cita, una solicitud o una propuesta de precio abierta. Las encontrás acá, en \"Personas con citas\", o con el botón \"Escribirle\" en cada cita.",
   },
   {
     pregunta: "¿Cómo dejo una reseña?",

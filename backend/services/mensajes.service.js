@@ -1,5 +1,7 @@
 import config from "../dbconfig.js";
 import pkg from "pg";
+
+import {publicarAviso} from "./avisos.service.js"
 const {Client} = pkg;
 
 async function mandarMensaje(id, receptor, texto) {
@@ -8,6 +10,15 @@ async function mandarMensaje(id, receptor, texto) {
         await client.connect();
         console.log("emisor id = " + id)
         const result =  await client.query("INSERT INTO mensajes (emisorid, receptorid, contenido) VALUES ($1, $2, $3)", [id, receptor, texto]);
+        const notificacion = await client.query("INSERT INTO notificaciones (userid, tipo, contenido, otroid) VALUES ($1, $2, $3, $4) RETURNING *", [receptor, "mensaje", `El usuario ${id} te ha enviado un mensaje.`, id]);
+        if(notificacion.rowCount === 0) {
+            throw new Error("No se pudo crear la notificación.")
+        }
+
+        await publicarAviso(
+            `user${receptor}`,
+            JSON.stringify({ tipo: "mensaje", emisor: id, contenido: texto })
+        );
         return result.rows[0]
     }catch(error){
         throw error

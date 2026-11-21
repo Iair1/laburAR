@@ -2,12 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import "dotenv/config";
 
-//de pusher
-import Pusher from "pusher";
-import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-//termnona lo de pusher
-import config from "./dbconfig.js";
+import { publicarAvisoHttp } from "./controllers/avisos.controller.js";
 
 
 import UsuariosRouter from "./routers/usuarios.router.js"
@@ -84,14 +80,6 @@ console.log("Variables de Pusher disponibles", {
   PUSHER_CLUSTER: Boolean(process.env.PUSHER_CLUSTER),
 });
 
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER,
-  useTLS: true,
-  timeout: 5000,
-});
 // El navegador recibe únicamente la configuración pública.
 app.get("/config", (req, res) => {
   res.json({
@@ -100,36 +88,8 @@ app.get("/config", (req, res) => {
   });
 });
 
-app.post("/api/avisos", async (req, res) => {
-  const { canal, mensaje } = req.body ?? {};
+app.post("/api/avisos", publicarAvisoHttp);
 
-  if (typeof canal !== "string" || !/^[a-zA-Z0-9_\-=@,.;]+$/.test(canal) || canal.length > 164) {
-    return res.status(400).json({ error: "Nombre de canal inválido." });
-  }
-  if (typeof mensaje !== "string" || !mensaje.trim() || mensaje.length > 500) {
-    return res.status(400).json({ error: "Enviá un mensaje de entre 1 y 500 caracteres." });
-  }
-
-  const aviso = {
-    id: randomUUID(),
-    texto: mensaje.trim(),
-    fecha: new Date().toISOString(),
-  };
-
-  try {
-    // Publicamos el aviso para los navegadores suscritos.
-    await pusher.trigger(canal, "nuevo-aviso", aviso);
-
-    // Respondemos a quien hizo el POST.
-    res.json({ publicado: true, aviso });
-  } catch (error) {
-    console.error("Error al publicar en Pusher:", error.message);
-
-    res.status(502).json({
-      error: error.message,
-    });
-  }
-});
 //aca termina lo de pusher
 
 

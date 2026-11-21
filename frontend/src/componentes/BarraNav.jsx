@@ -5,11 +5,17 @@ import {
   cerrarSesionCompleta,
   obtenerNotificaciones,
   obtenerNotificacionesLeidas,
+  guardarNotificaciones,
   marcarNotificacionesLeidas,
   claveNotificacion,
   actualizarFotoSesion,
 } from "../sesion";
-import { subirFotoPerfil, TIPOS_FOTO_PERFIL } from "../api";
+import {
+  subirFotoPerfil,
+  TIPOS_FOTO_PERFIL,
+  conectarCanal,
+  desconectarCanal,
+} from "../api";
 import Avatar from "./Avatar";
 import logoIcono from "../assets/logo-icono.svg";
 import logoTexto from "../assets/logo-texto.svg";
@@ -360,6 +366,47 @@ export default function BarraNav({ centro = null }) {
       window.removeEventListener("laburar-notificaciones-cambio", actualizarNotificaciones);
     };
   }, []);
+
+  useEffect(() => {
+    if (usuario?.id == null) return undefined;
+
+    const nombreCanal = `user${usuario.id}`;
+    const recibirAviso = (aviso) => {
+      console.log("Aviso recibido:", aviso);
+      if (typeof aviso?.texto !== "string") {
+        console.error("El aviso recibido no contiene texto válido.", aviso);
+        return;
+      }
+
+      let jsonaviso;
+      try {
+        jsonaviso = JSON.parse(aviso.texto);
+      } catch (error) {
+        console.error("No se pudo interpretar el aviso recibido.", error);
+        return;
+      }
+
+      if (jsonaviso.tipo !== "mensaje") return;
+
+      const notificacionesActuales = obtenerNotificaciones();
+      if (aviso.id && notificacionesActuales.some((notificacion) => notificacion.id === aviso.id)) return;
+
+      const nuevasNotificaciones = [
+        ...notificacionesActuales,
+        {
+          id: aviso.id,
+          tipo: jsonaviso.tipo,
+          contenido: `El usuario ${jsonaviso.emisor} te ha enviado un mensaje.`,
+          fecha: aviso.fecha,
+        },
+      ];
+      guardarNotificaciones(nuevasNotificaciones);
+      setNotificaciones(nuevasNotificaciones);
+    };
+    conectarCanal(nombreCanal, recibirAviso);
+
+    return () => desconectarCanal(nombreCanal, recibirAviso);
+  }, [usuario?.id]);
 
   const cerrarMenu = useCallback(() => setMenuAbierto(false), []);
   const cerrarCampana = useCallback(() => setCampanaAbierta(false), []);

@@ -1,3 +1,5 @@
+import Pusher from "pusher-js";
+
 const API_URL = import.meta.env.DEV
   ? "https://laburar-three.vercel.app/api/usuarios"
   : "/api/usuarios";
@@ -560,4 +562,52 @@ export const mandarAviso = async (canal, mensaje) => {
       );
     }
     return resultado;
+}
+
+let pusher = null;
+const manejadoresCanales = new Map();
+
+export function conectarCanal(nombreCanal, recibirAviso) {
+  if (!pusher) {
+    pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY || "7c6dfd35eff5ea1bc212", {
+      cluster: "sa1",
+      forceTLS: true,
+    });
+  }
+
+  const canal = pusher.subscribe(nombreCanal);
+  canal.bind("nuevo-aviso", recibirAviso);
+  const manejadores = manejadoresCanales.get(nombreCanal) || new Set();
+  manejadores.add(recibirAviso);
+  manejadoresCanales.set(nombreCanal, manejadores);
+  console.log(`Conectado al canal ${nombreCanal}. Total de manejadores: ${manejadores.size}`);
+  return canal;
+}
+
+export function desconectarCanal(nombreCanal, recibirAviso) {
+  if (!pusher) return;
+
+  if (nombreCanal && recibirAviso) {
+    const canal = pusher.channel(nombreCanal);
+    canal?.unbind("nuevo-aviso", recibirAviso);
+
+    const manejadores = manejadoresCanales.get(nombreCanal);
+    manejadores?.delete(recibirAviso);
+    if (manejadores?.size === 0) {
+      pusher.unsubscribe(nombreCanal);
+      manejadoresCanales.delete(nombreCanal);
+    }
+  } else {
+    manejadoresCanales.forEach((manejadores, nombre) => {
+      const canal = pusher.channel(nombre);
+      manejadores.forEach((manejador) => canal?.unbind("nuevo-aviso", manejador));
+      pusher.unsubscribe(nombre);
+    });
+    manejadoresCanales.clear();
+  }
+
+  if (manejadoresCanales.size === 0) {
+    pusher.disconnect();
+    pusher = null;
+  }
 }

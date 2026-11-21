@@ -24,7 +24,7 @@ function App() {
     <RegistroProvider>
       <Routes>
         
-        <Route path="/" element={<Avisos />} />
+        <Route path="/" element={<PaginaInicio />} />
         <Route path="/login" element={<Login />} />
         <Route path="/paso1" element={<Paso1 />} />
         <Route path="/paso2" element={<Paso2 />} />

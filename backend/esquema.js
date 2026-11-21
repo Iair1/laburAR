@@ -57,8 +57,7 @@ const SENTENCIAS_RESENAS_Y_MENSAJES = [
     // Reseñas: una tabla por dirección (el cliente reseña al trabajador y viceversa)
     `CREATE TABLE IF NOT EXISTS resena_al_trabajador ("reseña" text, puntuacion integer, contratadorid integer, trabajadorid integer, trabajo integer)`,
     `CREATE TABLE IF NOT EXISTS resena_al_contratador ("reseña" text, puntuacion integer, trabajadorid integer, contratadorid integer, trabajo integer)`,
-    `ALTER TABLE resena_al_trabajador ADD COLUMN IF NOT EXISTS id serial, ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now()`,
-    `ALTER TABLE resena_al_contratador ADD COLUMN IF NOT EXISTS id serial, ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now()`,
+    // (el id, la fecha y las columnas que falten se agregan en prepararTablaResenas)
     // Mensajes: cuándo se mandó, si el otro ya lo leyó y una foto opcional
     `ALTER TABLE mensajes
         ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now(),
@@ -72,86 +71,239 @@ const SENTENCIAS_OPCIONALES = [
 ];
 
 /* Columnas de las tablas de reseñas.
- * En cada base pueden llamarse un poco distinto (por ejemplo "resena" sin ñ, o la ñ guardada
- * como "n" + tilde), así que al arrancar se busca cómo se llama cada una y se usa ese nombre.
- * Si alguna no existe, se agrega con el nombre de acá. */
+ * Cada base puede tenerlas armadas un poco distinto: otros nombres ("resena" sin ñ, "puntaje",
+ * "contratador_id"...), un id propio sin numeración automática, columnas obligatorias de más,
+ * el trabajo guardado como texto, o una columna que apunta a otra tabla. Al arrancar se revisa
+ * cada tabla, se usa lo que ya hay y solo se agrega lo que falta (sin borrar ni cambiar datos). */
 const TABLAS_RESENAS = ["resena_al_trabajador", "resena_al_contratador"];
+// exactos: nombres posibles (ya normalizados). parecidos: pedazos de nombre que también sirven.
+// referencia: si la columna es una clave foránea, tiene que apuntar a esta tabla.
 const CAMPOS_RESENA = {
-    texto: { nombre: "reseña", tipo: "text", alias: ["resena", "texto", "comentario", "comentarios", "descripcion", "contenido", "opinion", "review"] },
-    puntuacion: { nombre: "puntuacion", tipo: "integer", alias: ["puntuacion", "puntaje", "estrellas", "calificacion", "rating"] },
-    contratadorid: { nombre: "contratadorid", tipo: "integer", alias: ["contratadorid", "contratador", "clienteid", "cliente", "empleadorid"] },
-    trabajadorid: { nombre: "trabajadorid", tipo: "integer", alias: ["trabajadorid", "trabajador"] },
-    trabajo: { nombre: "trabajo", tipo: "integer", alias: ["trabajo", "trabajoid", "solicitudid"] },
+    texto: { nombre: "reseña", tipo: "text", soloTexto: true,
+        exactos: ["resena", "texto", "comentario", "comentarios", "descripcion", "contenido", "opinion", "review"],
+        parecidos: ["resen", "coment", "opin", "texto", "descrip", "review", "detalle"] },
+    puntuacion: { nombre: "puntuacion", tipo: "integer",
+        exactos: ["puntuacion", "puntaje", "estrellas", "calificacion", "rating", "puntos"],
+        parecidos: ["puntu", "puntaj", "estrell", "calific", "rating", "valorac"] },
+    contratadorid: { nombre: "contratadorid", tipo: "integer", referencia: "usuarios",
+        exactos: ["contratadorid", "contratador", "idcontratador", "clienteid", "cliente", "idcliente", "empleadorid"],
+        parecidos: ["contratador", "cliente", "empleador"] },
+    trabajadorid: { nombre: "trabajadorid", tipo: "integer", referencia: "usuarios",
+        exactos: ["trabajadorid", "trabajador", "idtrabajador"],
+        parecidos: ["trabajador", "prestador", "profesional"] },
+    trabajo: { nombre: "trabajo", tipo: "integer", referencia: "solicitudes", otroNombre: "solicitudid",
+        exactos: ["trabajo", "trabajoid", "idtrabajo", "solicitudid", "idsolicitud", "solicitud"],
+        parecidos: ["trabajo", "solicitud"], evitar: ["trabajador"] },
 };
+const NOMBRES_FECHA = ["fecha", "fechacreacion", "fechaalta", "fechaderesena", "creado", "creadoel", "createdat"];
 const TIPOS_TEXTO = ["text", "character varying", "character"];
+const TIPOS_NUMERO = ["integer", "bigint", "smallint", "numeric", "real", "double precision"];
+const TIPOS_ENTERO = ["integer", "bigint", "smallint"];
+const esTipoFecha = (tipo) => tipo === "date" || String(tipo).startsWith("timestamp");
 
 const comillas = (nombre) => `"${String(nombre).replace(/"/g, '""')}"`;
 // "Reseña", "reseña" (con la ñ separada), "resena" y "rese_na" quedan todos como "resena"
 const normalizar = (nombre) =>
-    String(nombre).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    String(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const esFecha = (columna) => NOMBRES_FECHA.includes(normalizar(columna.column_name))
+    || (esTipoFecha(columna.data_type) && normalizar(columna.column_name).includes("fecha"));
 
 // Lo que se usa si todavía no se pudo revisar la base (los nombres de siempre)
-const columnasPorDefecto = () =>
-    Object.fromEntries(Object.entries(CAMPOS_RESENA).map(([campo, { nombre }]) => [campo, comillas(nombre)]));
+const columnasPorDefecto = () => ({
+    ...Object.fromEntries(Object.entries(CAMPOS_RESENA).map(([campo, { nombre }]) => [campo, comillas(nombre)])),
+    id: comillas("id"),
+    fecha: comillas("fecha"),
+    tipos: Object.fromEntries(Object.entries(CAMPOS_RESENA).map(([campo, { tipo }]) => [campo, tipo])),
+});
 let columnasResenas = Object.fromEntries(TABLAS_RESENAS.map((tabla) => [tabla, columnasPorDefecto()]));
 
 /**
  * Nombres de columna (ya entre comillas, listos para el SQL) de una tabla de reseñas:
- * { texto, puntuacion, contratadorid, trabajadorid, trabajo }.
- * Llamar después de `await asegurarResenasYMensajes()`.
+ * { texto, puntuacion, contratadorid, trabajadorid, trabajo, id, fecha, tipos }.
+ * `id` y `fecha` pueden ser null si la tabla no las tiene. Llamar después de `await asegurarResenasYMensajes()`.
  */
 export function columnasDeResena(tabla) {
     return columnasResenas[tabla] || columnasPorDefecto();
 }
 
-// Busca cómo se llama cada columna en la tabla; agrega las que falten.
-async function prepararTablaResenas(client, tabla) {
-    const { rows } = await client.query(
-        `SELECT column_name, data_type, column_default FROM information_schema.columns
-         WHERE table_name = $1 AND table_schema = ANY (current_schemas(false))`,
-        [tabla]
-    );
-    const usadas = new Set();
+/**
+ * Pedazos de SQL para leer una tabla de reseñas con el alias `alias`, que andan aunque
+ * alguna columna sea de otro tipo (por ejemplo, el trabajo o el puntaje guardados como texto).
+ */
+export function sqlResena(tabla, alias = "r") {
+    const c = columnasDeResena(tabla);
+    const col = (campo) => `${alias}.${c[campo]}`;
+    const esNumero = (campo) => TIPOS_NUMERO.includes(c.tipos?.[campo] || CAMPOS_RESENA[campo].tipo);
+    return {
+        col,
+        // Compara una columna de la reseña con un id (de otra tabla o un parámetro como $1::integer)
+        igual: (campo, expresion) => esNumero(campo)
+            ? `${col(campo)} = ${expresion}`
+            : `${col(campo)}::text = (${expresion})::text`,
+        puntos: esNumero("puntuacion")
+            ? `${col("puntuacion")}::numeric`
+            : `NULLIF(regexp_replace(${col("puntuacion")}::text, '[^0-9.]', '', 'g'), '')::numeric`,
+        id: c.id ? `${alias}.${c.id}` : `${alias}.ctid::text`,
+        fecha: c.fecha ? `${alias}.${c.fecha}` : "NULL::timestamptz",
+    };
+}
+
+// Elige qué columna de la tabla guarda cada dato (sin usar las de `excluidas`)
+function elegirColumnas(columnas, excluidas) {
+    const usadas = new Set(excluidas);
     const mapa = {};
-    for (const [campo, { nombre, tipo, alias }] of Object.entries(CAMPOS_RESENA)) {
-        let columna = null;
-        for (const a of alias) {
-            columna = rows.find((c) => !usadas.has(c.column_name) && normalizar(c.column_name) === a);
-            if (columna) break;
-        }
-        // El texto puede tener cualquier nombre: si hay una sola columna de texto sin usar, es esa
-        if (!columna && campo === "texto") {
-            const otrosNombres = ["id", "fecha", ...Object.values(CAMPOS_RESENA).flatMap((c) => c.alias)];
-            const deTexto = rows.filter((c) => !usadas.has(c.column_name) && TIPOS_TEXTO.includes(c.data_type)
-                && !otrosNombres.includes(normalizar(c.column_name)));
-            if (deTexto.length === 1) columna = deTexto[0];
-        }
-        if (columna) {
-            usadas.add(columna.column_name);
-            mapa[campo] = comillas(columna.column_name);
-        } else {
-            await client.query(`ALTER TABLE ${tabla} ADD COLUMN IF NOT EXISTS ${comillas(nombre)} ${tipo}`);
-            console.log(`Columna ${nombre} agregada a ${tabla}`);
-            mapa[campo] = comillas(nombre);
+    const sirve = (campo, columna, soloNumeros) => {
+        if (usadas.has(columna.column_name)) return false;
+        if (normalizar(columna.column_name) === "id" || esFecha(columna)) return false;
+        if (CAMPOS_RESENA[campo].soloTexto) return TIPOS_TEXTO.includes(columna.data_type);
+        if (esTipoFecha(columna.data_type) || columna.data_type === "boolean") return false;
+        return !soloNumeros || TIPOS_NUMERO.includes(columna.data_type);
+    };
+    const tomar = (campo, columna) => { mapa[campo] = columna; usadas.add(columna.column_name); };
+    // 1) Nombres conocidos
+    for (const [campo, { exactos }] of Object.entries(CAMPOS_RESENA)) {
+        for (const nombre of exactos) {
+            const columna = columnas.find((c) => sirve(campo, c, false) && normalizar(c.column_name) === nombre);
+            if (columna) { tomar(campo, columna); break; }
         }
     }
+    // 2) Nombres parecidos (para los ids y el puntaje, solo columnas de números)
+    for (const [campo, { parecidos, evitar = [] }] of Object.entries(CAMPOS_RESENA)) {
+        if (mapa[campo]) continue;
+        const columna = columnas.find((c) => {
+            const n = normalizar(c.column_name);
+            return sirve(campo, c, true) && parecidos.some((p) => n.includes(p)) && !evitar.some((p) => n.includes(p));
+        });
+        if (columna) tomar(campo, columna);
+    }
+    // 3) El texto puede tener cualquier nombre: si queda una sola columna de texto, es esa
+    if (!mapa.texto) {
+        const deTexto = columnas.filter((c) => sirve("texto", c, false));
+        if (deTexto.length === 1) tomar("texto", deTexto[0]);
+    }
+    return mapa;
+}
 
-    // Si "id" ya existía pero sin valor automático, se le pone uno (si no, el INSERT falla)
-    const id = rows.find((c) => c.column_name === "id");
-    if (id && !id.column_default) {
+// Le pone numeración automática a una columna de números que no la tiene
+async function numerarSola(client, tabla, columna) {
+    const secuencia = comillas(`${tabla}_${normalizar(columna) || "id"}_seq`);
+    await client.query(`CREATE SEQUENCE IF NOT EXISTS ${secuencia} OWNED BY ${tabla}.${comillas(columna)}`);
+    await client.query(`SELECT setval('${secuencia.replace(/'/g, "''")}', COALESCE((SELECT MAX(${comillas(columna)}) FROM ${tabla}), 0) + 1, false)`);
+    await client.query(`ALTER TABLE ${tabla} ALTER COLUMN ${comillas(columna)} SET DEFAULT nextval('${secuencia.replace(/'/g, "''")}')`);
+}
+
+// Revisa una tabla de reseñas, agrega lo que falte y devuelve qué columna usar para cada dato.
+async function prepararTablaResenas(client, tabla) {
+    const avisar = (que, error) => console.error(`Aviso (no grave): ${que} en ${tabla}:`, error.message);
+    const leerColumnas = async () => (await client.query(
+        `SELECT column_name, data_type, column_default, is_nullable, is_identity, is_generated
+         FROM information_schema.columns
+         WHERE table_name = $1 AND table_schema = ANY (current_schemas(false))
+         ORDER BY ordinal_position`,
+        [tabla]
+    )).rows;
+    let columnas = await leerColumnas();
+    const claves = await client.query(`
+        SELECT a.attname AS columna, c.contype AS tipo, c.confrelid::regclass::text AS referencia
+        FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+        WHERE c.conrelid = to_regclass($1::text) AND c.contype IN ('f', 'p')`, [tabla])
+        .then((r) => r.rows)
+        .catch((error) => { avisar("no se pudieron leer las claves", error); return []; });
+    const tablaDe = (referencia) => String(referencia).replace(/^.*\./, "").replace(/"/g, "");
+
+    // Una columna que apunta a otra tabla (por ejemplo "trabajo" → trabajos) no sirve para ese dato
+    const excluidas = new Set();
+    let elegidas = elegirColumnas(columnas, excluidas);
+    for (let vuelta = 0; vuelta < 5; vuelta++) {
+        const malas = Object.entries(elegidas).filter(([campo, columna]) => {
+            const referencia = CAMPOS_RESENA[campo].referencia;
+            const fk = claves.find((k) => k.tipo === "f" && k.columna === columna.column_name);
+            return referencia && fk && tablaDe(fk.referencia) !== referencia;
+        });
+        if (!malas.length) break;
+        malas.forEach(([, columna]) => excluidas.add(columna.column_name));
+        elegidas = elegirColumnas(columnas, excluidas);
+    }
+
+    // Los datos que no tienen columna se agregan
+    const nombres = new Set(columnas.map((c) => c.column_name));
+    const mapa = {};
+    for (const [campo, { nombre, tipo, otroNombre }] of Object.entries(CAMPOS_RESENA)) {
+        if (elegidas[campo]) { mapa[campo] = elegidas[campo].column_name; continue; }
+        const libre = [nombre, otroNombre, `${nombre}_laburar`].find((n) => n && !nombres.has(n));
         try {
-            await client.query(`CREATE SEQUENCE IF NOT EXISTS ${tabla}_id_seq OWNED BY ${tabla}.id`);
-            await client.query(`SELECT setval('${tabla}_id_seq', COALESCE((SELECT MAX(id) FROM ${tabla}), 0) + 1, false)`);
-            await client.query(`ALTER TABLE ${tabla} ALTER COLUMN id SET DEFAULT nextval('${tabla}_id_seq')`);
+            await client.query(`ALTER TABLE ${tabla} ADD COLUMN IF NOT EXISTS ${comillas(libre)} ${tipo}`);
+            console.log(`Columna ${libre} agregada a ${tabla}`);
         } catch (error) {
-            console.error(`Aviso (no grave): no se pudo numerar solo el id de ${tabla}:`, error.message);
+            avisar(`no se pudo agregar la columna ${libre}`, error);
+        }
+        mapa[campo] = libre;
+        nombres.add(libre);
+    }
+
+    // id (para identificar cada reseña): si no está se agrega; si está sin numeración, se le pone
+    const id = columnas.find((c) => c.column_name === "id");
+    try {
+        if (!id) {
+            await client.query(`ALTER TABLE ${tabla} ADD COLUMN IF NOT EXISTS id serial`);
+        } else if (!id.column_default && id.is_identity !== "YES" && TIPOS_ENTERO.includes(id.data_type)) {
+            await numerarSola(client, tabla, "id");
+        }
+    } catch (error) {
+        avisar("no se pudo numerar solo el id", error);
+    }
+
+    // fecha (para ordenar): si no está se agrega; si está sin valor por defecto, se le pone "ahora"
+    const fecha = columnas.find((c) => !Object.values(mapa).includes(c.column_name) && esFecha(c));
+    try {
+        if (!fecha) {
+            await client.query(`ALTER TABLE ${tabla} ADD COLUMN IF NOT EXISTS fecha timestamptz DEFAULT now()`);
+        } else if (!fecha.column_default) {
+            await client.query(`ALTER TABLE ${tabla} ALTER COLUMN ${comillas(fecha.column_name)} SET DEFAULT ${fecha.data_type === "date" ? "CURRENT_DATE" : "now()"}`);
+        }
+    } catch (error) {
+        avisar("no se pudo preparar la fecha", error);
+    }
+
+    // Otras columnas obligatorias que la app no llena (harían fallar cada reseña nueva)
+    columnas = await leerColumnas();
+    for (const c of columnas) {
+        if (Object.values(mapa).includes(c.column_name)) continue;
+        if (c.is_nullable !== "NO" || c.column_default || c.is_identity === "YES" || c.is_generated === "ALWAYS") continue;
+        const esForanea = claves.some((k) => k.tipo === "f" && k.columna === c.column_name);
+        try {
+            if (TIPOS_ENTERO.includes(c.data_type) && !esForanea) {
+                await numerarSola(client, tabla, c.column_name);
+            } else if (c.data_type === "uuid" && !esForanea) {
+                await client.query(`ALTER TABLE ${tabla} ALTER COLUMN ${comillas(c.column_name)} SET DEFAULT gen_random_uuid()`);
+            } else if (esTipoFecha(c.data_type)) {
+                await client.query(`ALTER TABLE ${tabla} ALTER COLUMN ${comillas(c.column_name)} SET DEFAULT ${c.data_type === "date" ? "CURRENT_DATE" : "now()"}`);
+            } else {
+                await client.query(`ALTER TABLE ${tabla} ALTER COLUMN ${comillas(c.column_name)} DROP NOT NULL`);
+            }
+            console.log(`Columna obligatoria ${c.column_name} de ${tabla} preparada para las reseñas nuevas`);
+        } catch (error) {
+            avisar(`la columna ${c.column_name} es obligatoria y no se pudo preparar`, error);
         }
     }
 
     // Una sola reseña por trabajo (si ya hay repetidas, no se puede crear y se sigue igual)
-    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${tabla}_trabajo_unico ON ${tabla} (${mapa.trabajo})`)
-        .catch((error) => console.error("Aviso (no grave):", error.message));
-    return mapa;
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${tabla}_trabajo_unico ON ${tabla} (${comillas(mapa.trabajo)})`)
+        .catch((error) => avisar("no se pudo crear el índice de un trabajo por reseña", error));
+
+    columnas = await leerColumnas();
+    const existe = (nombre) => columnas.some((c) => c.column_name === nombre);
+    const fechaFinal = fecha?.column_name || "fecha";
+    const resultado = {
+        ...Object.fromEntries(Object.entries(mapa).map(([campo, nombre]) => [campo, comillas(nombre)])),
+        id: existe("id") ? comillas("id") : null,
+        fecha: existe(fechaFinal) ? comillas(fechaFinal) : null,
+        tipos: Object.fromEntries(Object.entries(mapa).map(([campo, nombre]) =>
+            [campo, columnas.find((c) => c.column_name === nombre)?.data_type || CAMPOS_RESENA[campo].tipo])),
+    };
+    console.log(`Reseñas: ${tabla} usa ${Object.keys(CAMPOS_RESENA).map((campo) => `${campo}=${resultado[campo]} (${resultado.tipos[campo]})`).join(", ")}, id=${resultado.id}, fecha=${resultado.fecha}`);
+    return resultado;
 }
 
 let promesaResenasYMensajes = null;

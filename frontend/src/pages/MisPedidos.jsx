@@ -3,10 +3,13 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
 import Avatar from "../componentes/Avatar";
 import AccionesCita from "../componentes/AccionesCita";
-import { ConfirmarModal } from "../componentes/ProblemaModales";
+import ResumenConfianza from "../componentes/ResumenConfianza";
+import { ConfirmarModal, CancelarCitaModal } from "../componentes/ProblemaModales";
+import { TarjetaOferta, AceptarOfertaModal, ContraofertaModal, RechazarOfertaModal, estilosOfertas } from "../componentes/Ofertas";
+import { obtenerPropuestasRecibidas, aceptarPropuesta, contraofertar, rechazarPropuesta, formatearPesos, textoCuando } from "../ofertasApi";
 import { estilosTarjetas } from "../estilosTarjetas";
 import { estilosProblemas } from "../estilosProblemas";
-import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
+import { obtenerSesionUsuario, cerrarSesionCompleta, obtenerNotificaciones } from "../sesion";
 import { pedirAlServidor } from "../servidor";
 import { usePendientesResenas } from "../usePendientesResenas";
 import { normalizarPeriodo, textoPeriodo, textoDiasSemana, fechaLarga, horaAcordada, horaPreferida, hoyStr } from "../problemasDatos";
@@ -62,6 +65,7 @@ function aPedido(fila) {
     periodo: fila.periodo,
     diassemana: fila.diassemana,
     aptitud: fila.aptitud || "",
+    precio: fila.precio_acordado != null ? Number(fila.precio_acordado) : null,
     trabajador: {
       id: fila.trabajadorid,
       nombre: fila.nombre_completo,
@@ -86,6 +90,10 @@ export default function MisPedidos() {
   const [errorConfirmar, setErrorConfirmar] = useState("");
   const [toast, setToast] = useState("");
   const pendientesResenas = usePendientesResenas(Boolean(usuario));
+  // Presupuestos que mandaron los trabajadores a mis pedidos
+  const [ofertas, setOfertas] = useState([]);
+  const [respondiendo, setRespondiendo] = useState(null);
+  const pedidoPedido = parametros.get("pedido"); // ?pedido=ID desde una notificación
 
   const irAlLogin = useCallback(() => {
     cerrarSesionCompleta();
@@ -94,10 +102,12 @@ export default function MisPedidos() {
 
   const cargar = useCallback(async () => {
     try {
-      const [a, b] = await Promise.all([
+      const [a, b, recibidas] = await Promise.all([
         pedirAlServidor("/solicitudes/misSolicitudes"),
         pedirAlServidor("/solicitudes/serviciosPendientes"),
+        obtenerPropuestasRecibidas().catch(() => []),
       ]);
+      setOfertas(recibidas.filter((o) => o.dirigida));
       setEsperando((a.result || []).map(aPedido));
       // Los problemas abiertos que agendó un trabajador se ven en "Mis problemas"
       setAceptados((b.result || []).filter((f) => f.dirigida !== false).map(aPedido));
@@ -119,6 +129,78 @@ export default function MisPedidos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cuando llega una notificación nueva (un presupuesto, una respuesta), se actualiza la pantalla
+  useEffect(() => {
+    if (!usuario) return undefined;
+    let ultima = obtenerNotificaciones().at(-1)?.id;
+    const alCambiar = () => {
+      const nueva = obtenerNotificaciones().at(-1)?.id;
+      if (nueva !== ultima) {
+        ultima = nueva;
+        cargar();
+      }
+    };
+    window.addEventListener("laburar-notificaciones-cambio", alCambiar);
+    return () => window.removeEventListener("laburar-notificaciones-cambio", alCambiar);
+  }, [usuario, cargar]);
+
+  // Desde una notificación: se baja hasta ese pedido
+  useEffect(() => {
+    if (cargando || !pedidoPedido) return undefined;
+    const temporizador = setTimeout(() => {
+      document.getElementById(`pedido-${pedidoPedido}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    return () => clearTimeout(temporizador);
+  }, [cargando, pedidoPedido]);
+
+  const mostrarToast = (texto) => {
+    setToast(texto);
+    setTimeout(() => setToast(""), 4000);
+  };
+  const ofertasAbiertasDe = (pedidoid) => ofertas.filter((o) => o.solicitudid === pedidoid && o.estado === "pendiente" && !o.vencida);
+  const manejarError = (err) => {
+    if (err.status === 401) {
+      setRespondiendo(null);
+      irAlLogin();
+      return true;
+    }
+    if (err.status === 409) cargar();
+    return false;
+  };
+  const confirmarAceptarOferta = async (oferta) => {
+    try {
+      await aceptarPropuesta(oferta.id);
+    } catch (err) {
+      if (manejarError(err)) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(`¡Listo! Cita agendada con ${oferta.trabajador?.nombre?.split(" ")[0] || "el trabajador"}: ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
+    await cargar();
+  };
+  const confirmarContraoferta = async (oferta, precio, mensaje) => {
+    try {
+      await contraofertar(oferta.id, precio, mensaje);
+    } catch (err) {
+      if (manejarError(err)) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(`Le propusiste ${formatearPesos(precio)}. Te avisamos cuando responda.`);
+    await cargar();
+  };
+  const confirmarRechazoOferta = async (oferta, cancelarPedido) => {
+    try {
+      await rechazarPropuesta(oferta.id, { eliminarPublicacion: cancelarPedido });
+    } catch (err) {
+      if (manejarError(err)) return;
+      throw err;
+    }
+    setRespondiendo(null);
+    mostrarToast(cancelarPedido ? "Rechazaste el presupuesto y cancelaste el pedido." : "Rechazaste el presupuesto. Te puede mandar otro.");
+    await cargar();
+  };
+
   const cambiarVista = (nueva) => {
     const siguientes = new URLSearchParams(parametros);
     if (nueva === "aceptados") siguientes.set("vista", "aceptados");
@@ -126,12 +208,12 @@ export default function MisPedidos() {
     setParametros(siguientes);
   };
 
-  const confirmarCancelar = async () => {
+  const confirmarCancelar = async (motivo) => {
     const p = cancelando;
     setProcesando(true);
     setErrorConfirmar("");
     try {
-      if (p.estado === "pendiente") await pedirAlServidor("/solicitudes/cancelarTrabajo", "PUT", { solicitudid: p.id });
+      if (p.estado === "pendiente") await pedirAlServidor("/solicitudes/cancelarTrabajo", "PUT", { solicitudid: p.id, motivo });
       else await pedirAlServidor("/solicitudes/borrarSolicitud", "DELETE", { solicitudid: p.id });
       setCancelando(null);
       setToast(p.estado === "pendiente" ? `Cancelaste la cita. Le avisamos a ${p.trabajador.nombre}.` : "Cancelaste el pedido.");
@@ -155,7 +237,7 @@ export default function MisPedidos() {
     const aceptado = p.estado === "pendiente";
     const yaPaso = aceptado && p.fin && p.fin < hoyStr();
     return (
-      <div className="tarjeta-trabajador" key={p.id}>
+      <div className="tarjeta-trabajador" key={p.id} id={`pedido-${p.id}`}>
         <div className="cabecera-tarjeta">
           <div className="imagen-trabajador"><Avatar src={p.trabajador.foto} nombre={p.trabajador.nombre} /></div>
           <div className="identidad-trabajador">
@@ -166,6 +248,9 @@ export default function MisPedidos() {
             <div className="subtexto-calificacion">{p.aptitud || "Servicio"}</div>
           </div>
         </div>
+        {!aceptado && p.trabajador.id && (
+          <div style={{ marginBottom: 10 }}><ResumenConfianza userid={p.trabajador.id} rol="trabajador" compacto /></div>
+        )}
         <ul className="lista-meta-tarjeta">
           <li className="item-meta-tarjeta" title={p.descripcion}><span className="texto-recortado">{p.descripcion || "Sin descripción"}</span></li>
           <li className="item-meta-tarjeta">📍 {[p.barrio, p.zona].filter(Boolean).join(", ") || "Sin zona"}</li>
@@ -181,6 +266,7 @@ export default function MisPedidos() {
               <>
                 {yaPaso ? "Fue el " : "Va a ir el "}<strong>{fechaLarga(p.inicio)}</strong>
                 {p.hora ? <> a las <strong>{p.hora} hs</strong></> : null}
+                {p.precio > 0 ? <> · <strong>{formatearPesos(p.precio)}</strong></> : null}
               </>
             ) : (
               <>Aceptó tu pedido: va entre el <strong>{fechaLarga(p.inicio)}</strong> y el <strong>{fechaLarga(p.fin)}</strong></>
@@ -196,10 +282,28 @@ export default function MisPedidos() {
             />
           </div>
         ) : (
-          <div className="caja-estado-pedido esperando">
-            Esperando que {p.trabajador.nombre?.split(" ")[0]} acepte y elija el día.
-            <AccionesCita otro={p.trabajador} solicitudid={p.id} estado={p.estado} rolOtro="trabajador" />
-          </div>
+          ofertasAbiertasDe(p.id).length > 0 ? (
+            <div style={{ marginBottom: 12 }}>
+              {ofertasAbiertasDe(p.id).map((o) => (
+                <TarjetaOferta
+                  key={o.id}
+                  oferta={o}
+                  rol="cliente"
+                  resaltada={String(pedidoPedido) === String(p.id)}
+                  sinPersona
+                  onAceptar={(oferta) => setRespondiendo({ tipo: "aceptar", oferta })}
+                  onContraofertar={(oferta) => setRespondiendo({ tipo: "contraoferta", oferta })}
+                  onRechazar={(oferta) => setRespondiendo({ tipo: "rechazar", oferta })}
+                  onMensaje={(otro) => navegar(`/mensajes?con=${encodeURIComponent(otro.id)}`)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="caja-estado-pedido esperando">
+              Esperando que {p.trabajador.nombre?.split(" ")[0]} te mande su presupuesto (día, hora y precio).
+              <AccionesCita otro={p.trabajador} solicitudid={p.id} estado={p.estado} rolOtro="trabajador" />
+            </div>
+          )
         )}
         <div className="acciones-tarjeta">
           <button className="boton-agendar" onClick={() => { setErrorConfirmar(""); setCancelando(p); }}>
@@ -214,6 +318,7 @@ export default function MisPedidos() {
     <>
       <style>{estilosTarjetas}</style>
       <style>{estilosProblemas}</style>
+      <style>{estilosOfertas}</style>
       <style>{estilos}</style>
       <div className="pagina-problemas">
         <BarraNav />
@@ -222,7 +327,7 @@ export default function MisPedidos() {
             <div>
               <h1 className="titulo-pedidos">Mis pedidos</h1>
               <p className="subtitulo-pedidos">
-                Las solicitudes que le mandaste a un trabajador. Cuando acepta, elige el día y la hora y te llega el aviso.
+                Las solicitudes que le mandaste a un trabajador. Te responde con un presupuesto (día, hora y precio) y vos lo aceptás, le hacés una contraoferta o lo rechazás.
                 Los problemas que publicaste para cualquier trabajador están en <button className="boton-texto-resenas" style={{ background: "none", border: "none", color: "#570101", fontWeight: 700, cursor: "pointer", padding: 0 }} onClick={() => navegar("/mis-problemas")}>Mis problemas</button>.
               </p>
             </div>
@@ -253,21 +358,36 @@ export default function MisPedidos() {
           )}
         </main>
 
-        {cancelando && (
-          <ConfirmarModal
-            titulo={cancelando.estado === "pendiente" ? "¿Cancelar la cita?" : "¿Cancelar el pedido?"}
-            texto={
-              cancelando.estado === "pendiente"
-                ? `Le avisamos a ${cancelando.trabajador.nombre} que no vaya.`
-                : `${cancelando.trabajador.nombre} ya no lo va a ver.`
-            }
-            textoConfirmar="Sí, cancelar"
-            peligro
+        {cancelando && cancelando.estado === "pendiente" && (
+          <CancelarCitaModal
+            rol="cliente"
+            texto={`Le avisamos a ${cancelando.trabajador.nombre} que no vaya.`}
             procesando={procesando}
             error={errorConfirmar}
             onConfirmar={confirmarCancelar}
             onCerrar={() => setCancelando(null)}
           />
+        )}
+        {cancelando && cancelando.estado !== "pendiente" && (
+          <ConfirmarModal
+            titulo="¿Cancelar el pedido?"
+            texto={`${cancelando.trabajador.nombre} ya no lo va a ver.`}
+            textoConfirmar="Sí, cancelar"
+            peligro
+            procesando={procesando}
+            error={errorConfirmar}
+            onConfirmar={() => confirmarCancelar()}
+            onCerrar={() => setCancelando(null)}
+          />
+        )}
+        {respondiendo?.tipo === "aceptar" && (
+          <AceptarOfertaModal oferta={respondiendo.oferta} rol="cliente" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarAceptarOferta} />
+        )}
+        {respondiendo?.tipo === "contraoferta" && (
+          <ContraofertaModal oferta={respondiendo.oferta} rol="cliente" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarContraoferta} />
+        )}
+        {respondiendo?.tipo === "rechazar" && (
+          <RechazarOfertaModal oferta={respondiendo.oferta} rol="cliente" dirigida onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarRechazoOferta} />
         )}
         {toast && <div className="toast-agendar" role="status">{toast}</div>}
       </div>

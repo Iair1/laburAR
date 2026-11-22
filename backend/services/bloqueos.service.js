@@ -1,8 +1,8 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import { asegurarCuentas } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
-const {Client} = pkg;
+
 
 async function prepararse() {
     if (!(await asegurarCuentas())) {

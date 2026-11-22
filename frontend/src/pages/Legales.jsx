@@ -6,7 +6,7 @@ import { EMAIL_CONTACTO } from "../contacto";
 // ⚠️ Completar con los datos reales de quien es responsable del sitio (nombre o razón social y CUIT)
 // antes de salir al público. Estos textos son una base: conviene que los revise un abogado.
 const RESPONSABLE = import.meta.env.VITE_RESPONSABLE_LEGAL || "los responsables de LaburAR";
-const ACTUALIZADO = "noviembre de 2026";
+const ACTUALIZADO = "21 de noviembre de 2026";
 
 const estilos = `
   .pagina-legal { min-height: 100vh; background: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -53,6 +53,10 @@ function Terminos() {
       <h2>2. Tu cuenta</h2>
       <ul>
         <li>Tenés que ser mayor de 18 años y dar datos verdaderos (nombre, DNI, domicilio, email y teléfono).</li>
+        <li>
+          Para publicar problemas y mandar solicitudes, propuestas o mensajes tenés que confirmar tu email con el link
+          que te mandamos. Podés verificar tu teléfono con un código por SMS.
+        </li>
         <li>Una cuenta por persona. No podés usar la cuenta de otro ni hacerte pasar por otra persona.</li>
         <li>Cuidá tu contraseña: lo que se haga desde tu cuenta es tu responsabilidad.</li>
         <li>Podés eliminar tu cuenta cuando quieras desde <Link to="/mi-cuenta">Mi cuenta</Link>.</li>
@@ -67,6 +71,7 @@ function Terminos() {
         </li>
         <li>La insignia de "Identidad verificada" solo indica que revisamos tu DNI; no certifica tu trabajo.</li>
         <li>Cumplí las citas que agendás o avisá con tiempo si no podés ir.</li>
+        <li>Mandá propuestas y presupuestos con precios reales: si el cliente acepta, se agenda la cita con ese precio.</li>
       </ul>
 
       <h2>4. Clientes</h2>
@@ -75,14 +80,23 @@ function Terminos() {
         <li>Tratá con respeto a los trabajadores y cancelá con tiempo si ya no necesitás el trabajo.</li>
       </ul>
 
-      <h2>5. Precios, pagos y garantías</h2>
+      <h2>5. Cancelaciones</h2>
       <p>
-        El precio, la forma de pago y las garantías del trabajo se acuerdan directamente entre el cliente y el
-        trabajador. Hoy LaburAR no cobra ni procesa pagos entre usuarios. Te recomendamos dejar todo acordado por el chat
-        del sitio antes de empezar.
+        Cualquiera de los dos puede cancelar una cita indicando el motivo, que le llega a la otra persona. Las
+        cancelaciones quedan registradas y se muestran en el perfil (por ejemplo, "canceló 1 de 10 citas"),
+        especialmente las hechas con menos de 24 horas de aviso.
       </p>
 
-      <h2>6. Qué no está permitido</h2>
+      <h2>6. Precios, pagos y garantías</h2>
+      <p>
+        El trabajador propone un precio (en una propuesta o un presupuesto) y el cliente puede aceptarlo, hacer una
+        contraoferta o rechazarlo. Cuando uno de los dos acepta, la cita queda agendada con ese precio. La forma de
+        pago y las garantías del trabajo se acuerdan directamente entre el cliente y el trabajador: hoy LaburAR no
+        cobra comisión ni procesa pagos entre usuarios. Te recomendamos dejar todo acordado por el chat del sitio
+        antes de empezar.
+      </p>
+
+      <h2>7. Qué no está permitido</h2>
       <ul>
         <li>Estafas, cobros por adelantado engañosos o pedir datos de tarjetas o claves.</li>
         <li>Acoso, amenazas, discriminación o contenido ofensivo, sexual o violento.</li>
@@ -91,15 +105,17 @@ function Terminos() {
         <li>Usar datos de otros usuarios para algo distinto a coordinar el trabajo.</li>
       </ul>
 
-      <h2>7. Reseñas</h2>
+      <h2>8. Reseñas</h2>
       <p>
         Cuando termina un trabajo, el cliente y el trabajador se pueden dejar una reseña. Las reseñas tienen que ser
         honestas y sobre ese trabajo. Podemos quitar reseñas que no cumplan estas reglas.
       </p>
 
-      <h2>8. Denuncias, bloqueos y suspensiones</h2>
+      <h2>9. Denuncias, bloqueos y suspensiones</h2>
       <p>
-        Podés bloquear a cualquier usuario y denunciar perfiles, mensajes o publicaciones. Revisamos las denuncias y
+        Podés bloquear a cualquier usuario y denunciar perfiles, mensajes o publicaciones. Después de una cita
+        también podés reportar un problema con el trabajo (por ejemplo, si no se presentó o cobró distinto a lo
+        acordado). Revisamos las denuncias y
         podemos advertir, quitar contenido o suspender cuentas que no cumplan estos términos, incluso sin aviso previo
         cuando haya riesgo para otras personas.
       </p>
@@ -108,7 +124,7 @@ function Terminos() {
         policial o judicial.
       </div>
 
-      <h2>9. Responsabilidad</h2>
+      <h2>10. Responsabilidad</h2>
       <p>
         Hacemos lo posible para que el sitio funcione bien y sea seguro, pero no podemos garantizar la calidad,
         seguridad o legalidad de los trabajos acordados entre usuarios, ni que los datos que cargan sean ciertos. En la
@@ -116,19 +132,19 @@ function Terminos() {
         limita los derechos que te da la Ley de Defensa del Consumidor N° 24.240.
       </p>
 
-      <h2>10. Lo que publicás</h2>
+      <h2>11. Lo que publicás</h2>
       <p>
         Las fotos, textos y reseñas que subís siguen siendo tuyos. Nos das permiso para mostrarlos en el sitio mientras
         tengas tu cuenta. No subas contenido de otros sin permiso.
       </p>
 
-      <h2>11. Cambios</h2>
+      <h2>12. Cambios</h2>
       <p>
         Podemos actualizar estos términos. Si el cambio es importante, te vamos a avisar en el sitio. Si seguís usando
         LaburAR después del cambio, se entiende que lo aceptás.
       </p>
 
-      <h2>12. Ley aplicable y contacto</h2>
+      <h2>13. Ley aplicable y contacto</h2>
       <p>
         Estos términos se rigen por las leyes de la República Argentina. LaburAR es operado por {RESPONSABLE}. Para
         cualquier consulta o reclamo podés comunicarte {contacto}.
@@ -152,7 +168,8 @@ function Privacidad() {
       <ul>
         <li><strong>De tu cuenta:</strong> nombre, email, teléfono, DNI, domicilio, zona, foto de perfil y contraseña (guardada cifrada).</li>
         <li><strong>Si ofrecés servicios:</strong> tus servicios, precios, experiencia, especialidades y fotos de trabajos. La foto del DNI, si la subís para verificar tu identidad.</li>
-        <li><strong>De lo que hacés en el sitio:</strong> problemas y solicitudes, citas, mensajes, reseñas, bloqueos, denuncias y búsquedas.</li>
+        <li><strong>De lo que hacés en el sitio:</strong> problemas y solicitudes, propuestas y precios, citas y cancelaciones, mensajes, reseñas, bloqueos, denuncias y búsquedas.</li>
+        <li><strong>Para la seguridad del sitio:</strong> la dirección IP desde la que te registrás y los errores técnicos que ocurren mientras lo usás, para frenar el spam y arreglar fallas.</li>
         <li><strong>Si entrás con Google:</strong> tu nombre, email y foto de Google.</li>
       </ul>
 
@@ -162,13 +179,20 @@ function Privacidad() {
         <li>Mostrar tu perfil y conectarte con clientes o trabajadores de tu zona.</li>
         <li>Coordinar citas, mensajes, avisos y reseñas.</li>
         <li>Verificar identidades, prevenir fraudes y revisar denuncias.</li>
-        <li>Mandarte emails necesarios, como el código para recuperar tu contraseña.</li>
+        <li>Mandarte emails necesarios, como el link para confirmar tu email o el código para recuperar tu contraseña.</li>
+        <li>
+          Avisarte por email cuando te mandan propuestas o mensajes, te responden una solicitud o cambia una cita.
+          Podés desactivar estos avisos en <Link to="/mi-cuenta">Mi cuenta</Link>.
+        </li>
+        <li>Mostrar datos que ayudan a confiar en alguien: trabajos hechos, cancelaciones, cuánto tarda en responder y qué tiene verificado.</li>
       </ul>
       <p>No vendemos tus datos ni los usamos para publicidad de terceros.</p>
 
       <h2>3. Qué ven los demás</h2>
       <div className="recuadro-legal">
-        <strong>Se muestra:</strong> tu nombre, foto, zona, servicios, fotos de trabajos, reseñas y puntaje.
+        <strong>Se muestra:</strong> tu nombre, foto, zona, servicios, fotos de trabajos, reseñas y puntaje, cantidad
+        de trabajos hechos y de citas canceladas, cuánto tardás en responder, desde cuándo estás en LaburAR y si
+        verificaste tu identidad, tu email y tu teléfono (no los datos en sí).
         <br />
         <strong>No se muestra nunca:</strong> tu DNI, la foto del DNI, tu dirección exacta, tu email ni tu teléfono.
         La foto del DNI se guarda de forma privada y solo la ve el equipo de LaburAR para verificarla.
@@ -182,7 +206,7 @@ function Privacidad() {
       <p>
         Solo con los servicios que necesitamos para que el sitio funcione: alojamiento del sitio y la base de datos
         (Vercel y el proveedor de base de datos), almacenamiento de imágenes (Cloudinary), inicio de sesión con Google
-        (si lo usás) y el servicio que manda los emails. También podemos compartirlos si una autoridad competente lo
+        (si lo usás) y el servicio que manda los emails y los SMS de verificación. También podemos compartirlos si una autoridad competente lo
         pide según la ley.
       </p>
 
@@ -236,7 +260,8 @@ function Seguridad() {
 
       <h2>Antes del trabajo</h2>
       <ul>
-        <li>Mirá las reseñas, el puntaje y si el perfil tiene <strong>identidad verificada</strong>.</li>
+        <li>Mirá las reseñas, el puntaje, cuántos trabajos hizo, si canceló citas y si tiene <strong>identidad verificada</strong>.</li>
+        <li>Acordá el precio con una propuesta o un presupuesto dentro de LaburAR: queda registrado lo que aceptaron.</li>
         <li>Hablá por el chat de LaburAR: queda registro de lo que acordaron.</li>
         <li>Dejá claro el precio, qué incluye y la forma de pago antes de empezar.</li>
         <li>Para gas y electricidad, pedí la matrícula del profesional.</li>
@@ -258,6 +283,7 @@ function Seguridad() {
       <ul>
         <li>Usá <strong>Bloquear</strong> para que esa persona no te pueda escribir ni mandarte solicitudes.</li>
         <li>Usá <strong>Denunciar</strong> en el perfil, el chat o la publicación: lo revisamos.</li>
+        <li>Si el problema fue con un trabajo (no se presentó, cobró distinto, causó daños), usá <strong>Reportar un problema</strong> en la cita.</li>
         <li>Si estás en peligro, llamá al <strong>911</strong>.</li>
       </ul>
     </>

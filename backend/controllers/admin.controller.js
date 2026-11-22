@@ -33,6 +33,7 @@ const idValido = (valor) => {
 const AdminController = {
     soloAdmin,
     resumen: responder("Resumen", () => AdminService.resumen()),
+    errores: responder("Errores", (req) => AdminService.errores(String(req.query.origen || ""))),
     denuncias: responder("Denuncias", (req) => AdminService.denuncias(req.query.estado)),
     resolverDenuncia: responder("Denuncia actualizada", (req) =>
         AdminService.resolverDenuncia(idValido(req.body?.id), req.body?.estado, req.body?.nota)),

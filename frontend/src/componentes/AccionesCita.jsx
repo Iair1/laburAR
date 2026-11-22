@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DejarResenaModal, ResenasModal } from "./Resenas";
+import { DenunciarModal } from "./Moderacion";
 import { terminarTrabajo } from "../resenasApi";
 import { cerrarSesionCompleta } from "../sesion";
 import { hoyStr } from "../problemasDatos";
@@ -48,9 +49,12 @@ export default function AccionesCita({ otro, solicitudid, dia, estado, pendiente
   const [error, setError] = useState("");
   const [resenando, setResenando] = useState(null);
   const [viendoResenas, setViendoResenas] = useState(false);
+  const [reclamando, setReclamando] = useState(false);
   if (!otro?.id) return null;
   const nombre = otro.nombre?.split(" ")[0] || "la otra persona";
   const puedeTerminar = estado === "pendiente" && dia && dia <= hoyStr();
+  // Desde el día de la cita (o si ya terminó) se puede reportar un problema con el trabajo
+  const puedeReclamar = estado === "terminada" || (dia && dia <= hoyStr() && estado !== "cancelado");
 
   const terminar = async () => {
     setProcesando(true);
@@ -92,6 +96,11 @@ export default function AccionesCita({ otro, solicitudid, dia, estado, pendiente
       <button type="button" className="accion-cita" onClick={() => setViendoResenas(true)}>
         ★ Reseñas de {nombre}
       </button>
+      {puedeReclamar && (
+        <button type="button" className="accion-cita" onClick={() => setReclamando(true)}>
+          ⚑ Reportar un problema
+        </button>
+      )}
       {confirmando && (
         <div className="confirmar-terminado" role="alert">
           ¿El trabajo ya está terminado? Después los dos pueden dejarse una reseña.
@@ -109,6 +118,9 @@ export default function AccionesCita({ otro, solicitudid, dia, estado, pendiente
       )}
       {viendoResenas && (
         <ResenasModal userid={otro.id} nombre={otro.nombre} rolInicial={rolOtro} onCerrar={() => setViendoResenas(false)} />
+      )}
+      {reclamando && (
+        <DenunciarModal usuario={otro} que="trabajo" solicitudid={solicitudid} onCerrar={() => setReclamando(false)} />
       )}
     </div>
   );

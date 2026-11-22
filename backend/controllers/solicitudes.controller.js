@@ -30,7 +30,7 @@ const subirSolicitud = async(req, res)=>{
         const result = await SolicitudesService.subirSolicitud(id, localidad, solicitud, periodo, aptitudid, aptitud_especificaid, trabajoid, diassemana, abierta ? null : trabajadorid, !abierta, aptitud);
         res.status(201).json({ message: "Solicitud subida exitosamente", result });
     } catch(error){
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 }
 
@@ -121,11 +121,13 @@ const cancelarTrabajo = async(req, res)=>{
     if(!solicitudid) {
         return res.status(400).json({ message: "Debe completar todos los campos"});
     }
+    // motivo (opcional): por qué se cancela; le llega a la otra persona y queda registrado
+    const motivo = String(req.body.motivo ?? "").trim().slice(0, 300) || null;
     try{
-        const result = await SolicitudesService.cancelarTrabajo(id, solicitudid);
+        const result = await SolicitudesService.cancelarTrabajo(id, solicitudid, motivo);
         res.status(201).json({ message: "Cancelacion exitosa", result});
     } catch(error){
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 }
 

@@ -1,11 +1,11 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import {v2 as cloudinary} from "cloudinary";
 import { asegurarCuentas } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
 import { olvidarEstadoCuenta } from "../auth.middleware.js";
 import { notificar } from "../notificaciones.js";
-const {Client} = pkg;
+
 
 // Abre una conexión, corre la función y la cierra siempre
 async function conCliente(funcion) {
@@ -37,8 +37,21 @@ async function resumen() {
                 (SELECT count(*)::int FROM denuncias WHERE estado = 'pendiente') AS denuncias_pendientes,
                 (SELECT count(*)::int FROM usuarios WHERE dni_estado = 'pendiente' AND eliminado IS NOT TRUE) AS dni_pendientes,
                 (SELECT count(*)::int FROM usuarios WHERE suspendido = true AND eliminado IS NOT TRUE) AS suspendidos,
-                (SELECT count(*)::int FROM usuarios WHERE eliminado IS NOT TRUE) AS usuarios`);
+                (SELECT count(*)::int FROM usuarios WHERE eliminado IS NOT TRUE) AS usuarios,
+                (SELECT count(*)::int FROM errores_servidor WHERE fecha > now() - interval '1 day') AS errores_24h`);
         return result.rows[0];
+    });
+}
+
+/** Los últimos errores del servidor y del navegador (los más nuevos primero) */
+async function errores(origen = "") {
+    return conCliente(async (client) => {
+        const result = await client.query(`
+            SELECT e.*, u.nombre_completo AS usuario_nombre
+            FROM errores_servidor e LEFT JOIN usuarios u ON u.id = e.userid
+            WHERE ($1 = '' OR e.origen = $1)
+            ORDER BY e.id DESC LIMIT 150`, [["servidor", "navegador"].includes(origen) ? origen : ""]);
+        return result.rows;
     });
 }
 
@@ -184,6 +197,7 @@ async function verificarDni(userid, aprobado, nota) {
 }
 
 const AdminService = {
+    errores,
     esAdmin,
     resumen,
     denuncias,

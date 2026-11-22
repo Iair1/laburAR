@@ -8,9 +8,19 @@ import {
   rechazarSolicitud,
 } from "../api";
 import { AceptarSolicitudModal } from "../componentes/ProblemaModales";
+import {
+  ProponerModal,
+  TarjetaOferta,
+  AceptarOfertaModal,
+  ContraofertaModal,
+  RechazarOfertaModal,
+  estilosOfertas,
+} from "../componentes/Ofertas";
+import ResumenConfianza from "../componentes/ResumenConfianza";
+import { obtenerMisPropuestas, mandarPropuesta, aceptarPropuesta, contraofertar, rechazarPropuesta, formatearPesos, textoCuando } from "../ofertasApi";
 import { MenuModeracion } from "../componentes/Moderacion";
 import { estilosProblemas } from "../estilosProblemas";
-import { textoPeriodo, textoDiasSemana, fechaLarga, fechasPosibles, leerTextoSolicitud, FRANJAS } from "../problemasDatos";
+import { textoPeriodo, textoDiasSemana, fechaLarga, fechasPosibles, leerTextoSolicitud, FRANJAS, horasEntre } from "../problemasDatos";
 import Avatar from "../componentes/Avatar";
 import AccionesCita from "../componentes/AccionesCita";
 
@@ -128,6 +138,10 @@ export default function SolicitudesRecibidas() {
   const [toast, setToast] = useState("");
   // Solicitud que se está aceptando (se abre la ventana para elegir día y hora)
   const [solicitudAceptando, setSolicitudAceptando] = useState(null);
+  // Presupuestos: los que mandé, el que estoy armando y el que estoy respondiendo
+  const [propuestas, setPropuestas] = useState([]);
+  const [presupuestando, setPresupuestando] = useState(null);
+  const [respondiendo, setRespondiendo] = useState(null);
 
   useEffect(() => {
     if (!usuario) {
@@ -142,8 +156,9 @@ export default function SolicitudesRecibidas() {
     setCargando(true);
     setError("");
     try {
-      const resultado = await obtenerSolicitudesRecibidas();
+      const [resultado, mias] = await Promise.all([obtenerSolicitudesRecibidas(), obtenerMisPropuestas().catch(() => [])]);
       setSolicitudes(resultado);
+      setPropuestas(mias);
     } catch (err) {
       setError(err.message || "No se pudieron cargar las solicitudes.");
     } finally {
@@ -184,6 +199,54 @@ export default function SolicitudesRecibidas() {
     }
   };
 
+  const mostrarToast = (texto) => {
+    setToast(texto);
+    setTimeout(() => setToast(""), 4000);
+  };
+  const propuestaDe = (solicitudid) => propuestas.find((o) => o.solicitudid === solicitudid && o.estado === "pendiente") || null;
+
+  // Para la ventana de presupuesto: la solicitud con la forma que espera ProponerModal
+  const comoProblema = (s) => {
+    const texto = leerTextoSolicitud(s.solicitud);
+    return {
+      id: s.id,
+      titulo: texto.titulo || (texto.descripcion || "").slice(0, 60) || "Pedido",
+      cliente: { id: s.contratadorid, nombre: s.nombre_completo },
+      categoria: s.aptitud || "",
+      franja: texto.franja,
+      periodo: s.periodo,
+      diassemana: s.diassemana,
+      horaPreferida: texto.horaPreferida,
+    };
+  };
+
+  const confirmarPresupuesto = async (datos) => {
+    const s = presupuestando;
+    await mandarPropuesta({ solicitudid: s.id, ...datos });
+    setPresupuestando(null);
+    mostrarToast(`Le mandaste tu presupuesto de ${formatearPesos(datos.precio)} a ${s.cliente.nombre?.split(" ")[0] || "el cliente"}. Te avisamos cuando responda.`);
+    await cargarSolicitudes();
+  };
+
+  const confirmarAceptarOferta = async (oferta) => {
+    await aceptarPropuesta(oferta.id);
+    setRespondiendo(null);
+    mostrarToast(`¡Cita agendada! ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
+    await cargarSolicitudes();
+  };
+  const confirmarContraoferta = async (oferta, precio, mensaje) => {
+    await contraofertar(oferta.id, precio, mensaje);
+    setRespondiendo(null);
+    mostrarToast(`Le propusiste ${formatearPesos(precio)}. Te avisamos cuando responda.`);
+    await cargarSolicitudes();
+  };
+  const confirmarRechazoOferta = async (oferta) => {
+    await rechazarPropuesta(oferta.id);
+    setRespondiendo(null);
+    mostrarToast(oferta.turno === "cliente" ? "Retiraste tu presupuesto." : "Rechazaste la contraoferta.");
+    await cargarSolicitudes();
+  };
+
   const manejarRechazar = async (solicitud) => {
     marcarEnProceso(solicitud.id, true);
     try {
@@ -202,12 +265,13 @@ export default function SolicitudesRecibidas() {
     <>
       <style>{estilos}</style>
       <style>{estilosProblemas}</style>
+      <style>{estilosOfertas}</style>
       <div className="pagina-solicitudes">
         <BarraNav />
         <div className="contenido-solicitudes">
           <h1 className="titulo-solicitudes">Solicitudes recibidas</h1>
           <p className="subtitulo-solicitudes">
-            Pedidos de cita que te mandaron. Aceptá o rechazá cada uno.
+            Pedidos que te mandaron. Mandá tu presupuesto (día, hora y precio) o rechazalos.
           </p>
 
           {cargando ? (
@@ -241,6 +305,7 @@ export default function SolicitudesRecibidas() {
                         />
                       </span>
                     </div>
+                    <ResumenConfianza userid={s.contratadorid} rol="cliente" compacto />
                     <p className="texto-solicitud">
                       {texto.titulo && <span className="titulo-texto-solicitud">{texto.titulo}</span>}
                       {texto.descripcion}
@@ -257,20 +322,42 @@ export default function SolicitudesRecibidas() {
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
                     </div>
                     <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
+                    {propuestaDe(s.id) && (
+                      <div style={{ margin: "10px 0" }}>
+                        <TarjetaOferta
+                          oferta={propuestaDe(s.id)}
+                          rol="trabajador"
+                          sinPersona
+                          onAceptar={(oferta) => setRespondiendo({ tipo: "aceptar", oferta })}
+                          onContraofertar={(oferta) => setRespondiendo({ tipo: "contraoferta", oferta })}
+                          onRechazar={(oferta) => setRespondiendo({ tipo: "rechazar", oferta })}
+                        />
+                      </div>
+                    )}
                     <div className="acciones-solicitud">
-                      <button
-                        className="boton-aceptar-solicitud"
-                        onClick={() => manejarAceptar(s)}
-                        disabled={idsEnProceso.includes(s.id)}
-                      >
-                        Aceptar
-                      </button>
+                      {!propuestaDe(s.id) && (fechasPosibles(s).length > 0 ? (
+                        <button
+                          className="boton-aceptar-solicitud"
+                          onClick={() => setPresupuestando(comoProblema(s))}
+                          disabled={idsEnProceso.includes(s.id)}
+                        >
+                          Mandar presupuesto
+                        </button>
+                      ) : (
+                        <button
+                          className="boton-aceptar-solicitud"
+                          onClick={() => manejarAceptar(s)}
+                          disabled={idsEnProceso.includes(s.id)}
+                        >
+                          Aceptar
+                        </button>
+                      ))}
                       <button
                         className="boton-rechazar-solicitud"
                         onClick={() => manejarRechazar(s)}
                         disabled={idsEnProceso.includes(s.id)}
                       >
-                        Rechazar
+                        {propuestaDe(s.id) ? "Rechazar el pedido" : "Rechazar"}
                       </button>
                     </div>
                   </div>
@@ -286,6 +373,27 @@ export default function SolicitudesRecibidas() {
             onCerrar={() => setSolicitudAceptando(null)}
             onConfirmar={manejarAceptar}
           />
+        )}
+        {presupuestando && (
+          <ProponerModal
+            problema={presupuestando}
+            titulo="Mandar presupuesto"
+            textoBoton="Enviar presupuesto"
+            horas={horasEntre("07:00", "21:00")}
+            horaInicial={presupuestando.horaPreferida || ""}
+            ayudaHora={presupuestando.horaPreferida ? `${presupuestando.cliente.nombre?.split(" ")[0]} prefiere a las ${presupuestando.horaPreferida} hs` : ""}
+            onCerrar={() => setPresupuestando(null)}
+            onConfirmar={confirmarPresupuesto}
+          />
+        )}
+        {respondiendo?.tipo === "aceptar" && (
+          <AceptarOfertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarAceptarOferta} />
+        )}
+        {respondiendo?.tipo === "contraoferta" && (
+          <ContraofertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarContraoferta} />
+        )}
+        {respondiendo?.tipo === "rechazar" && (
+          <RechazarOfertaModal oferta={respondiendo.oferta} rol="trabajador" onCerrar={() => setRespondiendo(null)} onConfirmar={confirmarRechazoOferta} />
         )}
         {toast && <div className="toast-solicitudes">{toast}</div>}
       </div>

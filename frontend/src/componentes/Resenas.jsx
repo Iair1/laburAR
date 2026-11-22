@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Avatar from "./Avatar";
 import { obtenerSesionUsuario, cerrarSesionCompleta } from "../sesion";
 import { obtenerResenasPendientes, dejarResena, obtenerResenasDe, EVENTO_RESENAS } from "../resenasApi";
-import { EVENTO_ABRIR_RESENA } from "../notificacionesDatos";
+import { EVENTO_ABRIR_RESENA, abrirResena } from "../notificacionesDatos";
 
 const estilos = `
   .estrellas-resena { display: inline-flex; gap: 1px; vertical-align: middle; }
@@ -422,6 +422,17 @@ export function AvisoResenasPendientes() {
   const [pospuestas, setPospuestas] = useState(leerPospuestas);
   const [abierta, setAbierta] = useState(null);
   const [aviso, setAviso] = useState("");
+
+  // Desde el link de un email (/?resena=ID): abre la reseña de ese trabajo y saca el parámetro
+  const navegarAviso = useNavigate();
+  useEffect(() => {
+    const parametros = new URLSearchParams(ubicacion.search);
+    const trabajo = parametros.get("resena");
+    if (!trabajo || !usuario) return;
+    parametros.delete("resena");
+    navegarAviso(`${ubicacion.pathname}${parametros.toString() ? `?${parametros}` : ""}`, { replace: true });
+    setTimeout(() => abrirResena(trabajo), 0); // cuando ya está escuchando el aviso de abajo
+  }, [ubicacion.search, ubicacion.pathname, usuario, navegarAviso]);
 
   // Desde una notificación ("Dejale una reseña"): abre la ventana de ese trabajo
   useEffect(() => {

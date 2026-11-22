@@ -1,10 +1,11 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client, HOY } from "../db.js";
 import { asegurarCuentas, asegurarOfertas } from "../esquema.js";
-import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar, errorConEstado } from "../moderacion.js";
+import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar, errorConEstado, exigirEmailVerificado } from "../moderacion.js";
+import { controlarLimite } from "../limites.js";
 import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia } from "../notificaciones.js";
 import { cerrarOfertasDelProblema } from "./ofertas.service.js";
-const {Client} = pkg;
+
 
 /*async function entregarS (solicitudes) {
     const sCompletas = {}
@@ -30,8 +31,10 @@ async function borrarSolicitud(id, solicitudid) {
             throw new Error("La solicitud que desea borrar no existe o no le pertenece a este usuario");
         }
         // Si era un problema con propuestas abiertas, se cierran y se les avisa a esos trabajadores
-        if(conOfertas && result.rows[0].dirigida === false) {
-            await cerrarOfertasDelProblema(client, result.rows[0].id, { titulo: tituloDeSolicitud(result.rows[0].solicitud), motivo: "eliminado" });
+        if(conOfertas) {
+            await cerrarOfertasDelProblema(client, result.rows[0].id, {
+                titulo: tituloDeSolicitud(result.rows[0].solicitud), motivo: "eliminado", dirigida: result.rows[0].dirigida !== false,
+            });
         }
         await client.query("COMMIT");
     } catch(error){
@@ -48,9 +51,18 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
     const client = new Client(config);
     try {
         await client.connect();
+        await exigirEmailVerificado(client, Number(id));
         if(cuentasListas) {
             await verificarQuePuedenInteractuar(client, Number(id), Number(trabajadorid),
                 "No podés mandarle una solicitud a este trabajador.");
+        }
+        // Límites contra el spam
+        if(trabajadorid) {
+            await controlarLimite(client, `solicitudes:${id}`, [{ maximo: 20, intervalo: "1 day" }],
+                "Mandaste muchas solicitudes hoy. Probá de nuevo mañana.");
+        } else {
+            await controlarLimite(client, `problemas:${id}`, [{ maximo: 10, intervalo: "1 day" }],
+                "Publicaste muchos problemas hoy. Probá de nuevo mañana.");
         }
         // Si no vienen días (o vienen todos en false), se aceptan todos los días.
         // (Antes decía "diassemana = [...]", que asigna en vez de comparar y siempre pisaba los días.)
@@ -84,7 +96,7 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
         }
         return result.rows[0];
     }catch(error){
-        console.error("Error en la busqueda:", error);
+        if(!error.status) console.error("Error en la busqueda:", error);
         throw error;
     }finally{
         await client.end();
@@ -214,7 +226,7 @@ async function busqueda(id) {
 
         return sUtiles.rows
     }catch(error){
-        console.error("Error en la busqueda:", error);
+        if(!error.status) console.error("Error en la busqueda:", error);
         throw error;
     }finally{
         await client.end();
@@ -300,6 +312,8 @@ const rechazarSolicitud = async(id, solicitudid) => {
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea rechazar no existe o no le pertenece a este usuario");
         }
+        await client.query("UPDATE ofertas SET estado = 'retirada', actualizada = now() WHERE solicitudid = $1 AND estado = 'pendiente'", [solicitudid])
+            .catch(() => {});
         const trabajador = await nombreDe(client, id, "El trabajador");
         const aviso = await notificar(client, {
             userid: result.rows[0].contratadorid,
@@ -319,7 +333,8 @@ const rechazarSolicitud = async(id, solicitudid) => {
     }
 }
 
-const cancelarTrabajo = async(id, solicitudid) => {
+const cancelarTrabajo = async(id, solicitudid, motivo = null) => {
+    const cuentasListas = await asegurarCuentas();
     const client = new Client(config);
     try {
         await client.connect();
@@ -335,6 +350,14 @@ const cancelarTrabajo = async(id, solicitudid) => {
         }
         const c = result.rows[0];
         const canceloElCliente = c.contratadorid === Number(id);
+        // Queda registrado quién canceló y por qué (se muestra en el perfil: "canceló 1 de 12 citas")
+        if(cuentasListas) {
+            await client.query(`
+                INSERT INTO cancelaciones (solicitudid, userid, rol, motivo, aviso_corto)
+                VALUES ($1, $2, $3, $4, ($5::date - ${HOY}) <= 1)`,
+                [c.id, Number(id), canceloElCliente ? "cliente" : "trabajador", motivo, Array.isArray(c.periodo) ? c.periodo[0] : null])
+                .catch((error) => console.error("Aviso (no grave): no se pudo anotar la cancelación:", error.message));
+        }
         const otro = canceloElCliente ? c.trabajadorid : c.contratadorid;
         // A dónde lleva el aviso: a donde la otra persona veía esa cita
         const enlace = c.dirigida === false
@@ -344,7 +367,8 @@ const cancelarTrabajo = async(id, solicitudid) => {
             userid: otro,
             tipo: "trabajo-cancelado",
             titulo: `${primerNombre(c.nombre_completo)} canceló la cita`,
-            contenido: `«${tituloDeSolicitud(c.solicitud)}» · ${textoDia(Array.isArray(c.periodo) ? c.periodo[0] : null)}`.replace(/ · $/, ""),
+            contenido: [`«${tituloDeSolicitud(c.solicitud)}»`, textoDia(Array.isArray(c.periodo) ? c.periodo[0] : null), motivo ? `Motivo: ${motivo}` : ""]
+                .filter(Boolean).join(" · "),
             enlace,
             otroid: Number(id),
             solicitudid: c.id,
@@ -370,7 +394,7 @@ const terminarTrabajo = async(id, solicitudid) => {
             SET estado = 'terminada'
             WHERE s.id = $2 AND s.estado = 'pendiente'
               AND (s.contratadorid = $1 OR s.trabajadorid = $1)
-              AND s.periodo[1] <= CURRENT_DATE
+              AND s.periodo[1] <= ${HOY}
             RETURNING s.*`, [id, solicitudid]);
         if(result.rowCount === 0) {
             const error = new Error("No se puede terminar: el trabajo no existe, no es tuyo, no está agendado o todavía no llegó el día");
@@ -403,7 +427,7 @@ const revisarTerminadas = async() => {
             WITH updated_solicitudes AS (
                 UPDATE solicitudes
                 SET estado = 'terminada'
-                WHERE estado = 'pendiente' AND periodo[2] < CURRENT_DATE
+                WHERE estado = 'pendiente' AND periodo[2] < ${HOY}
                 RETURNING id, trabajadorid, contratadorid, solicitud
             )
             SELECT 
@@ -494,13 +518,13 @@ async function busquedaAA(id) {
                 ON uc.id = s.contratadorid
             WHERE s.estado = 'por revisar' AND s.dirigida = FALSE
               AND s.contratadorid <> $1
-              AND s.periodo[2] >= CURRENT_DATE - 1
+              AND s.periodo[2] >= ${HOY} - 1
               ${cuentasListas ? `AND ${cuentaActiva("uc")} AND NOT ${hayBloqueo("uc.id", "$1")}` : ""}
             ORDER BY coincidencias DESC, s.id DESC;`, [id]);
 
         return sUtiles.rows
     }catch(error){
-        console.error("Error en la busqueda:", error);
+        if(!error.status) console.error("Error en la busqueda:", error);
         throw error;
     }finally{
         await client.end();

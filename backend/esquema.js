@@ -1,6 +1,6 @@
 import config from "./dbconfig.js";
-import pkg from "pg";
-const {Client} = pkg;
+import { Client } from "./db.js";
+
 
 // Columnas que guardan los datos de cada servicio ofrecido (ver migraciones/001_servicios_por_aptitud.sql)
 const COLUMNAS_SERVICIO = ["cobro_por_hora", "descripcion", "anios_experiencia"];
@@ -415,11 +415,73 @@ const SENTENCIAS_CUENTAS = [
     )`,
 ];
 
+// Confianza y seguridad (ver migraciones/005_confianza_y_seguridad.sql)
+SENTENCIAS_CUENTAS.push(
+    // email_verificado: null = cuenta vieja (no se exige), false = falta confirmar, true = confirmado
+    `ALTER TABLE usuarios
+        ADD COLUMN IF NOT EXISTS email_verificado boolean,
+        ADD COLUMN IF NOT EXISTS avisos_email boolean DEFAULT true,
+        ADD COLUMN IF NOT EXISTS telefono_verificado boolean DEFAULT false`,
+    // Para frenar el spam: cada acción limitada deja una fila (se borran solas a los 2 días)
+    `CREATE TABLE IF NOT EXISTS acciones_limitadas (
+        id serial PRIMARY KEY,
+        clave text NOT NULL,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // Links para confirmar el email (se guarda el token hasheado)
+    `CREATE TABLE IF NOT EXISTS verificaciones_email (
+        id serial PRIMARY KEY,
+        userid integer NOT NULL,
+        email text NOT NULL,
+        token text NOT NULL,
+        vence timestamptz NOT NULL,
+        usado boolean NOT NULL DEFAULT false,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // Códigos por SMS para confirmar el teléfono (hasheados)
+    `CREATE TABLE IF NOT EXISTS verificaciones_telefono (
+        id serial PRIMARY KEY,
+        userid integer NOT NULL,
+        telefono text NOT NULL,
+        codigo text NOT NULL,
+        vence timestamptz NOT NULL,
+        intentos integer NOT NULL DEFAULT 0,
+        usado boolean NOT NULL DEFAULT false,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // Cada cita cancelada: quién, con qué motivo y si fue con menos de 24 horas de aviso
+    `CREATE TABLE IF NOT EXISTS cancelaciones (
+        id serial PRIMARY KEY,
+        solicitudid integer,
+        userid integer NOT NULL,
+        rol text,
+        motivo text,
+        aviso_corto boolean DEFAULT false,
+        fecha timestamptz DEFAULT now()
+    )`,
+    // Errores del servidor y del navegador (los ve el administrador)
+    `CREATE TABLE IF NOT EXISTS errores_servidor (
+        id serial PRIMARY KEY,
+        origen text NOT NULL DEFAULT 'servidor',
+        ruta text,
+        metodo text,
+        mensaje text,
+        detalle text,
+        userid integer,
+        avisado boolean DEFAULT false,
+        fecha timestamptz DEFAULT now()
+    )`,
+);
+
 const SENTENCIAS_CUENTAS_OPCIONALES = [
     // Un email por cuenta (si ya hubiera repetidos, no se crea y se valida igual desde el código)
     `CREATE UNIQUE INDEX IF NOT EXISTS usuarios_email_unico ON usuarios (lower(email)) WHERE email IS NOT NULL AND eliminado IS NOT TRUE`,
     `CREATE INDEX IF NOT EXISTS denuncias_estado ON denuncias (estado, fecha DESC)`,
     `CREATE INDEX IF NOT EXISTS intentos_login_clave ON intentos_login (clave, fecha)`,
+    `CREATE INDEX IF NOT EXISTS acciones_limitadas_clave ON acciones_limitadas (clave, fecha)`,
+    `CREATE INDEX IF NOT EXISTS verificaciones_email_token ON verificaciones_email (token)`,
+    `CREATE INDEX IF NOT EXISTS cancelaciones_usuario ON cancelaciones (userid)`,
+    `CREATE INDEX IF NOT EXISTS errores_servidor_fecha ON errores_servidor (fecha DESC)`,
 ];
 
 let promesaCuentas = null;

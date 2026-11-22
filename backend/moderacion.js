@@ -1,6 +1,8 @@
 // moderacion.js
 // Piezas que comparten varios services para respetar bloqueos y cuentas suspendidas.
 // Los parámetros a y b son expresiones SQL fijas del código (ej: "$1", "u.id"), nunca datos del usuario.
+import { asegurarCuentas } from "./esquema.js";
+import { emailConfigurado } from "./email.js";
 
 /** Condición SQL: hay un bloqueo entre a y b (en cualquiera de los dos sentidos). */
 export const hayBloqueo = (a, b) => `EXISTS (
@@ -27,5 +29,22 @@ export async function verificarQuePuedenInteractuar(client, a, b, mensaje = "No 
     const fila = result.rows[0];
     if (fila.bloqueado || fila.activa === false) {
         throw errorConEstado(mensaje, 403);
+    }
+}
+
+export const MENSAJE_CONFIRMAR_EMAIL = "Confirmá tu email para seguir: te mandamos un link a tu casilla. Si no te llegó, pedí otro desde el aviso de arriba o desde Mi cuenta.";
+
+/**
+ * Las cuentas nuevas tienen que confirmar el email antes de publicar, mandar solicitudes,
+ * propuestas o mensajes (las cuentas de antes, con email_verificado en null, no).
+ * Llamar antes de abrir una transacción.
+ */
+export async function exigirEmailVerificado(client, id) {
+    if (!emailConfigurado() || !(await asegurarCuentas())) return;
+    const result = await client.query("SELECT email_verificado FROM usuarios WHERE id = $1", [id]);
+    if (result.rows[0]?.email_verificado === false) {
+        const error = errorConEstado(MENSAJE_CONFIRMAR_EMAIL, 403);
+        error.confirmarEmail = true;
+        throw error;
     }
 }

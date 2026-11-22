@@ -2,6 +2,7 @@ import { useState } from "react";
 import Avatar from "./Avatar";
 import { ResenasModal } from "./Resenas";
 import { MenuModeracion } from "./Moderacion";
+import ResumenConfianza from "./ResumenConfianza";
 import { ImagenProblema, ChipEstado, ChipUrgencia, Calendario, Modal } from "./ProblemasUI";
 import {
   FRANJAS,
@@ -92,6 +93,11 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
               onCerrar?.();
             }}
           />
+        </div>
+      )}
+      {!paraCliente && problema.cliente?.id && (
+        <div style={{ margin: "-0.5rem 0 1rem" }}>
+          <ResumenConfianza userid={problema.cliente.id} rol="cliente" compacto />
         </div>
       )}
       {viendoResenas && problema.cliente && (
@@ -299,6 +305,64 @@ export function AceptarSolicitudModal({ solicitud, onCerrar, onConfirmar }) {
       onCerrar={onCerrar}
       onConfirmar={(dia, hora) => onConfirmar(solicitud, dia, hora)}
     />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Cancelar una cita: hay que elegir el motivo (le llega a la otra     */
+/* persona y queda en el perfil: "canceló 1 de 10 citas")              */
+/* ------------------------------------------------------------------ */
+
+const MOTIVOS_CANCELAR = {
+  cliente: ["Ya lo resolví o no lo necesito", "Me surgió un imprevisto", "No puedo ese día u horario", "Encontré a otra persona", "Otro"],
+  trabajador: ["Me surgió un imprevisto", "No puedo ese día u horario", "No es un trabajo de mi rubro", "No nos pusimos de acuerdo", "Otro"],
+};
+
+export function CancelarCitaModal({ titulo = "¿Cancelar la cita?", texto, rol = "cliente", procesando = false, error = "", onConfirmar, onCerrar }) {
+  const [motivo, setMotivo] = useState("");
+  const [detalle, setDetalle] = useState("");
+  const [aviso, setAviso] = useState("");
+  const confirmar = () => {
+    if (!motivo) return setAviso("Elegí el motivo.");
+    if (motivo === "Otro" && detalle.trim().length < 5) return setAviso("Contá brevemente por qué cancelás.");
+    setAviso("");
+    const extra = detalle.trim();
+    onConfirmar(motivo === "Otro" ? extra : extra ? `${motivo}: ${extra}` : motivo);
+  };
+  return (
+    <Modal etiqueta={titulo} onCerrar={procesando ? undefined : onCerrar} ancho={460}>
+      <style>{estilosModales}</style>
+      <h2 className="titulo-modal-grande" style={{ fontSize: "1.25rem", textTransform: "none" }}>{titulo}</h2>
+      {texto && <p className="texto-seccion-modal" style={{ textAlign: "center", margin: "0.6rem 0 0.8rem" }}>{texto}</p>}
+      <p className="etiqueta-modal">¿Por qué cancelás?</p>
+      <div className="chips-modal" role="radiogroup" aria-label="Motivo">
+        {MOTIVOS_CANCELAR[rol].map((m) => (
+          <button type="button" key={m} role="radio" aria-checked={motivo === m} className={`chip-modal ${motivo === m ? "activo" : ""}`} onClick={() => { setMotivo(m); setAviso(""); }}>
+            {m}
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="textarea-modal"
+        style={{ marginTop: 10, minHeight: 60 }}
+        rows={2}
+        maxLength={250}
+        aria-label="Detalle (opcional)"
+        placeholder={motivo === "Otro" ? "Contá brevemente por qué" : "Algo más que quieras decirle (opcional)"}
+        value={detalle}
+        onChange={(e) => setDetalle(e.target.value)}
+      />
+      <p className="ayuda-hora-agendar" style={{ marginTop: 6 }}>
+        Le avisamos a la otra persona con el motivo. Las cancelaciones quedan en tu perfil, sobre todo si son con menos de 24 horas.
+      </p>
+      {(aviso || error) && <p className="error-modal" role="alert">{aviso || error}</p>}
+      <div className="acciones-modal" style={{ justifyContent: "center" }}>
+        <button className="boton-pill secundario" onClick={onCerrar} disabled={procesando}>Volver</button>
+        <button className="boton-pill peligro" onClick={confirmar} disabled={procesando}>
+          {procesando ? "Un momento..." : "Sí, cancelar"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

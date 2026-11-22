@@ -3,7 +3,7 @@ const config = {
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    port: 5432,
+    port: Number(process.env.DB_PORT) || 5432, // el pooler de Supabase usa 6543
     ssl: { rejectUnauthorized: false } 
 }
 export default config;

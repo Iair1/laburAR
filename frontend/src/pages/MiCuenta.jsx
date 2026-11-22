@@ -6,7 +6,7 @@ import SelectorZona from "../componentes/SelectorZona";
 import { ResenasDeUsuario, ResumenPuntaje } from "../componentes/Resenas";
 import { obtenerSesionUsuario, cerrarSesionCompleta, actualizarFotoSesion, guardarSesionUsuario } from "../sesion";
 import { obtenerMiPerfil, cambiarDatos, cambiarContrasena, subirFotoPerfil, comprimirFoto, TIPOS_FOTO_PERFIL } from "../api";
-import { subirFotoDni, obtenerMisBloqueados, desbloquearUsuario, eliminarMiCuenta, EVENTO_BLOQUEOS } from "../cuentaApi";
+import { subirFotoDni, obtenerMisBloqueados, desbloquearUsuario, eliminarMiCuenta, EVENTO_BLOQUEOS, reenviarLinkEmail, enviarCodigoTelefono, verificarTelefono } from "../cuentaApi";
 import { obtenerResenasDe } from "../resenasApi";
 import { normalizarZona } from "../zonas";
 
@@ -55,6 +55,17 @@ const estilos = `
   .estado-dni.pendiente { background: #fff4e5; color: #8a4b00; }
   .estado-dni.rechazado { background: #fbeceb; color: #b3261e; }
   .estado-dni.sin { background: #f4eeee; color: #570101; }
+  .fila-verificacion { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 2px; }
+  .fila-verificacion .estado-dni { margin-bottom: 0; font-size: 0.72rem; padding: 3px 10px; }
+  .enlace-verificacion { background: none; border: none; padding: 0; color: #570101; font-weight: 700; font-size: 0.76rem; cursor: pointer; font-family: inherit; }
+  .enlace-verificacion:hover { text-decoration: underline; }
+  .enlace-verificacion:disabled { color: #999; cursor: wait; text-decoration: none; }
+  .codigo-telefono { display: flex; gap: 6px; margin-top: 6px; }
+  .codigo-telefono input { max-width: 130px; letter-spacing: 0.2em; text-align: center; }
+  .nota-verificacion { font-size: 0.74rem; color: #555; margin-top: 4px; }
+  .nota-verificacion.error { color: #b3261e; }
+  .opcion-aviso { display: flex; gap: 10px; align-items: flex-start; font-size: 0.84rem; color: #222; cursor: pointer; line-height: 1.4; }
+  .opcion-aviso input { accent-color: #570101; width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; }
   .aviso-email-cuenta { background: #fff4e5; border: 1px solid #f0c48a; color: #6b3d00; border-radius: 12px; padding: 10px 14px; font-size: 0.8rem; margin-bottom: 1rem; line-height: 1.45; }
   .lista-bloqueados { display: flex; flex-direction: column; gap: 8px; }
   .fila-bloqueado { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; color: #222; }
@@ -132,8 +143,9 @@ export default function MiCuenta() {
         setContacto({ email: p.email || "", telefono: p.telefono || "" });
         // La sesión guarda si es administrador (para el link al panel)
         const actual = obtenerSesionUsuario();
-        if (actual && (actual.esAdmin !== (p.es_admin === true) || (p.email && actual.correo !== p.email))) {
-          guardarSesionUsuario({ ...actual, esAdmin: p.es_admin === true, correo: p.email || actual.correo });
+        const verificado = typeof p.email_verificado === "boolean" ? p.email_verificado : null;
+        if (actual && (actual.esAdmin !== (p.es_admin === true) || (p.email && actual.correo !== p.email) || (actual.emailVerificado ?? null) !== verificado)) {
+          guardarSesionUsuario({ ...actual, esAdmin: p.es_admin === true, correo: p.email || actual.correo, emailVerificado: verificado });
         }
         setZona(normalizarZona(p.localidad));
         setDireccion({ calle: p.direccion_calle || "", altura: p.direccion_altura || "", cp: p.codigo_postal || "" });
@@ -176,11 +188,55 @@ export default function MiCuenta() {
     try {
       await cambiarDatos(inf);
       marcar(clave, { ok: true, texto: textoOk });
+      return true;
     } catch (err) {
       if (!vencida(err)) marcar(clave, { ok: false, texto: err.message || "No se pudo guardar." });
+      return false;
     } finally {
       setGuardando("");
     }
+  };
+
+  // Confirmar el email y el teléfono
+  const [verificacion, setVerificacion] = useState({ email: null, telefono: null, codigo: "", codigoEnviado: false, procesando: "" });
+  const reenviarEmail = async () => {
+    setVerificacion((v) => ({ ...v, procesando: "email", email: null }));
+    try {
+      await reenviarLinkEmail();
+      setVerificacion((v) => ({ ...v, email: { ok: true, texto: "Te mandamos un link. Revisá tu casilla (y el correo no deseado)." } }));
+    } catch (err) {
+      if (!vencida(err)) setVerificacion((v) => ({ ...v, email: { ok: false, texto: err.message || "No se pudo mandar." } }));
+    } finally {
+      setVerificacion((v) => ({ ...v, procesando: "" }));
+    }
+  };
+  const pedirCodigoTelefono = async () => {
+    setVerificacion((v) => ({ ...v, procesando: "telefono", telefono: null }));
+    try {
+      await enviarCodigoTelefono();
+      setVerificacion((v) => ({ ...v, codigoEnviado: true, telefono: { ok: true, texto: "Te mandamos un código por SMS. Escribilo acá." } }));
+    } catch (err) {
+      if (!vencida(err)) setVerificacion((v) => ({ ...v, telefono: { ok: false, texto: err.message || "No se pudo mandar el SMS." } }));
+    } finally {
+      setVerificacion((v) => ({ ...v, procesando: "" }));
+    }
+  };
+  const confirmarCodigoTelefono = async () => {
+    setVerificacion((v) => ({ ...v, procesando: "codigo", telefono: null }));
+    try {
+      await verificarTelefono(verificacion.codigo);
+      setPerfil((p) => ({ ...p, telefono_verificado: true }));
+      setVerificacion((v) => ({ ...v, codigoEnviado: false, codigo: "", telefono: { ok: true, texto: "¡Listo! Verificamos tu teléfono." } }));
+    } catch (err) {
+      if (!vencida(err)) setVerificacion((v) => ({ ...v, telefono: { ok: false, texto: err.message || "No se pudo verificar." } }));
+    } finally {
+      setVerificacion((v) => ({ ...v, procesando: "" }));
+    }
+  };
+  const cambiarAvisosEmail = async (activo) => {
+    setPerfil((p) => ({ ...p, avisos_email: activo }));
+    const salio = await guardar("avisos", [{ dato: "avisos_email", valor: activo }], activo ? "Te vamos a avisar por email" : "Ya no te mandamos avisos por email");
+    if (!salio) setPerfil((p) => ({ ...p, avisos_email: !activo }));
   };
 
   const guardarZona = () => {
@@ -210,8 +266,31 @@ export default function MiCuenta() {
       marcar("contacto", { ok: false, texto: "Revisá el email: no parece válido." });
       return;
     }
-    await guardar("contacto", [{ dato: "email", valor: email }, { dato: "telefono", valor: contacto.telefono.trim() }], "Guardaste tu email y teléfono");
-    setPerfil((p) => ({ ...p, email }));
+    const cambioEmail = email !== String(perfil?.email || "").toLowerCase();
+    const telefono = contacto.telefono.trim();
+    const cambioTelefono = telefono !== String(perfil?.telefono || "").trim();
+    const inf = [];
+    if (cambioEmail) inf.push({ dato: "email", valor: email });
+    if (cambioTelefono) inf.push({ dato: "telefono", valor: telefono });
+    if (inf.length === 0) {
+      marcar("contacto", { ok: true, texto: "No hay cambios para guardar" });
+      return;
+    }
+    const pideConfirmar = cambioEmail && perfil?.emails_disponibles;
+    const salio = await guardar("contacto", inf, pideConfirmar ? `Guardado. Te mandamos un link a ${email} para confirmarlo.` : "Guardaste tu email y teléfono");
+    if (!salio) return;
+    setPerfil((p) => ({
+      ...p,
+      email,
+      telefono,
+      ...(cambioEmail ? { email_verificado: p?.emails_disponibles ? false : null } : {}),
+      ...(cambioTelefono ? { telefono_verificado: false } : {}),
+    }));
+    if (cambioTelefono) setVerificacion((v) => ({ ...v, codigoEnviado: false, codigo: "", telefono: null }));
+    if (cambioEmail) {
+      const actual = obtenerSesionUsuario();
+      if (actual) guardarSesionUsuario({ ...actual, correo: email, emailVerificado: perfil?.emails_disponibles ? false : null });
+    }
   };
 
   const cambiarDni = async (e) => {
@@ -350,19 +429,77 @@ export default function MiCuenta() {
                 </div>
               </section>
 
-              <section className="tarjeta-cuenta" aria-label="Email y teléfono">
+              <section className="tarjeta-cuenta" aria-label="Email y teléfono" id="contacto">
                 <p className="titulo-tarjeta-cuenta">Email y teléfono</p>
                 <p className="ayuda-tarjeta-cuenta">Con el email entrás y recuperás tu contraseña. No se le muestran a nadie.</p>
                 <label className="etiqueta-cuenta" htmlFor="email-cuenta" style={{ marginTop: 0 }}>Email</label>
                 <input id="email-cuenta" type="email" className="entrada-cuenta" autoComplete="email" maxLength={254} value={contacto.email} onChange={(e) => { setContacto((c) => ({ ...c, email: e.target.value })); marcar("contacto", null); }} />
-                <label className="etiqueta-cuenta" htmlFor="telefono-cuenta">Teléfono</label>
-                <input id="telefono-cuenta" type="tel" className="entrada-cuenta" autoComplete="tel" maxLength={30} value={contacto.telefono} onChange={(e) => { setContacto((c) => ({ ...c, telefono: e.target.value })); marcar("contacto", null); }} />
+                {perfil.email && (
+                  <div className="fila-verificacion">
+                    {perfil.email_verificado === true && <span className="estado-dni verificado">✓ Email confirmado</span>}
+                    {perfil.email_verificado === false && (
+                      <>
+                        <span className="estado-dni pendiente">Sin confirmar</span>
+                        <button type="button" className="enlace-verificacion" onClick={reenviarEmail} disabled={verificacion.procesando === "email"}>
+                          {verificacion.procesando === "email" ? "Enviando..." : "Reenviar el link"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {verificacion.email && <p className={`nota-verificacion ${verificacion.email.ok ? "" : "error"}`} role="status">{verificacion.email.texto}</p>}
+                <label className="etiqueta-cuenta" htmlFor="telefono-cuenta">Celular</label>
+                <input id="telefono-cuenta" type="tel" className="entrada-cuenta" autoComplete="tel" maxLength={30} placeholder="Ej: 11 2345 6789" value={contacto.telefono} onChange={(e) => { setContacto((c) => ({ ...c, telefono: e.target.value })); marcar("contacto", null); }} />
+                {perfil.telefono && (perfil.telefono_verificado || perfil.sms_disponible) && (
+                  <div className="fila-verificacion">
+                    {perfil.telefono_verificado ? (
+                      <span className="estado-dni verificado">✓ Teléfono verificado</span>
+                    ) : (
+                      <>
+                        <span className="estado-dni sin">Sin verificar</span>
+                        <button type="button" className="enlace-verificacion" onClick={pedirCodigoTelefono} disabled={verificacion.procesando === "telefono"}>
+                          {verificacion.procesando === "telefono" ? "Enviando..." : verificacion.codigoEnviado ? "Mandar otro código" : "Verificar con un SMS"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {verificacion.codigoEnviado && !perfil.telefono_verificado && (
+                  <div className="codigo-telefono">
+                    <input
+                      className="entrada-cuenta"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="000000"
+                      aria-label="Código del SMS"
+                      value={verificacion.codigo}
+                      onChange={(e) => setVerificacion((v) => ({ ...v, codigo: e.target.value.replace(/\D/g, "") }))}
+                    />
+                    <button type="button" className="boton-cuenta" onClick={confirmarCodigoTelefono} disabled={verificacion.codigo.length !== 6 || verificacion.procesando === "codigo"}>
+                      {verificacion.procesando === "codigo" ? "Verificando..." : "Confirmar"}
+                    </button>
+                  </div>
+                )}
+                {verificacion.telefono && <p className={`nota-verificacion ${verificacion.telefono.ok ? "" : "error"}`} role="status">{verificacion.telefono.texto}</p>}
                 <p className="privado-cuenta">🔒 Privados</p>
                 <div className="acciones-cuenta">
                   <Aviso estado={estados.contacto} />
                   <button className="boton-cuenta" onClick={guardarContacto} disabled={guardando === "contacto"}>{guardando === "contacto" ? "Guardando..." : "Guardar"}</button>
                 </div>
               </section>
+
+              {perfil.emails_disponibles && (
+                <section className="tarjeta-cuenta" aria-label="Avisos por email" id="avisos">
+                  <p className="titulo-tarjeta-cuenta">Avisos por email</p>
+                  <p className="ayuda-tarjeta-cuenta">Además de la campanita, te avisamos por email para que no te pierdas nada.</p>
+                  <label className="opcion-aviso">
+                    <input type="checkbox" checked={perfil.avisos_email !== false} onChange={(e) => cambiarAvisosEmail(e.target.checked)} />
+                    <span>Avisarme por email cuando me manden propuestas o mensajes, me respondan una solicitud o cambie una cita</span>
+                  </label>
+                  <div className="acciones-cuenta"><Aviso estado={estados.avisos} /></div>
+                </section>
+              )}
 
               <section className="tarjeta-cuenta" aria-label="Verificación de identidad" id="identidad">
                 <p className="titulo-tarjeta-cuenta">Verificación de identidad</p>

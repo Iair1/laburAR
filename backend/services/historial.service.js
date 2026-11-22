@@ -1,6 +1,6 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
-const {Client} = pkg;
+import { Client } from "../db.js";
+
 
 async function miHistorial(id){
     const client = new Client(config);

@@ -3,7 +3,7 @@ import { Modal } from "./ProblemasUI";
 import { ConfirmarModal } from "./ProblemaModales";
 import { estilosProblemas } from "../estilosProblemas";
 import { obtenerSesionUsuario } from "../sesion";
-import { MOTIVOS_DENUNCIA, denunciarUsuario, bloquearUsuario, desbloquearUsuario } from "../cuentaApi";
+import { MOTIVOS_DENUNCIA, MOTIVOS_TRABAJO, denunciarUsuario, bloquearUsuario, desbloquearUsuario } from "../cuentaApi";
 
 const estilos = `
   .menu-moderacion { position: relative; display: inline-flex; }
@@ -42,6 +42,7 @@ const TITULOS = {
   perfil: (nombre) => `Denunciar a ${nombre}`,
   mensaje: () => "Denunciar este mensaje",
   publicacion: () => "Denunciar esta publicación",
+  trabajo: () => "Reportar un problema con el trabajo",
 };
 
 /**
@@ -71,7 +72,9 @@ export function DenunciarModal({ usuario, que = "perfil", solicitudid, mensajeid
     setError("");
     try {
       await denunciarUsuario({ denunciadoid: usuario.id, motivo, detalle: detalle.trim(), solicitudid, mensajeid });
-      setListo("Gracias por avisarnos. Vamos a revisar la denuncia y, si corresponde, tomar medidas. No le avisamos a la otra persona que la denunciaste.");
+      setListo(que === "trabajo"
+        ? "Recibimos tu reclamo. Lo revisamos y, si hace falta, te escribimos para pedirte más datos. No le avisamos a la otra persona."
+        : "Gracias por avisarnos. Vamos a revisar la denuncia y, si corresponde, tomar medidas. No le avisamos a la otra persona que la denunciaste.");
     } catch (err) {
       if (err.status !== 409) {
         setError(err.message || "No se pudo enviar la denuncia.");
@@ -98,7 +101,7 @@ export function DenunciarModal({ usuario, que = "perfil", solicitudid, mensajeid
       {listo ? (
         <div className="listo-denuncia" role="status">
           <div className="icono-listo" aria-hidden="true">🛡️</div>
-          <h2 className="titulo-modal-grande" style={{ fontSize: "1.2rem", textTransform: "none" }}>Denuncia enviada</h2>
+          <h2 className="titulo-modal-grande" style={{ fontSize: "1.2rem", textTransform: "none" }}>{que === "trabajo" ? "Reclamo enviado" : "Denuncia enviada"}</h2>
           <p>{listo}</p>
           {tambienBloquear && <p>También bloqueaste a {nombre}.</p>}
           <button className="boton-grande-modal" onClick={onCerrar}>Cerrar</button>
@@ -108,9 +111,13 @@ export function DenunciarModal({ usuario, que = "perfil", solicitudid, mensajeid
           <h2 className="titulo-modal-grande" style={{ fontSize: "1.2rem", textTransform: "none" }}>
             {(TITULOS[que] || TITULOS.perfil)(nombre)}
           </h2>
-          <p className="detalle-modal">Es anónimo: {nombre} no se entera de quién la hizo.</p>
+          <p className="detalle-modal">
+            {que === "trabajo"
+              ? `Contanos qué pasó con el trabajo de ${nombre}. Lo revisa el equipo de LaburAR.`
+              : `Es anónimo: ${nombre} no se entera de quién la hizo.`}
+          </p>
           <div className="motivos-denuncia" role="radiogroup" aria-label="Motivo">
-            {MOTIVOS_DENUNCIA.map((m) => (
+            {(que === "trabajo" ? MOTIVOS_TRABAJO : MOTIVOS_DENUNCIA).map((m) => (
               <label key={m} className={`motivo-denuncia ${motivo === m ? "activo" : ""}`}>
                 <input type="radio" name="motivo-denuncia" value={m} checked={motivo === m} onChange={() => { setMotivo(m); setError(""); }} />
                 {m}
@@ -135,7 +142,7 @@ export function DenunciarModal({ usuario, que = "perfil", solicitudid, mensajeid
           <div className="acciones-modal">
             <button className="boton-pill secundario" onClick={onCerrar} disabled={enviando}>Cancelar</button>
             <button className="boton-pill peligro" onClick={enviar} disabled={enviando}>
-              {enviando ? "Enviando..." : "Enviar denuncia"}
+              {enviando ? "Enviando..." : que === "trabajo" ? "Enviar reclamo" : "Enviar denuncia"}
             </button>
           </div>
         </>

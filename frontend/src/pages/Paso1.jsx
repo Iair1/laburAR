@@ -355,6 +355,7 @@ export default function Paso1() {
         correo: sesion.usuario?.email || correo.trim(),
         fotoPerfilURL: sesion.usuario?.foto_perfil || null,
         esAdmin: sesion.usuario?.es_admin === true,
+        emailVerificado: typeof sesion.usuario?.email_verificado === "boolean" ? sesion.usuario.email_verificado : null,
       });
       guardarNotificaciones(sesion.notificaciones || []);
 

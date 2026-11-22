@@ -1,7 +1,7 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import { asegurarColumnasServicio } from "../esquema.js";
-const {Client} = pkg;
+
 
 async function nuevaAptitud(id, aptitud, matricula_numero, matricula_dni, matricula_jurisdiccion, matricula_categoria, cobro_por_hora = null, descripcion = null, anios_experiencia = null) {
     const columnasServicio = await asegurarColumnasServicio();

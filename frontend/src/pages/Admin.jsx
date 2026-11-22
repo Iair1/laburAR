@@ -12,13 +12,21 @@ const estilos = `
   .contenido-admin { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
   .titulo-admin { font-size: 1.5rem; font-weight: 800; color: #3b1e0d; margin: 0 0 4px; }
   .subtitulo-admin { font-size: 0.85rem; color: #6b5a5a; margin: 0 0 18px; }
-  .numeros-admin { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .numeros-admin { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .numero-admin { background: #fff; border: 1px solid #ecdede; border-radius: 14px; padding: 14px 16px; text-align: left; cursor: pointer; font-family: inherit; }
   .numero-admin:hover { border-color: #c9a9a9; }
   .numero-admin strong { display: block; font-size: 1.6rem; color: #570101; line-height: 1.1; }
   .numero-admin span { font-size: 0.78rem; color: #6b5a5a; font-weight: 600; }
   .numero-admin.alerta strong { color: #b3261e; }
   .pestanas-admin { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .lista-errores-admin { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .error-item-admin { background: #fff; border: 1px solid #e6dcdc; border-radius: 12px; padding: 10px 12px; }
+  .cabecera-error-admin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.74rem; color: #555; }
+  .origen-error-admin { font-weight: 800; border-radius: 999px; padding: 2px 9px; font-size: 0.66rem; background: #fbeceb; color: #a1261e; }
+  .origen-error-admin.navegador { background: #e8f1fb; color: #1d4f8c; }
+  .ruta-error-admin { font-size: 0.72rem; background: #f4f2f2; border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
+  .mensaje-error-admin { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.76rem; color: #1a1a1a; margin: 6px 0 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .detalle-error-admin { font-size: 0.7rem; background: #f7f5f5; border-radius: 8px; padding: 8px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
   .pestana-admin, .filtro-admin {
     border: 1px solid #e3d3d3; background: #fff; color: #570101; border-radius: 999px; padding: 7px 16px;
     font-size: 0.84rem; font-weight: 700; cursor: pointer; font-family: inherit;
@@ -58,6 +66,8 @@ const estilos = `
   .chips-usuario-admin { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
   .vacio-admin { text-align: center; color: #6b5a5a; padding: 30px 10px; background: #fff; border-radius: 14px; border: 1px dashed #e3d3d3; font-size: 0.88rem; }
   .error-admin { color: #b3261e; font-weight: 600; font-size: 0.85rem; margin: 8px 0; }
+  .enlace-admin { background: none; border: none; padding: 0; color: #570101; font-weight: 700; font-size: 0.74rem; cursor: pointer; font-family: inherit; }
+  .enlace-admin:hover { text-decoration: underline; }
   .ficha-datos-admin { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 0.82rem; margin: 10px 0; }
   .ficha-datos-admin div strong { display: block; font-size: 0.68rem; color: #7a2a2a; text-transform: uppercase; letter-spacing: 0.04em; }
   .dni-admin { border: 1px solid #ecdede; border-radius: 12px; padding: 10px; margin: 10px 0; text-align: center; }
@@ -384,12 +394,70 @@ function PestanaUsuarios({ filtroInicial, onVerUsuario, version }) {
   );
 }
 
+/* Errores del servidor y del navegador (los más nuevos primero) */
+function PestanaErrores({ version }) {
+  const [origen, setOrigen] = useState("");
+  const [lista, setLista] = useState(null);
+  const [error, setError] = useState("");
+  const [abierto, setAbierto] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    admin.errores(origen)
+      .then((filas) => activo && setLista(filas))
+      .catch((err) => activo && setError(err.message || "No se pudieron cargar los errores."));
+    return () => {
+      activo = false;
+    };
+  }, [origen, version]);
+
+  return (
+    <section aria-label="Errores">
+      <div className="filtros-admin">
+        {[["", "Todos"], ["servidor", "Del servidor"], ["navegador", "Del navegador"]].map(([valor, texto]) => (
+          <button key={valor || "todos"} className={`filtro-admin ${origen === valor ? "activo" : ""}`} onClick={() => { setLista(null); setOrigen(valor); }}>{texto}</button>
+        ))}
+      </div>
+      {error && <p className="error-admin">{error}</p>}
+      {!lista ? (
+        <p className="vacio-admin">Cargando…</p>
+      ) : lista.length === 0 ? (
+        <p className="vacio-admin">No hay errores anotados. ¡Bien ahí!</p>
+      ) : (
+        <ul className="lista-errores-admin">
+          {lista.map((e) => (
+            <li key={e.id} className="error-item-admin">
+              <div className="cabecera-error-admin">
+                <span className={`origen-error-admin ${e.origen}`}>{e.origen === "navegador" ? "Navegador" : "Servidor"}</span>
+                <span className="fecha-error-admin">{new Date(e.fecha).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                {e.ruta && <code className="ruta-error-admin">{e.metodo ? `${e.metodo} ` : ""}{e.ruta}</code>}
+                {e.usuario_nombre && <span className="usuario-error-admin">· {e.usuario_nombre}</span>}
+              </div>
+              <p className="mensaje-error-admin">{e.mensaje}</p>
+              {e.detalle && (
+                <>
+                  <button className="enlace-admin" onClick={() => setAbierto(abierto === e.id ? null : e.id)}>
+                    {abierto === e.id ? "Ocultar detalle" : "Ver detalle"}
+                  </button>
+                  {abierto === e.id && <pre className="detalle-error-admin">{e.detalle}</pre>}
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function Admin() {
   const navegar = useNavigate();
   const [resumen, setResumen] = useState(null);
   const [sinAcceso, setSinAcceso] = useState(false);
   const [error, setError] = useState("");
-  const [pestana, setPestana] = useState("denuncias");
+  // ?pestana=errores (desde el email de aviso de errores)
+  const [pestana, setPestana] = useState(() =>
+    new URLSearchParams(window.location.search).get("pestana") === "errores" ? "errores" : "denuncias");
   const [filtroUsuarios, setFiltroUsuarios] = useState("");
   const [usuarioAbierto, setUsuarioAbierto] = useState(null);
   const [version, setVersion] = useState(0);
@@ -451,13 +519,19 @@ export default function Admin() {
               <button className="numero-admin" onClick={() => irA("usuarios", "")}>
                 <strong>{resumen?.usuarios ?? "…"}</strong><span>Usuarios</span>
               </button>
+              <button className={`numero-admin ${resumen?.errores_24h ? "alerta" : ""}`} onClick={() => irA("errores")}>
+                <strong>{resumen?.errores_24h ?? "…"}</strong><span>Errores (24 h)</span>
+              </button>
             </div>
             <div className="pestanas-admin" role="tablist">
               <button role="tab" aria-selected={pestana === "denuncias"} className={`pestana-admin ${pestana === "denuncias" ? "activa" : ""}`} onClick={() => irA("denuncias")}>Denuncias</button>
               <button role="tab" aria-selected={pestana === "usuarios"} className={`pestana-admin ${pestana === "usuarios" ? "activa" : ""}`} onClick={() => irA("usuarios", filtroUsuarios)}>Usuarios</button>
+              <button role="tab" aria-selected={pestana === "errores"} className={`pestana-admin ${pestana === "errores" ? "activa" : ""}`} onClick={() => irA("errores")}>Errores</button>
             </div>
             {pestana === "denuncias" ? (
               <PestanaDenuncias onVerUsuario={setUsuarioAbierto} onCambio={cargarResumen} version={version} />
+            ) : pestana === "errores" ? (
+              <PestanaErrores version={version} />
             ) : (
               <PestanaUsuarios key={filtroUsuarios} filtroInicial={filtroUsuarios} onVerUsuario={setUsuarioAbierto} version={version} />
             )}

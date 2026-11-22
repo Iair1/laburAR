@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import config from "./dbconfig.js";
-import pkg from "pg";
+import { Client } from "./db.js";
 import { asegurarCuentas } from "./esquema.js";
-const {Client} = pkg;
+
 
 if (!process.env.JWT_SECRET) {
     console.warn("⚠️  Falta la variable JWT_SECRET: se está usando una clave de prueba. Cargala en Vercel antes de salir al público.");

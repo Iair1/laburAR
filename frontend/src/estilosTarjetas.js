@@ -299,6 +299,8 @@ export const estilosTarjetas = `
     box-shadow: 0 8px 22px rgba(0,0,0,0.08);
     transform: translateY(-2px);
   }
+  /* Con una ventana abierta adentro, la tarjeta no se mueve (si no, la ventana queda encerrada en ella) */
+  .tarjeta-trabajador:has(.fondo-modal-problema) { transform: none !important; }
   .cabecera-tarjeta { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
   .imagen-trabajador {
     width: 76px;

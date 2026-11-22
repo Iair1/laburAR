@@ -1,16 +1,18 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {v2 as cloudinary} from "cloudinary";
 import crypto from "crypto";
 import { asegurarColumnasServicio, asegurarCuentas, asegurarNotificaciones } from "../esquema.js";
 import { notificar, tituloDeSolicitud } from "../notificaciones.js";
-import { enviarEmail, escaparHTML } from "../email.js";
+import { enviarEmail, escaparHTML, emailConfigurado } from "../email.js";
+import { armarEmail } from "../avisosEmail.js";
+import { controlarLimite } from "../limites.js";
 import { verificarCredencialGoogle } from "../google.js";
 import { hayBloqueo, cuentaActiva, errorConEstado } from "../moderacion.js";
 import { olvidarEstadoCuenta } from "../auth.middleware.js";
-const {Client} = pkg;
+
 
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
@@ -63,7 +65,7 @@ async function cambiarDato(id, inf) {
         // y los valores van como parámetros para evitar inyección SQL.
         const columnas = [];
         const valores = [id];
-        if (inf.some((item) => item.dato === "email" || item.dato === "telefono")) {
+        if (inf.some((item) => ["email", "telefono", "avisos_email"].includes(item.dato))) {
             if (!(await asegurarCuentas())) {
                 throw errorConEstado("No se pudo guardar. Probá de nuevo en un rato.", 503);
             }
@@ -75,6 +77,14 @@ async function cambiarDato(id, inf) {
             }
             if(inf[i].dato === "telefono"){
                 valor = limpiarTelefono(valor);
+                columnas.push("telefono_verificado = false");
+            }
+            if(inf[i].dato === "avisos_email"){
+                valor = valor === true || valor === "true";
+            }
+            if(inf[i].dato === "email"){
+                // Un email nuevo hay que confirmarlo (si se pueden mandar emails)
+                columnas.push(`email_verificado = ${emailConfigurado() ? "false" : "NULL"}`);
             }
             if(inf[i].dato==="foto_perfil"){
                 valor = await subirImagen(valor);
@@ -86,6 +96,11 @@ async function cambiarDato(id, inf) {
             `UPDATE usuarios SET ${columnas.join(", ")} WHERE id = $1 RETURNING id, nombre_completo, foto_perfil`,
             valores
         );
+        const emailNuevo = inf.find((item) => item.dato === "email");
+        if (emailNuevo && emailConfigurado()) {
+            const actual = await client.query("SELECT id, email, nombre_completo FROM usuarios WHERE id = $1", [id]);
+            await mandarLinkVerificacion(client, actual.rows[0]);
+        }
         return result.rows[0];
     } catch(error){
         console.error("Error al cambiar dato:", error);
@@ -133,12 +148,179 @@ function limpiarTelefono(telefono) {
     return limpio || null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Confirmar el email (link que vence en 48 horas)                     */
+/* ------------------------------------------------------------------ */
+
+const hashToken = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
+const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "";
+
+// Manda el link para confirmar el email. Devuelve false si el envío de emails no está configurado.
+async function mandarLinkVerificacion(client, usuario) {
+    if (!emailConfigurado() || !usuario?.email) return false;
+    const token = crypto.randomBytes(32).toString("hex");
+    await client.query("UPDATE verificaciones_email SET usado = true WHERE userid = $1 AND usado = false", [usuario.id]);
+    await client.query(
+        "INSERT INTO verificaciones_email (userid, email, token, vence) VALUES ($1, $2, $3, now() + interval '48 hours')",
+        [usuario.id, usuario.email, hashToken(token)]);
+    const { texto, html } = armarEmail({
+        saludo: usuario.nombre_completo ? `Hola, ${primerNombre(usuario.nombre_completo)}` : "",
+        titulo: "Confirmá tu email",
+        detalle: "Tocá el botón para confirmar que este email es tuyo. Así podés publicar problemas, mandar propuestas y mensajes, y recibir los avisos.\nEl link vence en 48 horas.",
+        boton: "Confirmar mi email",
+        enlace: `/verificar-email?token=${token}`,
+        pie: "Si no creaste una cuenta en LaburAR, ignorá este email.",
+    });
+    await enviarEmail({ para: usuario.email, asunto: "Confirmá tu email en LaburAR", texto, html })
+        .catch((error) => console.error("No se pudo mandar el email para confirmar la cuenta:", error.message));
+    return true;
+}
+
+/** Confirma el email con el token del link. */
+async function verificarEmail(token) {
+    if (!(await asegurarCuentas())) throw errorConEstado("No se pudo confirmar. Probá de nuevo en un rato.", 503);
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+            SELECT v.*, u.email AS email_actual, u.email_verificado, u.nombre_completo
+            FROM verificaciones_email v JOIN usuarios u ON u.id = v.userid
+            WHERE v.token = $1`, [hashToken(token)]);
+        const v = result.rows[0];
+        if (!v) throw errorConEstado("El link no es válido. Pedí uno nuevo desde Mi cuenta.", 400);
+        const mismoEmail = String(v.email).toLowerCase() === String(v.email_actual || "").toLowerCase();
+        if (!mismoEmail) throw errorConEstado("Este link es de un email que ya no es el de tu cuenta. Pedí uno nuevo desde Mi cuenta.", 400);
+        if (v.usado) {
+            if (v.email_verificado === true) return { userid: v.userid, email: v.email, yaEstaba: true };
+            throw errorConEstado("Este link ya no sirve. Pedí uno nuevo desde Mi cuenta.", 400);
+        }
+        if (new Date(v.vence) < new Date()) throw errorConEstado("El link venció. Pedí uno nuevo desde Mi cuenta.", 400);
+        await client.query("UPDATE verificaciones_email SET usado = true WHERE id = $1", [v.id]);
+        await client.query("UPDATE usuarios SET email_verificado = true WHERE id = $1", [v.userid]);
+        return { userid: v.userid, email: v.email, nombre: v.nombre_completo };
+    } finally {
+        await client.end();
+    }
+}
+
+/** Vuelve a mandar el link para confirmar el email (hasta 3 por hora). */
+async function reenviarVerificacion(id) {
+    if (!(await asegurarCuentas())) throw errorConEstado("No se pudo mandar. Probá de nuevo en un rato.", 503);
+    if (!emailConfigurado()) throw errorConEstado("El envío de emails todavía no está configurado.", 503);
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query("SELECT id, email, email_verificado, nombre_completo FROM usuarios WHERE id = $1", [id]);
+        const usuario = result.rows[0];
+        if (!usuario?.email) throw errorConEstado("Primero cargá tu email en Mi cuenta.", 400);
+        if (usuario.email_verificado === true) throw errorConEstado("Tu email ya está confirmado.", 400);
+        await controlarLimite(client, `verificacion:${id}`, [{ maximo: 3, intervalo: "1 hour" }],
+            "Ya te mandamos varios emails. Revisá tu casilla (y el correo no deseado) o probá de nuevo en un rato.");
+        await mandarLinkVerificacion(client, usuario);
+        return { email: usuario.email };
+    } finally {
+        await client.end();
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Confirmar el teléfono con un código por SMS (Brevo)                 */
+/* ------------------------------------------------------------------ */
+
+/** El envío de SMS está configurado (BREVO_API_KEY + SMS_REMITENTE). */
+export function smsConfigurado() {
+    return Boolean(process.env.BREVO_API_KEY && process.env.SMS_REMITENTE);
+}
+
 /**
- * Crea la cuenta. `extra` puede traer { email, telefono, googleCredential }.
+ * Celular argentino en formato internacional sin "+" (ej: "5491123456789"), o null si no se entiende.
+ * Acepta "11 2345-6789", "+54 9 11 2345 6789", "011 2345 6789"...
+ */
+export function celularInternacional(telefono) {
+    let digitos = String(telefono || "").replace(/\D/g, "");
+    if (digitos.startsWith("00")) digitos = digitos.slice(2);
+    if (digitos.startsWith("54")) digitos = digitos.slice(2);
+    digitos = digitos.replace(/^0/, "");
+    if (digitos.length === 10) return `549${digitos}`;
+    if (digitos.length === 11 && digitos.startsWith("9")) return `54${digitos}`;
+    return null;
+}
+
+/** Manda un código de 6 números por SMS al teléfono de la cuenta. */
+async function enviarCodigoTelefono(id) {
+    if (!smsConfigurado()) throw errorConEstado("La verificación por SMS todavía no está disponible.", 503);
+    if (!(await asegurarCuentas())) throw errorConEstado("No se pudo mandar. Probá de nuevo en un rato.", 503);
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query("SELECT telefono, telefono_verificado FROM usuarios WHERE id = $1", [id]);
+        const usuario = result.rows[0];
+        if (!usuario?.telefono) throw errorConEstado("Primero cargá tu celular en Mi cuenta.", 400);
+        if (usuario.telefono_verificado === true) throw errorConEstado("Tu teléfono ya está verificado.", 400);
+        const destino = celularInternacional(usuario.telefono);
+        if (!destino) throw errorConEstado("Escribí tu celular con código de área, sin el 0 ni el 15 (ej: 11 2345 6789).", 400);
+        await controlarLimite(client, `sms:${id}`, [{ maximo: 3, intervalo: "1 hour" }, { maximo: 6, intervalo: "1 day" }],
+            "Ya te mandamos varios códigos. Esperá un rato y probá de nuevo.");
+        const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+        await client.query("UPDATE verificaciones_telefono SET usado = true WHERE userid = $1 AND usado = false", [id]);
+        await client.query(
+            "INSERT INTO verificaciones_telefono (userid, telefono, codigo, vence) VALUES ($1, $2, $3, now() + interval '10 minutes')",
+            [id, usuario.telefono, await bcrypt.hash(codigo, 8)]);
+        let respuesta;
+        try {
+            respuesta = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
+                method: "POST",
+                headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({
+                    sender: process.env.SMS_REMITENTE,
+                    recipient: destino,
+                    content: `Tu código de LaburAR es ${codigo}. Vence en 10 minutos. No se lo pases a nadie.`,
+                    type: "transactional",
+                }),
+            });
+        } catch (error) {
+            console.error("No se pudo conectar con el servicio de SMS:", error.message);
+            throw errorConEstado("No se pudo mandar el SMS. Probá de nuevo en un rato.", 502);
+        }
+        if (!respuesta.ok) {
+            console.error(`El servicio de SMS respondió ${respuesta.status}:`, (await respuesta.text().catch(() => "")).slice(0, 300));
+            throw errorConEstado("No se pudo mandar el SMS. Probá de nuevo en un rato.", 502);
+        }
+        return { telefono: usuario.telefono };
+    } finally {
+        await client.end();
+    }
+}
+
+/** Confirma el teléfono con el código (5 intentos). */
+async function verificarTelefono(id, codigo) {
+    if (!(await asegurarCuentas())) throw errorConEstado("No se pudo confirmar. Probá de nuevo en un rato.", 503);
+    const client = new Client(config);
+    try {
+        await client.connect();
+        const result = await client.query(`
+            SELECT v.*, u.telefono AS telefono_actual FROM verificaciones_telefono v JOIN usuarios u ON u.id = v.userid
+            WHERE v.userid = $1 AND v.usado = false AND v.vence > now()
+            ORDER BY v.id DESC LIMIT 1`, [id]);
+        const v = result.rows[0];
+        const invalido = () => errorConEstado("El código no es correcto o venció. Pedí uno nuevo.", 400);
+        if (!v || v.intentos >= 5 || v.telefono !== v.telefono_actual) throw invalido();
+        await client.query("UPDATE verificaciones_telefono SET intentos = intentos + 1 WHERE id = $1", [v.id]);
+        if (!(await bcrypt.compare(String(codigo || "").trim(), v.codigo))) throw invalido();
+        await client.query("UPDATE verificaciones_telefono SET usado = true WHERE id = $1", [v.id]);
+        await client.query("UPDATE usuarios SET telefono_verificado = true WHERE id = $1", [id]);
+        return { telefono_verificado: true };
+    } finally {
+        await client.end();
+    }
+}
+
+/**
+ * Crea la cuenta. `extra` puede traer { email, telefono, googleCredential, ip }.
  * Con googleCredential (registro con Google) el email sale de Google y no hace falta contraseña.
  */
 const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, extra = {}) => {
-    let { email, telefono, googleCredential } = extra;
+    let { email, telefono, googleCredential, ip } = extra;
     let fotoGoogle = null;
     if (googleCredential) {
         const google = await verificarCredencialGoogle(googleCredential);
@@ -150,6 +332,11 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
     const client = new Client(config);
     try {
         await client.connect();
+        // Frena a quien crea muchas cuentas seguidas desde la misma conexión
+        if (ip && cuentasListas) {
+            await controlarLimite(client, `registro:${ip}`, [{ maximo: 5, intervalo: "1 hour" }, { maximo: 20, intervalo: "1 day" }],
+                "Se crearon muchas cuentas desde esta conexión. Probá de nuevo más tarde.");
+        }
         if (email) {
             if (!cuentasListas) {
                 throw errorConEstado("No se pudo crear la cuenta. Probá de nuevo en un rato.", 503);
@@ -163,11 +350,18 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
             [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora]
         );
         const usuario = result.rows[0];
+        let emailVerificado = null;
         if (cuentasListas && (email || telefono)) {
-            await client.query("UPDATE usuarios SET email = $2, telefono = $3 WHERE id = $1",
-                [usuario.id, email || null, limpiarTelefono(telefono)]);
+            // Con Google el email ya viene confirmado; si no, se manda un link para confirmarlo
+            // (si el envío de emails no está configurado, no se exige: queda en null)
+            emailVerificado = !email ? null : googleCredential ? true : emailConfigurado() ? false : null;
+            await client.query("UPDATE usuarios SET email = $2, telefono = $3, email_verificado = $4 WHERE id = $1",
+                [usuario.id, email || null, limpiarTelefono(telefono), emailVerificado]);
+            if (emailVerificado === false) {
+                await mandarLinkVerificacion(client, { id: usuario.id, email, nombre_completo });
+            }
         }
-        return { ...usuario, email: email || null };
+        return { ...usuario, email: email || null, email_verificado: emailVerificado };
     } catch (error) {
         throw error;
     } finally {
@@ -217,6 +411,7 @@ async function emitirSesion(client, dbUser) {
         foto_perfil: dbUser.foto_perfil,
         email: dbUser.email || null,
         es_admin: dbUser.es_admin === true,
+        email_verificado: typeof dbUser.email_verificado === "boolean" ? dbUser.email_verificado : null,
     };
     return {token, notificaciones, usuario};
 }
@@ -611,19 +806,24 @@ const miPerfil = async(id)=>{
         const result = await client.query(`
             SELECT id, nombre_completo, foto_perfil, localidad, disponibilidad, cobro_por_hora, sobre_mi,
                 puntuacion_trabajador, puntuacion_contratador, direccion_calle, direccion_altura, codigo_postal
-                ${cuentasListas ? ", email, telefono, COALESCE(es_admin, false) AS es_admin, COALESCE(verificado, false) AS verificado, dni_estado" : ""}
+                ${cuentasListas ? `, email, telefono, COALESCE(es_admin, false) AS es_admin, COALESCE(verificado, false) AS verificado, dni_estado,
+                    email_verificado, COALESCE(avisos_email, true) AS avisos_email, COALESCE(telefono_verificado, false) AS telefono_verificado` : ""}
             FROM usuarios WHERE id = $1
         `, [id]);
         if(result.rowCount === 0){
             throw new Error("Usuario no encontrado");
         }
-        return result.rows[0];
+        return { ...result.rows[0], sms_disponible: smsConfigurado(), emails_disponibles: emailConfigurado() };
     }finally{
         await client.end();
     }
 }
 
 const UsuariosService={
+    verificarEmail,
+    reenviarVerificacion,
+    enviarCodigoTelefono,
+    verificarTelefono,
     crearCuenta, 
     iniciarSesion,
     iniciarSesionGoogle,

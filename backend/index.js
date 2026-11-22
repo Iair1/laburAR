@@ -18,6 +18,8 @@ import DenunciasRouter from "./routers/denuncias.router.js"
 import BloqueosRouter from "./routers/bloqueos.router.js"
 import AdminRouter from "./routers/admin.router.js"
 import OfertasRouter from "./routers/ofertas.router.js"
+import ErroresRouter from "./routers/errores.router.js"
+import { registrarErrorRapido } from "./errores.js"
 
 
 
@@ -36,14 +38,24 @@ app.use(cors());
 // Los errores internos de la base (nombres de tablas/columnas, conexión, etc.) no se le
 // muestran a la gente: se guardan en el log y se responde un mensaje general.
 // A los administradores (usuarios.es_admin) sí se les agrega el detalle, para poder arreglarlo.
+// Todos los errores 500 se guardan (los ve el administrador en el panel y le llega un aviso por email).
 const ERROR_INTERNO = /column|relation|syntax error|malformed|value too long|violates|duplicate key|does not exist|invalid input|null value|operator does not exist|cannot cast|out of range|ECONN|ETIMEDOUT|ENOTFOUND|timeout|SSL|password authentication|too many clients|remaining connection|Connection terminated/i;
 app.use((req, res, next) => {
     const json = res.json.bind(res);
     res.json = (cuerpo) => {
-        if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && ERROR_INTERNO.test(cuerpo.message)) {
-            console.error(`Error interno en ${req.method} ${req.path}:`, cuerpo.message);
-            const detalle = req.esAdmin ? ` (Detalle para administradores: ${cuerpo.message})` : "";
-            cuerpo = { ...cuerpo, message: `Hubo un problema en el servidor. Probá de nuevo en un rato.${detalle}` };
+        if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && !res.errorAnotado) {
+            res.errorAnotado = true;
+            const original = cuerpo.message;
+            if (ERROR_INTERNO.test(original)) {
+                console.error(`Error interno en ${req.method} ${req.path}:`, original);
+                const detalle = req.esAdmin ? ` (Detalle para administradores: ${original})` : "";
+                cuerpo = { ...cuerpo, message: `Hubo un problema en el servidor. Probá de nuevo en un rato.${detalle}` };
+            }
+            // Se anota el error (sin demorar la respuesta más de un segundo y medio)
+            const final = cuerpo;
+            registrarErrorRapido({ origen: "servidor", ruta: req.originalUrl, metodo: req.method, mensaje: original, userid: req.id })
+                .finally(() => json(final));
+            return res;
         }
         return json(cuerpo);
     };
@@ -84,6 +96,7 @@ app.use("/api/denuncias", DenunciasRouter);
 app.use("/api/ofertas", OfertasRouter);
 app.use("/api/bloqueos", BloqueosRouter);
 app.use("/api/admin", AdminRouter);
+app.use("/api/errores", ErroresRouter);
 /*
 app.use("/api/tdr", TdrRouter);
 app.use("/api/trabajos", TrabajosRouter);
@@ -91,6 +104,15 @@ app.use("/api/trabajos", TrabajosRouter);
 
 
 
+
+// Lo que no atrapó ninguna ruta: JSON mal armado, fotos demasiado pesadas o errores inesperados
+// eslint-disable-next-line no-unused-vars
+app.use((error, req, res, next) => {
+    if (error?.type === "entity.parse.failed") return res.status(400).json({ message: "Los datos enviados no son válidos" });
+    if (error?.type === "entity.too.large") return res.status(413).json({ message: "Es demasiado pesado. Si es una foto, probá con una más chica." });
+    console.error(`Error inesperado en ${req.method} ${req.path}:`, error?.message);
+    res.status(500).json({ message: error?.message || "Error inesperado" });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

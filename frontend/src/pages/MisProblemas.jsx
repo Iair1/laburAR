@@ -4,7 +4,7 @@ import BarraNav from "../componentes/BarraNav";
 import { estilosTarjetas } from "../estilosTarjetas";
 import { estilosProblemas } from "../estilosProblemas";
 import { TarjetaProblema, Icono } from "../componentes/ProblemasUI";
-import { DetalleProblemaModal, ConfirmarModal } from "../componentes/ProblemaModales";
+import { DetalleProblemaModal, ConfirmarModal, CancelarCitaModal } from "../componentes/ProblemaModales";
 import {
   PropuestasModal,
   ContraofertaModal,
@@ -256,12 +256,12 @@ export default function MisProblemas() {
     setProblemaCancelando(p);
   };
 
-  const confirmarCancelar = async () => {
+  const confirmarCancelar = async (motivo) => {
     const p = problemaCancelando;
     setProcesando(true);
     setErrorConfirmar("");
     try {
-      await cancelarProblema(p);
+      await cancelarProblema(p, typeof motivo === "string" ? motivo : undefined);
       setProblemaCancelando(null);
       setProblemaViendo(null);
       mostrarToast(
@@ -482,21 +482,29 @@ export default function MisProblemas() {
             onCancelarCita={pedirCancelar}
           />
         )}
-        {problemaCancelando && (
-          <ConfirmarModal
-            titulo={cancelandoCita ? "¿Cancelar la cita?" : "¿Borrar la publicación?"}
-            texto={
-              cancelandoCita
-                ? `Le avisamos a ${problemaCancelando.trabajador?.nombre || "el trabajador"} que no vaya el ${fechaLarga(problemaCancelando.dia)}${problemaCancelando.hora ? ` a las ${problemaCancelando.hora} hs` : ""}.`
-                : abiertasDe(problemaCancelando.id).length > 0
-                  ? `Los trabajadores ya no lo van a ver y se cierran las ${abiertasDe(problemaCancelando.id).length === 1 ? "propuesta que recibiste" : `${abiertasDe(problemaCancelando.id).length} propuestas que recibiste`}.`
-                  : "Los trabajadores ya no lo van a ver."
-            }
-            textoConfirmar={cancelandoCita ? "Sí, cancelar" : "Sí, borrar"}
-            peligro
+        {problemaCancelando && cancelandoCita && (
+          <CancelarCitaModal
+            rol="cliente"
+            texto={`Le avisamos a ${problemaCancelando.trabajador?.nombre || "el trabajador"} que no vaya el ${fechaLarga(problemaCancelando.dia)}${problemaCancelando.hora ? ` a las ${problemaCancelando.hora} hs` : ""}.`}
             procesando={procesando}
             error={errorConfirmar}
             onConfirmar={confirmarCancelar}
+            onCerrar={() => setProblemaCancelando(null)}
+          />
+        )}
+        {problemaCancelando && !cancelandoCita && (
+          <ConfirmarModal
+            titulo="¿Borrar la publicación?"
+            texto={
+              abiertasDe(problemaCancelando.id).length > 0
+                  ? `Los trabajadores ya no lo van a ver y se cierran las ${abiertasDe(problemaCancelando.id).length === 1 ? "propuesta que recibiste" : `${abiertasDe(problemaCancelando.id).length} propuestas que recibiste`}.`
+                  : "Los trabajadores ya no lo van a ver."
+            }
+            textoConfirmar="Sí, borrar"
+            peligro
+            procesando={procesando}
+            error={errorConfirmar}
+            onConfirmar={() => confirmarCancelar()}
             onCerrar={() => setProblemaCancelando(null)}
           />
         )}

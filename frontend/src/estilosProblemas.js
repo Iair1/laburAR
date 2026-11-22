@@ -125,6 +125,9 @@ export const estilosProblemas = `
     animation: aparecer-fondo-problema 0.15s ease-out;
   }
   @keyframes aparecer-fondo-problema { from { opacity: 0; } to { opacity: 1; } }
+  /* Las tarjetas que se mueven al pasar el mouse (transform) encerrarían a la ventana que se abre
+     adentro de ellas: mientras hay una abierta, la tarjeta no se mueve. */
+  .tarjeta-trabajador:has(.fondo-modal-problema) { transform: none !important; }
   .tarjeta-modal-problema {
     position: relative;
     background: #fff;
@@ -196,6 +199,7 @@ export const estilosProblemas = `
 
   @media (max-width: 520px) {
     .tarjeta-modal-problema { padding: 1.3rem 1rem 1.2rem; }
+    .tarjeta-modal-problema > .titulo-modal-grande { padding: 0 26px; font-size: 1.25rem; }
     .fila-modal { flex-direction: column; gap: 0; }
   }
 `;

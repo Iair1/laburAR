@@ -8,6 +8,7 @@ import { useState } from "react";
 import Avatar from "./Avatar";
 import { Calendario, Modal } from "./ProblemasUI";
 import { ResenasModal } from "./Resenas";
+import ResumenConfianza from "./ResumenConfianza";
 import {
   FRANJAS,
   fechasPosibles,
@@ -166,13 +167,17 @@ export function CampoPrecio({ id, valor, onCambio, conError = false, autoFocus =
 /* El trabajador propone día, hora y precio para un problema           */
 /* ------------------------------------------------------------------ */
 
-export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar }) {
+/**
+ * También sirve para el presupuesto de una solicitud directa: `titulo`, `horas`, `horaInicial`,
+ * `ayudaHora` y `textoBoton` permiten cambiar lo que se muestra.
+ */
+export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar, titulo = "Proponer cita", horas: horasDadas, horaInicial = "", ayudaHora, textoBoton = "Enviar propuesta" }) {
   const fechas = fechasPosibles(problema);
-  const horas = horasDeFranja(problema.franja);
+  const horas = horasDadas || horasDeFranja(problema.franja);
   const franja = FRANJAS[problema.franja];
   const nombreCliente = primerNombre(problema.cliente?.nombre) || "el cliente";
   const [dia, setDia] = useState(fechas.length === 1 ? fechas[0] : "");
-  const [hora, setHora] = useState("");
+  const [hora, setHora] = useState(horas.includes(horaInicial) ? horaInicial : "");
   const [precioTexto, setPrecioTexto] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -195,9 +200,9 @@ export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar }
   };
 
   return (
-    <Modal etiqueta="Proponer cita y precio" onCerrar={procesando ? undefined : onCerrar} ancho={500}>
+    <Modal etiqueta={titulo} onCerrar={procesando ? undefined : onCerrar} ancho={500}>
       <style>{estilosOfertas}</style>
-      <h2 className="titulo-modal-grande">Proponer cita</h2>
+      <h2 className="titulo-modal-grande">{titulo}</h2>
       <p className="subtitulo-modal">{problema.titulo}</p>
       <p className="detalle-modal">
         Elegí uno de los días que puso {nombreCliente} y decile cuánto cobrarías. Puede aceptar, proponerte otro precio o rechazarla.
@@ -215,7 +220,9 @@ export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar }
               <option value="">Elegí la hora</option>
               {horas.map((h) => <option key={h} value={h}>{h} hs</option>)}
             </select>
-            {franja && <p className="ayuda-campo-oferta">{nombreCliente} pidió: {franja.etiqueta} ({franja.detalle})</p>}
+            {ayudaHora !== undefined
+              ? ayudaHora && <p className="ayuda-campo-oferta">{ayudaHora}</p>
+              : franja && <p className="ayuda-campo-oferta">{nombreCliente} pidió: {franja.etiqueta} ({franja.detalle})</p>}
           </div>
 
           <div className="bloque-oferta">
@@ -254,7 +261,7 @@ export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar }
           </div>
           {error && <p className="error-modal" role="alert">{error}</p>}
           <button className="boton-grande-modal" onClick={enviar} disabled={procesando}>
-            {procesando ? "Enviando..." : "Enviar propuesta"}
+            {procesando ? "Enviando..." : textoBoton}
           </button>
         </>
       )}
@@ -301,7 +308,7 @@ function ultimoMensaje(oferta) {
  * Una propuesta, vista por el cliente (rol "cliente": muestra al trabajador) o por el
  * trabajador (rol "trabajador": muestra al cliente). Los botones dependen de a quién le toca.
  */
-export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, onAceptar, onContraofertar, onRechazar, onMensaje, extraAcciones = null }) {
+export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, sinPersona = false, onAceptar, onContraofertar, onRechazar, onMensaje, extraAcciones = null }) {
   const [viendoResenas, setViendoResenas] = useState(false);
   const estado = estadoDeOferta(oferta, rol);
   const otro = rol === "cliente" ? oferta.trabajador : oferta.cliente;
@@ -320,9 +327,11 @@ export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, o
     >
       {titulo && <div>{titulo}</div>}
       <div className="cabecera-oferta">
-        <Avatar src={otro?.foto} nombre={otro?.nombre} tamano={40} />
+        {!sinPersona && <Avatar src={otro?.foto} nombre={otro?.nombre} tamano={40} />}
         <div className="persona-oferta">
-          <div className="nombre-oferta">{rol === "trabajador" ? `Para ${otro?.nombre || "el cliente"}` : otro?.nombre}</div>
+          <div className="nombre-oferta">
+            {sinPersona ? (rol === "trabajador" ? "Tu presupuesto" : "Presupuesto") : rol === "trabajador" ? `Para ${otro?.nombre || "el cliente"}` : otro?.nombre}
+          </div>
           <div className="datos-persona-oferta">
             {puntaje > 0 && <span className="estrellas">★ {puntaje.toFixed(1)}</span>}
             {rol === "cliente" && otro?.verificado && <span className="verificado-oferta">✓ Identidad verificada</span>}
@@ -333,6 +342,7 @@ export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, o
         </div>
         <div className="precio-oferta" title="Precio propuesto">{formatearPesos(oferta.precio)}</div>
       </div>
+      {otro?.id && !apagada && !sinPersona && <ResumenConfianza userid={otro.id} rol={rol === "cliente" ? "trabajador" : "cliente"} compacto />}
 
       <div className="cuando-oferta"><IconoCalendario />{textoCuando(oferta.dia, oferta.hora)}</div>
       <span className={`estado-oferta ${estado.tono}`}>{estado.etiqueta}</span>
@@ -558,7 +568,7 @@ export function AceptarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, o
 /* Rechazar (el cliente elige si mantiene o elimina la publicación)    */
 /* ------------------------------------------------------------------ */
 
-export function RechazarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, onConfirmar }) {
+export function RechazarOfertaModal({ oferta, rol, otrasAbiertas = 0, dirigida = false, onCerrar, onConfirmar }) {
   const otro = rol === "cliente" ? oferta.trabajador : oferta.cliente;
   const nombreOtro = primerNombre(otro?.nombre) || "la otra persona";
   const [procesando, setProcesando] = useState(false);
@@ -606,8 +616,20 @@ export function RechazarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, 
       </h2>
       <p className="texto-seccion-modal" style={{ textAlign: "center", margin: "0.6rem 0 0" }}>
         {formatearPesos(oferta.precio)} · {textoCuando(oferta.dia, oferta.hora)}. Le avisamos a {nombreOtro}.
-        <br />¿Qué hacemos con tu publicación?
+        <br />{dirigida ? "¿Qué hacemos con tu pedido?" : "¿Qué hacemos con tu publicación?"}
       </p>
+      {dirigida ? (
+        <div className="opciones-rechazo">
+          <button type="button" className="opcion-rechazo" onClick={() => confirmar(false)} disabled={procesando}>
+            <strong>Rechazar el presupuesto</strong>
+            <span>Tu pedido sigue en pie y {nombreOtro} te puede mandar otro presupuesto.</span>
+          </button>
+          <button type="button" className="opcion-rechazo peligro" onClick={() => confirmar(true)} disabled={procesando}>
+            <strong>Rechazar y cancelar el pedido</strong>
+            <span>{nombreOtro} ya no lo ve. Podés buscar a otro trabajador cuando quieras.</span>
+          </button>
+        </div>
+      ) : (
       <div className="opciones-rechazo">
         <button type="button" className="opcion-rechazo" onClick={() => confirmar(false)} disabled={procesando}>
           <strong>Rechazar y mantener la publicación</strong>
@@ -623,6 +645,7 @@ export function RechazarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, 
           </span>
         </button>
       </div>
+      )}
       {error && <p className="error-modal" role="alert">{error}</p>}
       <div className="acciones-modal" style={{ justifyContent: "center" }}>
         <button className="boton-pill secundario" onClick={onCerrar} disabled={procesando}>Volver</button>

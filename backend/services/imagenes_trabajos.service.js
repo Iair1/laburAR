@@ -1,7 +1,7 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client } from "../db.js";
 import {v2 as cloudinary} from "cloudinary";
-const {Client} = pkg;
+
 
 async function subirImagen(imagen) {
     console.log("ya esdtamos es subiurimagebn")

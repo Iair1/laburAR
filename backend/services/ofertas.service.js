@@ -1,9 +1,9 @@
 import config from "../dbconfig.js";
-import pkg from "pg";
+import { Client, HOY } from "../db.js";
 import { asegurarOfertas, asegurarCuentas } from "../esquema.js";
-import { verificarQuePuedenInteractuar, errorConEstado, hayBloqueo, cuentaActiva } from "../moderacion.js";
+import { verificarQuePuedenInteractuar, errorConEstado, hayBloqueo, cuentaActiva, exigirEmailVerificado } from "../moderacion.js";
 import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia, pesos } from "../notificaciones.js";
-const { Client } = pkg;
+
 
 // Propuestas de precio para los problemas publicados (solicitudes con dirigida = false).
 //  1. El trabajador propone día, hora y precio (queda "pendiente", le toca responder al cliente).
@@ -17,8 +17,12 @@ const MAX_PASOS = 12;                     // idas y vueltas por propuesta
 const MAX_PROPUESTAS_POR_PROBLEMA = 3;    // un trabajador puede volver a proponer si lo rechazaron
 const MAX_PROPUESTAS_POR_DIA = 40;        // para frenar el spam
 
-const ENLACE_TRABAJADOR = "/problemas?vista=propuestas";
-const enlaceCliente = (solicitudid) => `/mis-problemas?problema=${solicitudid}`;
+// A dónde lleva cada aviso: los problemas publicados se ven en "Mis problemas" / "Mis propuestas";
+// las solicitudes directas (a un trabajador puntual), en "Mis pedidos" / "Solicitudes recibidas".
+const enlaceTrabajador = (dirigida) => (dirigida ? "/solicitudes-recibidas" : "/problemas?vista=propuestas");
+const enlaceCliente = (solicitudid, dirigida = false) =>
+    dirigida ? `/mis-pedidos?pedido=${solicitudid}` : `/mis-problemas?problema=${solicitudid}`;
+const esDirigida = (valor) => valor !== false; // las viejas (null) son dirigidas
 const recortar = (texto, largo = 80) => {
     const t = String(texto || "").trim().replace(/\s+/g, " ");
     return t.length > largo ? `${t.slice(0, largo - 1).trim()}…` : t;
@@ -67,7 +71,7 @@ async function anotar(client, ofertaid, autorid, rol, accion, precio = null, men
  * Cierra las propuestas abiertas de un problema (porque se tomó otra o se eliminó) y les avisa
  * a esos trabajadores. `excepto`: la propuesta que se aceptó. Se usa dentro de una transacción.
  */
-export async function cerrarOfertasDelProblema(client, solicitudid, { excepto = null, titulo = "", motivo = "eliminado" } = {}) {
+export async function cerrarOfertasDelProblema(client, solicitudid, { excepto = null, titulo = "", motivo = "eliminado", dirigida = false } = {}) {
     const cerradas = await client.query(`
         UPDATE ofertas SET estado = 'cerrada', actualizada = now()
         WHERE solicitudid = $1 AND estado = 'pendiente' AND ($2::int IS NULL OR id <> $2::int)
@@ -78,9 +82,9 @@ export async function cerrarOfertasDelProblema(client, solicitudid, { excepto = 
         await notificar(client, {
             userid: o.trabajadorid,
             tipo: "oferta-cerrada",
-            titulo: motivo === "tomado" ? "El cliente eligió otra propuesta" : "Un problema ya no está disponible",
-            contenido: `«${nombreProblema}»${motivo === "tomado" ? " ya tiene trabajador" : " se eliminó"}`,
-            enlace: ENLACE_TRABAJADOR,
+            titulo: motivo === "tomado" ? "El cliente eligió otra propuesta" : dirigida ? "Se canceló un pedido" : "Un problema ya no está disponible",
+            contenido: `«${nombreProblema}»${motivo === "tomado" ? " ya tiene trabajador" : dirigida ? " · El cliente lo canceló" : " se eliminó"}`,
+            enlace: enlaceTrabajador(dirigida),
             otroid: o.contratadorid,
             solicitudid,
         }, { transaccion: true });
@@ -92,16 +96,20 @@ export async function cerrarOfertasDelProblema(client, solicitudid, { excepto = 
 async function nueva(id, { solicitudid, dia, hora, precio, mensaje }) {
     id = Number(id);
     return conOfertas(async (client, cuentas) => {
+        await exigirEmailVerificado(client, id);
         await client.query("BEGIN");
         const busqueda = await client.query(`
             SELECT s.*,
                 ($2::date BETWEEN s.periodo[1] AND s.periodo[2]
                  AND COALESCE(s.diassemana[EXTRACT(ISODOW FROM $2::date)::int], TRUE) = TRUE
-                 AND $2::date >= CURRENT_DATE) AS dia_valido
+                 AND $2::date >= ${HOY}) AS dia_valido
             FROM solicitudes s WHERE s.id = $1 FOR UPDATE`, [solicitudid, dia]);
         const s = busqueda.rows[0];
-        if (!s || s.dirigida !== false) throw errorConEstado("Ese problema no existe.", 404);
+        if (!s) throw errorConEstado("Ese problema no existe.", 404);
+        const dirigida = esDirigida(s.dirigida);
         if (s.contratadorid === id) throw errorConEstado("No podés mandarle una propuesta a tu propio problema.", 400);
+        // Una solicitud directa solo la puede presupuestar el trabajador al que se la mandaron
+        if (dirigida && s.trabajadorid !== id) throw errorConEstado("Esa solicitud no es para vos.", 404);
         if (s.estado !== "por revisar") {
             throw errorConEstado("Este problema ya no está disponible: otro trabajador lo tomó o el cliente lo cerró.", 409);
         }
@@ -133,9 +141,11 @@ async function nueva(id, { solicitudid, dia, hora, precio, mensaje }) {
         await notificar(client, {
             userid: s.contratadorid,
             tipo: "oferta-nueva",
-            titulo: `${primerNombre(trabajador)} te ofreció ${pesos(precio)}`,
+            titulo: dirigida
+                ? `${primerNombre(trabajador)} te mandó un presupuesto: ${pesos(precio)}`
+                : `${primerNombre(trabajador)} te ofreció ${pesos(precio)}`,
             contenido: `«${titulo}» · ${textoDia(dia, hora)}`,
-            enlace: enlaceCliente(s.id),
+            enlace: enlaceCliente(s.id, dirigida),
             otroid: id,
             solicitudid: s.id,
         }, { transaccion: true });
@@ -152,7 +162,7 @@ async function tomarParaResponder(client, id, ofertaid, { exigirTurno = true } =
     if (!base.rows[0]) throw errorConEstado("Esa propuesta no existe.", 404);
     await client.query("SELECT id FROM solicitudes WHERE id = $1 FOR UPDATE", [base.rows[0].solicitudid]);
     const busqueda = await client.query(`
-        SELECT o.*, s.estado AS estado_problema, s.solicitud, (o.dia < CURRENT_DATE) AS vencida
+        SELECT o.*, s.estado AS estado_problema, s.solicitud, s.dirigida, (o.dia < ${HOY}) AS vencida
         FROM ofertas o
         LEFT JOIN solicitudes s ON s.id = o.solicitudid
         WHERE o.id = $1
@@ -193,14 +203,19 @@ async function aceptar(id, ofertaid) {
             "UPDATE ofertas SET estado = 'aceptada', actualizada = now() WHERE id = $1 RETURNING *", [o.id]);
         await anotar(client, o.id, id, rol, "aceptada", o.precio);
         const titulo = o.titulo || tituloDeSolicitud(o.solicitud);
-        await cerrarOfertasDelProblema(client, o.solicitudid, { excepto: o.id, titulo, motivo: "tomado" });
+        const dirigida = esDirigida(o.dirigida);
+        await cerrarOfertasDelProblema(client, o.solicitudid, { excepto: o.id, titulo, motivo: "tomado", dirigida });
         const yo = await nombreDe(client, id);
         await notificar(client, {
             userid: otro,
             tipo: "oferta-aceptada",
-            titulo: rol === "cliente" ? `${primerNombre(yo)} aceptó tu propuesta` : `${primerNombre(yo)} aceptó tu contraoferta`,
+            titulo: rol === "cliente"
+                ? `${primerNombre(yo)} aceptó tu ${dirigida ? "presupuesto" : "propuesta"}`
+                : `${primerNombre(yo)} aceptó tu contraoferta`,
             contenido: `Cita: ${textoDia(o.dia, o.hora)} · ${pesos(o.precio)} · «${titulo}»`,
-            enlace: rol === "cliente" ? "/problemas?vista=citas" : enlaceCliente(o.solicitudid),
+            enlace: rol === "cliente"
+                ? (dirigida ? "/trabajos-pendientes" : "/problemas?vista=citas")
+                : (dirigida ? "/mis-pedidos?vista=aceptados" : enlaceCliente(o.solicitudid)),
             otroid: id,
             solicitudid: o.solicitudid,
         }, { transaccion: true });
@@ -236,7 +251,7 @@ async function contraofertar(id, ofertaid, precio, mensaje) {
             tipo: "contraoferta",
             titulo: `${primerNombre(yo)} te propuso ${pesos(precio)}`,
             contenido: mensaje ? `«${titulo}» · “${recortar(mensaje, 60)}”` : `Contraoferta para «${titulo}»`,
-            enlace: rol === "cliente" ? ENLACE_TRABAJADOR : enlaceCliente(o.solicitudid),
+            enlace: rol === "cliente" ? enlaceTrabajador(esDirigida(o.dirigida)) : enlaceCliente(o.solicitudid, esDirigida(o.dirigida)),
             otroid: id,
             solicitudid: o.solicitudid,
         }, { transaccion: true });
@@ -264,6 +279,7 @@ async function rechazar(id, ofertaid, { eliminarPublicacion = false, mensaje = n
         const yo = await nombreDe(client, id);
         const titulo = o.titulo || tituloDeSolicitud(o.solicitud);
         const borrar = rol === "cliente" && eliminarPublicacion;
+        const dirigida = esDirigida(o.dirigida);
 
         let tituloAviso;
         if (rol === "cliente") tituloAviso = `${primerNombre(yo)} rechazó tu propuesta`;
@@ -274,15 +290,15 @@ async function rechazar(id, ofertaid, { eliminarPublicacion = false, mensaje = n
             tipo: estado === "retirada" ? "oferta-retirada" : "oferta-rechazada",
             titulo: tituloAviso,
             contenido: rol === "cliente"
-                ? `«${titulo}»${borrar ? " · El cliente eliminó la publicación" : ""}`
-                : `«${titulo}» · Sigue publicado para otros trabajadores`,
-            enlace: rol === "cliente" ? ENLACE_TRABAJADOR : enlaceCliente(o.solicitudid),
+                ? `«${titulo}»${borrar ? (dirigida ? " · Canceló el pedido" : " · El cliente eliminó la publicación") : ""}`
+                : dirigida ? `«${titulo}»` : `«${titulo}» · Sigue publicado para otros trabajadores`,
+            enlace: rol === "cliente" ? enlaceTrabajador(dirigida) : enlaceCliente(o.solicitudid, dirigida),
             otroid: id,
             solicitudid: o.solicitudid,
         }, { transaccion: true });
 
         if (borrar) {
-            await cerrarOfertasDelProblema(client, o.solicitudid, { titulo, motivo: "eliminado" });
+            await cerrarOfertasDelProblema(client, o.solicitudid, { titulo, motivo: "eliminado", dirigida });
             await client.query(
                 "DELETE FROM solicitudes WHERE id = $1 AND contratadorid = $2 AND estado = 'por revisar'",
                 [o.solicitudid, id]);
@@ -297,8 +313,8 @@ async function mias(id) {
     id = Number(id);
     return conOfertas(async (client) => {
         const result = await client.query(`
-            SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < CURRENT_DATE) AS vencida,
-                s.estado AS estado_problema, s.periodo, s.diassemana, s.localidad, s.solicitud, s.trabajadorid AS trabajador_asignado,
+            SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < ${HOY}) AS vencida,
+                s.estado AS estado_problema, s.periodo, s.diassemana, s.localidad, s.solicitud, s.trabajadorid AS trabajador_asignado, s.dirigida,
                 a.aptitud,
                 u.nombre_completo AS cliente_nombre, u.foto_perfil AS cliente_foto, u.puntuacion_contratador,
                 ${HISTORIAL}
@@ -319,8 +335,8 @@ async function recibidas(id) {
     id = Number(id);
     return conOfertas(async (client, cuentas) => {
         const result = await client.query(`
-            SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < CURRENT_DATE) AS vencida,
-                u.nombre_completo AS trabajador_nombre, u.foto_perfil AS trabajador_foto, u.puntuacion_trabajador,
+            SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < ${HOY}) AS vencida,
+                u.nombre_completo AS trabajador_nombre, u.foto_perfil AS trabajador_foto, u.puntuacion_trabajador, s.dirigida,
                 ${cuentas ? "COALESCE(u.verificado, false)" : "false"} AS verificado,
                 ${HISTORIAL}
             FROM ofertas o

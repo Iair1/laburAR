@@ -7,6 +7,7 @@ const router = Router();
 router.use(verifyToken, AdminController.soloAdmin);
 
 router.get("/resumen", AdminController.resumen);
+router.get("/errores", AdminController.errores);
 router.get("/denuncias", AdminController.denuncias);
 router.put("/resolverDenuncia", AdminController.resolverDenuncia);
 router.get("/usuarios", AdminController.usuarios);

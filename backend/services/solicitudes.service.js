@@ -417,6 +417,15 @@ const revisarTerminadas = async() => {
             JOIN usuarios ut ON s.trabajadorid = ut.id
             JOIN usuarios uc ON s.contratadorid = uc.id;
         `);
+        if(result.rowCount > 0){
+        const prehistorialASubir = result.rows.map(r => `(${r.contratadorid}, ${r.trabajadorid}, ${r.id})`).join(", ");
+        console.log(typeof(prehistorialASubir))
+        const historial = await client.query(`
+            INSERT INTO historial (contratadorid, trabajadorid, solicitudid)
+            VALUES ${prehistorialASubir}
+        RETURNING *`);
+        console.log(historial)
+        }
         let notificaciones=[]
         for(const trabajo of result.rows){
             const titulo = tituloDeSolicitud(trabajo.solicitud);
@@ -440,7 +449,7 @@ const revisarTerminadas = async() => {
             });
             notificaciones.push({avisoC, avisoT});
         }
-        return notificaciones.rows;
+        return notificaciones;
     }catch(error) {
         console.error("Error al revisar solicitudes terminadas:", error.message);
         throw error;

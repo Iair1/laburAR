@@ -13,7 +13,7 @@ import { olvidarEstadoCuenta } from "../auth.middleware.js";
 const {Client} = pkg;
 
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 async function cambiarContraseña(id, contraseñaVieja, contraseñaNueva) {
     const client = new Client(config);

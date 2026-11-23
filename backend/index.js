@@ -46,11 +46,12 @@ app.use((req, res, next) => {
         if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && !res.errorAnotado) {
             res.errorAnotado = true;
             const original = cuerpo.message;
-            if (ERROR_INTERNO.test(original)) {
+
+            /*if (ERROR_INTERNO.test(original)) {
                 console.error(`Error interno en ${req.method} ${req.path}:`, original);
                 const detalle = req.esAdmin ? ` (Detalle para administradores: ${original})` : "";
                 cuerpo = { ...cuerpo, message: `Hubo un problema en el servidor. Probá de nuevo en un rato.${detalle}` };
-            }
+            }*/
             // Se anota el error (sin demorar la respuesta más de un segundo y medio)
             const final = cuerpo;
             registrarErrorRapido({ origen: "servidor", ruta: req.originalUrl, metodo: req.method, mensaje: original, userid: req.id })

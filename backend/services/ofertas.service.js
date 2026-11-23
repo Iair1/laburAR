@@ -1,6 +1,6 @@
 import config from "../dbconfig.js";
 import { Client, HOY } from "../db.js";
-import { asegurarOfertas, asegurarCuentas } from "../esquema.js";
+import { asegurarOfertas, asegurarCuentas, esEmpresa } from "../esquema.js";
 import { verificarQuePuedenInteractuar, errorConEstado, hayBloqueo, cuentaActiva, exigirEmailVerificado } from "../moderacion.js";
 import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia, pesos } from "../notificaciones.js";
 
@@ -338,6 +338,7 @@ async function recibidas(id) {
             SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < ${HOY}) AS vencida,
                 u.nombre_completo AS trabajador_nombre, u.foto_perfil AS trabajador_foto, u.puntuacion_trabajador, s.dirigida,
                 ${cuentas ? "COALESCE(u.verificado, false)" : "false"} AS verificado,
+                ${cuentas ? esEmpresa("u") : "false"} AS es_empresa,
                 ${HISTORIAL}
             FROM ofertas o
             INNER JOIN solicitudes s ON s.id = o.solicitudid AND s.contratadorid = $1

@@ -1,5 +1,5 @@
 import { Client, HOY } from "../db.js";
-import { asegurarCuentas, asegurarResenasYMensajes } from "../esquema.js";
+import { asegurarCuentas, asegurarResenasYMensajes, esEmpresa } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
 
 // Datos para confiar en alguien (se muestran en su perfil y en sus propuestas):
@@ -17,9 +17,11 @@ async function estadisticas(userid) {
                 ${cuentas
                     ? `u.fecha_alta, COALESCE(u.verificado, false) AS identidad_verificada,
                        COALESCE(u.telefono_verificado, false) AS telefono_verificado, u.email_verificado, u.eliminado,
+                       ${esEmpresa("u")} AS es_empresa,
                        (SELECT count(*)::int FROM cancelaciones c WHERE c.userid = u.id AND c.rol = 'trabajador') AS cancelaciones_como_trabajador,
                        (SELECT count(*)::int FROM cancelaciones c WHERE c.userid = u.id AND c.rol = 'cliente') AS cancelaciones_como_cliente`
                     : `NULL AS fecha_alta, false AS identidad_verificada, false AS telefono_verificado, NULL AS email_verificado, false AS eliminado,
+                       false AS es_empresa,
                        0 AS cancelaciones_como_trabajador, 0 AS cancelaciones_como_cliente`},
                 (SELECT count(*)::int FROM solicitudes s WHERE s.trabajadorid = u.id AND ${terminado}) AS trabajos_como_trabajador,
                 (SELECT count(*)::int FROM solicitudes s WHERE s.contratadorid = u.id AND s.trabajadorid IS NOT NULL AND ${terminado}) AS trabajos_como_cliente,
@@ -66,6 +68,7 @@ async function estadisticas(userid) {
             identidad_verificada: fila.identidad_verificada === true,
             telefono_verificado: fila.telefono_verificado === true,
             email_verificado: fila.email_verificado === true,
+            es_empresa: fila.es_empresa === true,
         };
     } finally {
         await client.end();

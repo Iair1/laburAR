@@ -421,7 +421,8 @@ SENTENCIAS_CUENTAS.push(
     `ALTER TABLE usuarios
         ADD COLUMN IF NOT EXISTS email_verificado boolean,
         ADD COLUMN IF NOT EXISTS avisos_email boolean DEFAULT true,
-        ADD COLUMN IF NOT EXISTS telefono_verificado boolean DEFAULT false`,
+        ADD COLUMN IF NOT EXISTS telefono_verificado boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS es_empresa boolean DEFAULT false`,
     // Para frenar el spam: cada acción limitada deja una fila (se borran solas a los 2 días)
     `CREATE TABLE IF NOT EXISTS acciones_limitadas (
         id serial PRIMARY KEY,
@@ -474,6 +475,16 @@ SENTENCIAS_CUENTAS.push(
 );
 
 const SENTENCIAS_CUENTAS_OPCIONALES = [
+    // Las cuentas de empresa no tienen DNI: si la columna era obligatoria, deja de serlo
+    `DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'usuarios' AND column_name = 'dni' AND is_nullable = 'NO'
+                     AND table_schema = ANY (current_schemas(false))) THEN
+            ALTER TABLE usuarios ALTER COLUMN dni DROP NOT NULL;
+        END IF;
+    END $$`,
+    // De qué trabajo es cada fila del historial (con quién trabajó cada uno)
+    `ALTER TABLE historial ADD COLUMN IF NOT EXISTS solicitudid integer`,
     // Un email por cuenta (si ya hubiera repetidos, no se crea y se valida igual desde el código)
     `CREATE UNIQUE INDEX IF NOT EXISTS usuarios_email_unico ON usuarios (lower(email)) WHERE email IS NOT NULL AND eliminado IS NOT TRUE`,
     `CREATE INDEX IF NOT EXISTS denuncias_estado ON denuncias (estado, fecha DESC)`,
@@ -483,6 +494,13 @@ const SENTENCIAS_CUENTAS_OPCIONALES = [
     `CREATE INDEX IF NOT EXISTS cancelaciones_usuario ON cancelaciones (userid)`,
     `CREATE INDEX IF NOT EXISTS errores_servidor_fecha ON errores_servidor (fecha DESC)`,
 ];
+
+/**
+ * true si la cuenta es de una empresa (columna usuarios.es_empresa). Funciona aunque la
+ * columna se haya creado a mano como texto ('true' / 't') en vez de boolean.
+ * @param {string} alias nombre o alias de la tabla usuarios en la consulta
+ */
+export const esEmpresa = (alias) => `COALESCE(${alias}.es_empresa::text IN ('true', 't'), false)`;
 
 let promesaCuentas = null;
 

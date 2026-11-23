@@ -40,6 +40,7 @@ const estilos = `
   .tarjeta-admin { background: #fff; border: 1px solid #ecdede; border-radius: 14px; padding: 14px 16px; }
   .fila-tarjeta-admin { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .chip-admin { font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 3px 9px; background: #f4eeee; color: #570101; }
+  .chip-admin.azul { background: #eef1fb; color: #23376e; }
   .chip-admin.rojo { background: #fbeceb; color: #b3261e; }
   .chip-admin.verde { background: #e8f5e9; color: #1e5e22; }
   .chip-admin.amarillo { background: #fff4e5; color: #8a4b00; }
@@ -160,9 +161,10 @@ function FichaUsuario({ userid, onCerrar, onCambio }) {
               <div className="email-usuario-admin">#{u.id} · {u.email || "sin email"}</div>
               <div className="chips-usuario-admin" style={{ justifyContent: "flex-start", marginTop: 4 }}>
                 {u.es_admin && <span className="chip-admin">Admin</span>}
-                {u.verificado && <span className="chip-admin verde">✓ Identidad verificada</span>}
-                {u.dni_estado === "pendiente" && <span className="chip-admin amarillo">DNI por revisar</span>}
-                {u.dni_estado === "rechazado" && <span className="chip-admin rojo">DNI rechazado</span>}
+                {u.es_empresa && <span className="chip-admin azul">Empresa</span>}
+                {u.verificado && <span className="chip-admin verde">{u.es_empresa ? "✓ Empresa verificada" : "✓ Identidad verificada"}</span>}
+                {u.dni_estado === "pendiente" && <span className="chip-admin amarillo">{u.es_empresa ? "Constancia por revisar" : "DNI por revisar"}</span>}
+                {u.dni_estado === "rechazado" && <span className="chip-admin rojo">{u.es_empresa ? "Constancia rechazada" : "DNI rechazado"}</span>}
                 {u.suspendido && <span className="chip-admin rojo">Suspendido</span>}
               </div>
             </div>
@@ -171,7 +173,7 @@ function FichaUsuario({ userid, onCerrar, onCambio }) {
           <div className="ficha-datos-admin">
             <div><strong>Teléfono</strong>{u.telefono || "—"}</div>
             <div><strong>Zona</strong>{u.localidad || "—"}</div>
-            <div><strong>DNI (número)</strong>{u.dni || "—"}</div>
+            <div><strong>DNI (número)</strong>{u.dni || (u.es_empresa ? "— (cuenta de empresa)" : "—")}</div>
             <div><strong>Alta</strong>{fechaHora(u.fecha_alta) || "—"}</div>
             <div><strong>Puntaje como trabajador</strong>{u.puntuacion_trabajador ?? "—"}</div>
             <div><strong>Puntaje como cliente</strong>{u.puntuacion_contratador ?? "—"}</div>
@@ -180,11 +182,11 @@ function FichaUsuario({ userid, onCerrar, onCambio }) {
 
           {u.dni_url && (
             <div className="dni-admin">
-              <img src={u.dni_url} alt={`DNI de ${u.nombre_completo}`} />
+              <img src={u.dni_url} alt={`${u.es_empresa ? "Constancia" : "DNI"} de ${u.nombre_completo}`} />
               <p style={{ fontSize: "0.72rem", color: "#888", margin: "6px 0 0" }}>El link de la foto vence en 10 minutos.</p>
               {u.dni_estado === "pendiente" && (
                 <div className="acciones-admin" style={{ justifyContent: "center" }}>
-                  <button className="boton-admin verde" disabled={procesando} onClick={() => accion(() => admin.verificarDni(u.id, true)).catch(() => {})}>✓ Aprobar identidad</button>
+                  <button className="boton-admin verde" disabled={procesando} onClick={() => accion(() => admin.verificarDni(u.id, true)).catch(() => {})}>{u.es_empresa ? "✓ Aprobar empresa" : "✓ Aprobar identidad"}</button>
                   <button className="boton-admin peligro" disabled={procesando} onClick={() => setPidiendo("rechazar")}>Rechazar</button>
                 </div>
               )}
@@ -381,8 +383,9 @@ function PestanaUsuarios({ filtroInicial, onVerUsuario, version }) {
               </div>
               <div className="chips-usuario-admin">
                 {u.es_admin && <span className="chip-admin">Admin</span>}
+                {u.es_empresa && <span className="chip-admin azul">Empresa</span>}
                 {u.verificado && <span className="chip-admin verde">✓ Verificado</span>}
-                {u.dni_estado === "pendiente" && <span className="chip-admin amarillo">DNI por revisar</span>}
+                {u.dni_estado === "pendiente" && <span className="chip-admin amarillo">{u.es_empresa ? "Constancia por revisar" : "DNI por revisar"}</span>}
                 {u.denuncias_pendientes > 0 && <span className="chip-admin rojo">{u.denuncias_pendientes} denuncia{u.denuncias_pendientes === 1 ? "" : "s"}</span>}
                 {u.suspendido && <span className="chip-admin rojo">Suspendido</span>}
               </div>

@@ -334,7 +334,7 @@ export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, s
           </div>
           <div className="datos-persona-oferta">
             {puntaje > 0 && <span className="estrellas">★ {puntaje.toFixed(1)}</span>}
-            {rol === "cliente" && otro?.verificado && <span className="verificado-oferta">✓ Identidad verificada</span>}
+            {rol === "cliente" && otro?.verificado && <span className="verificado-oferta">{otro.esEmpresa ? "✓ Empresa verificada" : "✓ Identidad verificada"}</span>}
             {otro?.id && (
               <button type="button" className="enlace-oferta" onClick={() => setViendoResenas(true)}>Ver reseñas</button>
             )}

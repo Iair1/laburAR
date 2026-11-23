@@ -76,6 +76,7 @@ export function aOferta(fila) {
           foto: fila.trabajador_foto || null,
           puntuacion: fila.puntuacion_trabajador,
           verificado: fila.verificado === true,
+          esEmpresa: fila.es_empresa === true,
         }
       : { id: fila.trabajadorid, nombre: "Trabajador", foto: null },
     cliente: fila.cliente_nombre

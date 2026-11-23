@@ -192,6 +192,8 @@ export default function OfrecerServicios() {
   const [archivoDni, setArchivoDni] = useState(null);
   // Estado de la verificación que ya tiene: null | "pendiente" | "verificado" | "rechazado"
   const [estadoDni, setEstadoDni] = useState(null);
+  // Las cuentas de empresa se verifican con la constancia de CUIT (no tienen DNI)
+  const [esEmpresa, setEsEmpresa] = useState(false);
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState("");
@@ -229,6 +231,7 @@ export default function OfrecerServicios() {
       .then((perfil) => {
         if (cancelado || !perfil) return;
         setEstadoDni(perfil.verificado ? "verificado" : perfil.dni_estado || null);
+        setEsEmpresa(perfil.es_empresa === true);
         if (normalizarZona(perfil.localidad)) setZona((z) => z || normalizarZona(perfil.localidad));
         if (Array.isArray(perfil.disponibilidad) && perfil.disponibilidad.some(Boolean)) {
           setDiasDisponibles((d) => (d.length ? d : DIAS.filter((_, i) => perfil.disponibilidad[i])));
@@ -281,7 +284,9 @@ export default function OfrecerServicios() {
     }
     const yaMandoDni = estadoDni === "verificado" || estadoDni === "pendiente";
     if (!archivoDni && !yaMandoDni) {
-      setError("Subí una foto de tu DNI para verificar tu identidad. Es lo que le da confianza a los clientes.");
+      setError(esEmpresa
+        ? "Subí la constancia de CUIT de la empresa (o el DNI de la persona responsable) para verificarla. Es lo que le da confianza a los clientes."
+        : "Subí una foto de tu DNI para verificar tu identidad. Es lo que le da confianza a los clientes.");
       return;
     }
     if (!aceptaTerminos) {
@@ -321,7 +326,7 @@ export default function OfrecerServicios() {
           setArchivoDni(null);
         } catch (errDni) {
           if (errDni.status === 401) throw errDni;
-          setError(`Tu servicio se publicó, pero no pudimos guardar el DNI (${errDni.message || "error"}). Podés subirlo desde Mi cuenta.`);
+          setError(`Tu servicio se publicó, pero no pudimos guardar ${esEmpresa ? "la constancia" : "el DNI"} (${errDni.message || "error"}). Podés subirl${esEmpresa ? "a" : "o"} desde Mi cuenta.`);
           return;
         }
       }
@@ -368,10 +373,17 @@ export default function OfrecerServicios() {
 
           <div className="aviso-confianza">
             <span>🛡️</span>
-            <span>
-              Verificamos tu identidad con el DNI que subas acá (se guarda privado, nadie más lo ve).
-              Cuando lo aprobamos, los clientes ven "Identidad verificada" en tu tarjeta.
-            </span>
+            {esEmpresa ? (
+              <span>
+                Verificamos la empresa con la constancia de CUIT que subas acá (se guarda privada, nadie más la ve).
+                Cuando la aprobamos, los clientes ven "Empresa verificada" en tu tarjeta.
+              </span>
+            ) : (
+              <span>
+                Verificamos tu identidad con el DNI que subas acá (se guarda privado, nadie más lo ve).
+                Cuando lo aprobamos, los clientes ven "Identidad verificada" en tu tarjeta.
+              </span>
+            )}
           </div>
 
           <div className="tarjeta-form">
@@ -482,9 +494,9 @@ export default function OfrecerServicios() {
             <p className="ayuda-seccion">Esto es lo que hace que un cliente confíe en contratarte.</p>
 
             <div className="campo">
-              <label className="etiqueta-campo">Foto del frente de tu DNI</label>
+              <label className="etiqueta-campo">{esEmpresa ? "Constancia de CUIT de la empresa (o DNI del responsable)" : "Foto del frente de tu DNI"}</label>
               {estadoDni === "verificado" ? (
-                <div className="subida-texto-titulo subida-ok">✓ Tu identidad ya está verificada</div>
+                <div className="subida-texto-titulo subida-ok">{esEmpresa ? "✓ La empresa ya está verificada" : "✓ Tu identidad ya está verificada"}</div>
               ) : (
               <div className="subida-caja" onClick={() => refDni.current.click()}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -495,13 +507,17 @@ export default function OfrecerServicios() {
                     <div className="subida-texto-titulo subida-ok">✓ {archivoDni.name}</div>
                   ) : estadoDni === "pendiente" ? (
                     <>
-                      <div className="subida-texto-titulo subida-ok">⏳ Ya recibimos tu DNI y lo estamos revisando</div>
+                      <div className="subida-texto-titulo subida-ok">{esEmpresa ? "⏳ Ya recibimos la constancia y la estamos revisando" : "⏳ Ya recibimos tu DNI y lo estamos revisando"}</div>
                       <div className="subida-texto-sub">Si querés, podés subir otra foto</div>
                     </>
                   ) : (
                     <>
-                      <div className="subida-texto-titulo">{estadoDni === "rechazado" ? "Subí otra foto del DNI" : "Subir DNI"}</div>
-                      <div className="subida-texto-sub">Se guarda privado: solo lo usamos para verificar tu identidad</div>
+                      <div className="subida-texto-titulo">
+                        {esEmpresa
+                          ? (estadoDni === "rechazado" ? "Subí otra foto de la constancia" : "Subir constancia")
+                          : (estadoDni === "rechazado" ? "Subí otra foto del DNI" : "Subir DNI")}
+                      </div>
+                      <div className="subida-texto-sub">Se guarda privado: solo lo usamos para verificar {esEmpresa ? "la empresa" : "tu identidad"}</div>
                     </>
                   )}
                 </div>
@@ -515,7 +531,7 @@ export default function OfrecerServicios() {
                     e.target.value = "";
                     if (!archivo) return;
                     if (!TIPOS_FOTO_PERFIL.includes(archivo.type)) {
-                      setError("El DNI tiene que ser una foto JPG, PNG o WEBP.");
+                      setError(`${esEmpresa ? "La constancia" : "El DNI"} tiene que ser una foto JPG, PNG o WEBP.`);
                       return;
                     }
                     setError("");

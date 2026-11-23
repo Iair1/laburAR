@@ -20,7 +20,7 @@ cambiar una variable hay que volver a publicar (Deployments → ⋯ → Redeploy
 
 | Variable | Para qué |
 |---|---|
-| `JWT_SECRET` | Firma las sesiones. Tiene que ser un texto largo y secreto (por ejemplo, 40 caracteres al azar). **Si falta, el backend usa una clave de prueba y cualquiera podría hacerse pasar por otro usuario.** |
+| `JWT_SECRET` | Firma las sesiones. Tiene que ser un texto largo y secreto (por ejemplo, 40 caracteres al azar). **En Vercel es obligatoria: si falta, nadie puede iniciar sesión** (queda anotado en la pestaña Errores). En tu compu, si no la cargás, se usa una clave de prueba. |
 | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | La base de datos (ya estaban). |
 | `DB_PORT` | Opcional: el puerto de la base (por defecto 5432; el pooler de Supabase usa 6543). |
 | `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Las fotos (ya estaban). También se usan para el DNI privado. |
@@ -94,13 +94,17 @@ Ese mensaje tapa el error real de la base (para no mostrarle detalles internos a
 - **En el panel de administración → Errores**: quedan anotados todos, con la página y la hora.
 - **Entrando con una cuenta de administrador**: el mismo mensaje agrega al final
   "(Detalle para administradores: …)" con el error exacto.
+- **Probando el backend en tu compu** (fuera de Vercel): el detalle se muestra siempre, aunque no
+  hayas entrado como administrador.
 - **En Vercel**: el proyecto → *Logs*, y buscar `Error interno` o `Reseñas:`.
 
 ## Base de datos
 
 El backend crea solo las tablas y columnas nuevas la primera vez que las necesita
 (`backend/esquema.js`). Si el usuario de la base no tiene permiso para crear tablas, correr a mano
-los archivos de `backend/migraciones/` (se pueden correr varias veces sin problema).
+los archivos de `backend/migraciones/` (se pueden correr varias veces sin problema). El último,
+`006_empresas.sql`, agrega `usuarios.es_empresa` (cuentas de empresa, sin DNI), deja el DNI como opcional
+y agrega `historial.solicitudid`.
 
 **Con mucha gente usándolo al mismo tiempo**: cada copia del servidor reutiliza sus conexiones, pero en
 Vercel puede haber muchas copias a la vez. Para que la base no se sature, usá el *pooler* de tu proveedor:

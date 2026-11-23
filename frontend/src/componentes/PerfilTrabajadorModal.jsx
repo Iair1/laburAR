@@ -315,7 +315,9 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar,
               <span className="chip-categoria-perfil" key={a}>{a}</span>
             ))}
             {trabajador.verificado && (
-              <span className="chip-verificado-perfil" title="Revisamos su DNI">✓ Identidad verificada</span>
+              <span className="chip-verificado-perfil" title={trabajador.esEmpresa ? "Revisamos su documentación" : "Revisamos su DNI"}>
+                {trabajador.esEmpresa ? "✓ Empresa verificada" : "✓ Identidad verificada"}
+              </span>
             )}
           </div>
           <div style={{ marginBottom: "0.9rem" }}>
@@ -324,7 +326,7 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar,
 
           {descripcion && (
             <div className="seccion-perfil">
-              <p className="titulo-seccion-perfil">Acerca de mí:</p>
+              <p className="titulo-seccion-perfil">{trabajador.esEmpresa ? "Acerca de la empresa:" : "Acerca de mí:"}</p>
               <p className="texto-seccion-perfil">
                 {descripcionMostrada}
                 {descripcionLarga && (

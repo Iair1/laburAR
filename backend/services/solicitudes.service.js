@@ -384,6 +384,21 @@ const cancelarTrabajo = async(id, solicitudid, motivo = null) => {
        
 
 
+// Anota con quién trabajó cada uno (tabla historial), una fila por trabajo terminado.
+// Si no se puede (por ejemplo, la tabla está armada distinto), queda en el log y no frena
+// lo demás: el trabajo igual queda terminado y los avisos se mandan.
+async function anotarHistorial(client, trabajos) {
+    if (!trabajos || trabajos.length === 0) return;
+    try {
+        await client.query(`
+            INSERT INTO historial (contratadorid, trabajadorid, solicitudid)
+            SELECT * FROM unnest($1::int[], $2::int[], $3::int[])`,
+            [trabajos.map((t) => t.contratadorid), trabajos.map((t) => t.trabajadorid), trabajos.map((t) => t.id)]);
+    } catch (error) {
+        console.error("No se pudo anotar el trabajo en el historial:", error.message);
+    }
+}
+
 // El trabajador o el cliente marcan el trabajo como terminado, desde el día de la cita.
 const terminarTrabajo = async(id, solicitudid) => {
     const client = new Client(config);
@@ -402,6 +417,7 @@ const terminarTrabajo = async(id, solicitudid) => {
             throw error;
         }
         const s = result.rows[0];
+        await anotarHistorial(client, [s]);
         const otro = s.contratadorid === Number(id) ? s.trabajadorid : s.contratadorid;
         const yo = await nombreDe(client, id, "La otra persona");
         await notificar(client, {
@@ -441,15 +457,7 @@ const revisarTerminadas = async() => {
             JOIN usuarios ut ON s.trabajadorid = ut.id
             JOIN usuarios uc ON s.contratadorid = uc.id;
         `);
-        if(result.rowCount > 0){
-        const prehistorialASubir = result.rows.map(r => `(${r.contratadorid}, ${r.trabajadorid}, ${r.id})`).join(", ");
-        console.log(typeof(prehistorialASubir))
-        const historial = await client.query(`
-            INSERT INTO historial (contratadorid, trabajadorid, solicitudid)
-            VALUES ${prehistorialASubir}
-        RETURNING *`);
-        console.log(historial)
-        }
+        await anotarHistorial(client, result.rows);
         let notificaciones=[]
         for(const trabajo of result.rows){
             const titulo = tituloDeSolicitud(trabajo.solicitud);

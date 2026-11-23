@@ -4,18 +4,15 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {v2 as cloudinary} from "cloudinary";
 import crypto from "crypto";
-import { asegurarColumnasServicio, asegurarCuentas, asegurarNotificaciones } from "../esquema.js";
+import { asegurarColumnasServicio, asegurarCuentas, asegurarNotificaciones, esEmpresa } from "../esquema.js";
 import { notificar, tituloDeSolicitud } from "../notificaciones.js";
 import { enviarEmail, escaparHTML, emailConfigurado } from "../email.js";
 import { armarEmail } from "../avisosEmail.js";
 import { controlarLimite } from "../limites.js";
 import { verificarCredencialGoogle } from "../google.js";
 import { hayBloqueo, cuentaActiva, errorConEstado } from "../moderacion.js";
-import { olvidarEstadoCuenta } from "../auth.middleware.js";
+import { olvidarEstadoCuenta, JWT_SECRET } from "../auth.middleware.js";
 
-
-
-const JWT_SECRET = process.env.JWT_SECRET;
 
 async function cambiarContraseña(id, contraseñaVieja, contraseñaNueva) {
     const client = new Client(config);
@@ -319,7 +316,7 @@ async function verificarTelefono(id, codigo) {
  * Crea la cuenta. `extra` puede traer { email, telefono, googleCredential, ip }.
  * Con googleCredential (registro con Google) el email sale de Google y no hace falta contraseña.
  */
-const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, extra = {}, es_empresa) => {
+const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, extra = {}, es_empresa = false) => {
     let { email, telefono, googleCredential, ip } = extra;
     let fotoGoogle = null;
     if (googleCredential) {
@@ -345,9 +342,12 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
         }
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = foto_perfil ? await subirImagen(foto_perfil) : fotoGoogle;
+        // es_empresa solo se guarda si la columna está lista (la agrega asegurarCuentas)
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, es_empresa) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, nombre_completo, dni, foto_perfil",
-            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora, es_empresa]
+            `INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora${cuentasListas ? ", es_empresa" : ""})
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11${cuentasListas ? ", $12" : ""}) RETURNING id, nombre_completo, dni, foto_perfil`,
+            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora,
+                ...(cuentasListas ? [es_empresa === true] : [])]
         );
         const usuario = result.rows[0];
         let emailVerificado = null;
@@ -398,6 +398,8 @@ async function emitirSesion(client, dbUser) {
     if (dbUser.suspendido) {
         throw errorConEstado(`Tu cuenta está suspendida${dbUser.motivo_suspension ? ` (${dbUser.motivo_suspension})` : ""}. Si creés que es un error, escribinos.`, 403);
     }
+    // Sin JWT_SECRET (en producción) no se puede firmar la sesión: queda anotado en Errores
+    if (!JWT_SECRET) throw new Error("Falta la variable JWT_SECRET en el servidor: cargala en Vercel");
     const token = jwt.sign(
         { userid: dbUser.id, nombre_completo: dbUser.nombre_completo},
         JWT_SECRET,
@@ -715,7 +717,7 @@ const buscarTrabajadores = async(id, zonas)=>{
         await client.connect();
         const result = await client.query(`
             SELECT u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora,
-            ${cuentasListas ? "COALESCE(u.verificado, false) AS verificado," : ""}
+            ${cuentasListas ? `COALESCE(u.verificado, false) AS verificado, ${esEmpresa("u")} AS es_empresa,` : ""}
 
             ${servicios}
 
@@ -750,7 +752,7 @@ const buscarTrabajadores = async(id, zonas)=>{
 
         GROUP BY
             u.id, u.nombre_completo,  u.localidad, u.foto_perfil, u.puntuacion_trabajador, u.sobre_mi, u.disponibilidad, u.cobro_por_hora
-            ${cuentasListas ? ", u.verificado" : ""}
+            ${cuentasListas ? ", u.verificado, u.es_empresa" : ""}
         ;`, [Array.isArray(zonas) && zonas.length > 0 ? zonas : null, id])
         return result.rows
     }catch(error){
@@ -807,7 +809,8 @@ const miPerfil = async(id)=>{
             SELECT id, nombre_completo, foto_perfil, localidad, disponibilidad, cobro_por_hora, sobre_mi,
                 puntuacion_trabajador, puntuacion_contratador, direccion_calle, direccion_altura, codigo_postal
                 ${cuentasListas ? `, email, telefono, COALESCE(es_admin, false) AS es_admin, COALESCE(verificado, false) AS verificado, dni_estado,
-                    email_verificado, COALESCE(avisos_email, true) AS avisos_email, COALESCE(telefono_verificado, false) AS telefono_verificado` : ""}
+                    email_verificado, COALESCE(avisos_email, true) AS avisos_email, COALESCE(telefono_verificado, false) AS telefono_verificado,
+                    ${esEmpresa("usuarios")} AS es_empresa` : ""}
             FROM usuarios WHERE id = $1
         `, [id]);
         if(result.rowCount === 0){

@@ -20,6 +20,7 @@ import AdminRouter from "./routers/admin.router.js"
 import OfertasRouter from "./routers/ofertas.router.js"
 import ErroresRouter from "./routers/errores.router.js"
 import { registrarErrorRapido } from "./errores.js"
+import { EN_PRODUCCION } from "./entorno.js"
 
 
 
@@ -37,21 +38,21 @@ app.use(cors());
 
 // Los errores internos de la base (nombres de tablas/columnas, conexión, etc.) no se le
 // muestran a la gente: se guardan en el log y se responde un mensaje general.
-// A los administradores (usuarios.es_admin) sí se les agrega el detalle, para poder arreglarlo.
+// A los administradores (usuarios.es_admin) y en la compu de desarrollo sí se les agrega el detalle.
 // Todos los errores 500 se guardan (los ve el administrador en el panel y le llega un aviso por email).
-const ERROR_INTERNO = /column|relation|syntax error|malformed|value too long|violates|duplicate key|does not exist|invalid input|null value|operator does not exist|cannot cast|out of range|ECONN|ETIMEDOUT|ENOTFOUND|timeout|SSL|password authentication|too many clients|remaining connection|Connection terminated/i;
+const ERROR_INTERNO = /column|relation|syntax error|malformed|value too long|violates|duplicate key|does not exist|invalid input|null value|operator does not exist|cannot cast|out of range|ECONN|ETIMEDOUT|ENOTFOUND|timeout|SSL|password authentication|too many clients|remaining connection|Connection terminated|JWT_SECRET|secretOrPrivateKey/i;
 app.use((req, res, next) => {
     const json = res.json.bind(res);
     res.json = (cuerpo) => {
         if (res.statusCode >= 500 && cuerpo && typeof cuerpo.message === "string" && !res.errorAnotado) {
             res.errorAnotado = true;
             const original = cuerpo.message;
-
-            /*if (ERROR_INTERNO.test(original)) {
+            if (ERROR_INTERNO.test(original)) {
                 console.error(`Error interno en ${req.method} ${req.path}:`, original);
-                const detalle = req.esAdmin ? ` (Detalle para administradores: ${original})` : "";
+                // En la compu de desarrollo (no en Vercel) siempre se ve el detalle, para poder arreglarlo
+                const detalle = req.esAdmin || !EN_PRODUCCION ? ` (Detalle para administradores: ${original})` : "";
                 cuerpo = { ...cuerpo, message: `Hubo un problema en el servidor. Probá de nuevo en un rato.${detalle}` };
-            }*/
+            }
             // Se anota el error (sin demorar la respuesta más de un segundo y medio)
             const final = cuerpo;
             registrarErrorRapido({ origen: "servidor", ruta: req.originalUrl, metodo: req.method, mensaje: original, userid: req.id })

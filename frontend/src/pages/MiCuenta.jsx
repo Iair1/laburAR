@@ -22,6 +22,7 @@ const estilos = `
   .ayuda-tarjeta-cuenta { font-size: 0.74rem; color: #777; margin-bottom: 0.9rem; line-height: 1.45; }
   .perfil-cuenta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .nombre-cuenta { font-size: 1.15rem; font-weight: 800; color: #1a1a1a; }
+  .chip-empresa-cuenta { display: inline-block; margin-top: 4px; font-size: 0.7rem; font-weight: 700; color: #23376e; background: #eef1fb; border: 1px solid #d3dbf3; border-radius: 999px; padding: 2px 10px; }
   .puntajes-cuenta { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 0.76rem; color: #555; }
   .puntajes-cuenta span.rol { font-weight: 700; color: #3b1e0d; min-width: 108px; display: inline-block; }
   .etiqueta-cuenta { display: block; font-size: 0.78rem; font-weight: 600; color: #333; margin: 0.7rem 0 0.3rem; }
@@ -307,9 +308,9 @@ export default function MiCuenta() {
       const base64 = await comprimirFoto(archivo, 1600);
       const r = await subirFotoDni(base64);
       setPerfil((p) => ({ ...p, dni_estado: r?.dni_estado || "pendiente", verificado: false }));
-      marcar("dni", { ok: true, texto: "Recibimos tu DNI. Lo vamos a revisar." });
+      marcar("dni", { ok: true, texto: perfil?.es_empresa ? "Recibimos la constancia. La vamos a revisar." : "Recibimos tu DNI. Lo vamos a revisar." });
     } catch (err) {
-      if (!vencida(err)) marcar("dni", { ok: false, texto: err.message || "No se pudo subir el DNI." });
+      if (!vencida(err)) marcar("dni", { ok: false, texto: err.message || (perfil?.es_empresa ? "No se pudo subir la constancia." : "No se pudo subir el DNI.") });
     } finally {
       setSubiendoDni(false);
     }
@@ -414,6 +415,7 @@ export default function MiCuenta() {
                   <Avatar src={usuario.fotoPerfilURL} nombre={usuario.nombre} tamano={84} />
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div className="nombre-cuenta">{perfil.nombre_completo || usuario.nombre}</div>
+                    {perfil.es_empresa && <span className="chip-empresa-cuenta">Cuenta de empresa</span>}
                     <div className="puntajes-cuenta">
                       <div><span className="rol">Como trabajador:</span> <ResumenPuntaje promedio={resumenResenas?.comoTrabajador.promedio} cantidad={resumenResenas?.comoTrabajador.cantidad || 0} /></div>
                       <div><span className="rol">Como cliente:</span> <ResumenPuntaje promedio={resumenResenas?.comoCliente.promedio} cantidad={resumenResenas?.comoCliente.cantidad || 0} /></div>
@@ -501,14 +503,21 @@ export default function MiCuenta() {
                 </section>
               )}
 
-              <section className="tarjeta-cuenta" aria-label="Verificación de identidad" id="identidad">
-                <p className="titulo-tarjeta-cuenta">Verificación de identidad</p>
-                <p className="ayuda-tarjeta-cuenta">
-                  Subí una foto del frente de tu DNI. La revisamos y, si está todo bien, tu perfil muestra "Identidad verificada".
-                  La foto se guarda de forma privada: solo la ve el equipo de LaburAR.
-                </p>
+              <section className="tarjeta-cuenta" aria-label={perfil.es_empresa ? "Verificación de la empresa" : "Verificación de identidad"} id="identidad">
+                <p className="titulo-tarjeta-cuenta">{perfil.es_empresa ? "Verificación de la empresa" : "Verificación de identidad"}</p>
+                {perfil.es_empresa ? (
+                  <p className="ayuda-tarjeta-cuenta">
+                    Subí una foto de la constancia de CUIT de la empresa (o del DNI de la persona responsable). La revisamos y,
+                    si está todo bien, tu perfil muestra "Empresa verificada". Se guarda de forma privada: solo la ve el equipo de LaburAR.
+                  </p>
+                ) : (
+                  <p className="ayuda-tarjeta-cuenta">
+                    Subí una foto del frente de tu DNI. La revisamos y, si está todo bien, tu perfil muestra "Identidad verificada".
+                    La foto se guarda de forma privada: solo la ve el equipo de LaburAR.
+                  </p>
+                )}
                 {perfil.verificado ? (
-                  <span className="estado-dni verificado">✓ Identidad verificada</span>
+                  <span className="estado-dni verificado">{perfil.es_empresa ? "✓ Empresa verificada" : "✓ Identidad verificada"}</span>
                 ) : perfil.dni_estado === "pendiente" ? (
                   <span className="estado-dni pendiente">⏳ En revisión</span>
                 ) : perfil.dni_estado === "rechazado" ? (
@@ -521,7 +530,7 @@ export default function MiCuenta() {
                   <Aviso estado={estados.dni} />
                   {!perfil.verificado && (
                     <button className="boton-cuenta" onClick={() => elegirDni.current?.click()} disabled={subiendoDni}>
-                      {subiendoDni ? "Subiendo..." : perfil.dni_estado ? "Subir otra foto" : "Subir foto del DNI"}
+                      {subiendoDni ? "Subiendo..." : perfil.dni_estado ? "Subir otra foto" : perfil.es_empresa ? "Subir constancia" : "Subir foto del DNI"}
                     </button>
                   )}
                 </div>
@@ -561,10 +570,10 @@ export default function MiCuenta() {
                 </div>
               </section>
 
-              <section className="tarjeta-cuenta" aria-label="Sobre mí">
-                <p className="titulo-tarjeta-cuenta">Sobre mí</p>
+              <section className="tarjeta-cuenta" aria-label={perfil.es_empresa ? "Sobre la empresa" : "Sobre mí"}>
+                <p className="titulo-tarjeta-cuenta">{perfil.es_empresa ? "Sobre la empresa" : "Sobre mí"}</p>
                 <p className="ayuda-tarjeta-cuenta">Una presentación corta. Se ve en tu perfil si ofrecés servicios.</p>
-                <textarea className="textarea-cuenta" maxLength={600} value={sobreMi} onChange={(e) => { setSobreMi(e.target.value); marcar("sobreMi", null); }} placeholder="Ej: Soy plomero matriculado, trabajo en zona norte hace 10 años." aria-label="Sobre mí" />
+                <textarea className="textarea-cuenta" maxLength={600} value={sobreMi} onChange={(e) => { setSobreMi(e.target.value); marcar("sobreMi", null); }} placeholder={perfil.es_empresa ? "Ej: Somos una empresa de plomería con 15 años en zona norte y técnicos matriculados." : "Ej: Soy plomero matriculado, trabajo en zona norte hace 10 años."} aria-label={perfil.es_empresa ? "Sobre la empresa" : "Sobre mí"} />
                 <div className="acciones-cuenta">
                   <Aviso estado={estados.sobreMi} />
                   <button className="boton-cuenta" onClick={guardarSobreMi} disabled={guardando === "sobreMi"}>{guardando === "sobreMi" ? "Guardando..." : "Guardar"}</button>

@@ -13,6 +13,7 @@ const estilos = `
   }
   .dato-confianza.bien { background: #eef8ef; border-color: #cfe9d2; color: #1e5e22; }
   .dato-confianza.atencion { background: #fff6e5; border-color: #f3dcb0; color: #7a4b00; }
+  .dato-confianza.empresa { background: #eef1fb; border-color: #d3dbf3; color: #23376e; }
 `;
 
 /** "menos de 1 hora", "unas horas"... a partir de los minutos */
@@ -57,6 +58,7 @@ export default function ResumenConfianza({ userid, rol = "trabajador", compacto 
   const respuesta = textoRespuesta(datos.respuesta_minutos);
   const items = [];
 
+  if (datos.es_empresa) items.push({ clave: "empresa", tono: "empresa", texto: "Empresa" });
   items.push({
     clave: "trabajos",
     tono: trabajos > 0 ? "bien" : "",

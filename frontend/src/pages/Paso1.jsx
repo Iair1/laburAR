@@ -151,8 +151,37 @@ const estilos = `
     color: #2b2b2b;
     margin: 0 0 16px;
   }
-  .spanEsEmpresa{
-  font-size: 0.8Srem}
+  /* --- persona o empresa --- */
+  .tipo-cuenta-auth {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin: 0 0 14px;
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 10px;
+  }
+  .opcion-tipo-auth {
+    flex: 1;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #3a3a3a;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .opcion-tipo-auth:hover { background: rgba(255, 255, 255, 0.7); }
+  .opcion-tipo-auth.activa { background: #570101; color: #fff; }
+  .ayuda-tipo-auth {
+    font-size: 0.7rem;
+    color: #2b2b2b;
+    text-align: center;
+    line-height: 1.35;
+    margin: -6px 0 14px;
+  }
   .fila-dos-auth { display: flex; gap: 10px; }
   .fila-dos-auth > input, .fila-dos-auth > select { flex: 1; min-width: 0; }
 
@@ -307,10 +336,10 @@ export default function Paso1() {
       !nombre || !correo || !telefono ||
       !domicilioCalle || !domicilioAltura || !codigoPostal || !localidad;
     const faltaContrasena = !registradoConGoogle && (!contrasena || !revalidar);
-    const noDNI = ((!dni && esEmpresa === false) || (dni && esEmpresa === true))
-    if (faltanCampos || faltaContrasena || noDNI) {
+    // Las personas ponen su DNI; las empresas no llevan DNI
+    const faltaDni = !esEmpresa && !String(dni || "").trim();
+    if (faltanCampos || faltaContrasena || faltaDni) {
       setError("Por favor completá todos los campos");
-      console.log(esEmpresa)
       return;
     }
     if (!EMAIL_VALIDO.test(correo.trim())) {
@@ -345,7 +374,7 @@ export default function Paso1() {
         rol: "cliente",
         contrasena,
         archivo,
-        dni,
+        dni: esEmpresa ? "" : String(dni || "").trim(),
         domicilioCalle,
         domicilioAltura,
         codigoPostal,
@@ -402,6 +431,35 @@ export default function Paso1() {
             {registradoConGoogle ? "Completá el resto de tus datos" : GOOGLE_CLIENT_ID ? "O completá tus datos" : "Completá tus datos"}
           </p>
 
+          <div className="tipo-cuenta-auth" role="radiogroup" aria-label="Tipo de cuenta">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!esEmpresa}
+              className={`opcion-tipo-auth ${!esEmpresa ? "activa" : ""}`}
+              onClick={() => setEsEmpresa(false)}
+            >
+              Soy una persona
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={esEmpresa}
+              className={`opcion-tipo-auth ${esEmpresa ? "activa" : ""}`}
+              onClick={() => {
+                setEsEmpresa(true);
+                setDni("");
+              }}
+            >
+              Soy una empresa
+            </button>
+          </div>
+          {esEmpresa ? (
+            <p className="ayuda-tipo-auth">
+              Cuenta para una empresa de servicios: no lleva DNI. Después la podés verificar con la constancia de CUIT.
+            </p>
+          ) : null}
+
           <div className="contenedor-icono-foto" onClick={() => referenciaEntrada.current.click()}>
             {previewFoto ? (
               <img src={previewFoto} alt="Foto de perfil" className="previsualizacion-foto" />
@@ -427,12 +485,12 @@ export default function Paso1() {
               onChange={manejarArchivo}
             />
           </div>
-          <span className="texto-foto-ayuda">Subí tu foto de perfil</span>
+          <span className="texto-foto-ayuda">{esEmpresa ? "Subí el logo de la empresa" : "Subí tu foto de perfil"}</span>
 
           <input
             className="entrada-auth"
             type="text"
-            placeholder="NOMBRE COMPLETO"
+            placeholder={esEmpresa ? "NOMBRE DE LA EMPRESA" : "NOMBRE COMPLETO"}
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />
@@ -451,13 +509,16 @@ export default function Paso1() {
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
           />
-          <input
-            className="entrada-auth"
-            type="text"
-            placeholder="DNI (si es una cuenta de empresa dejar vacío)"
-            value={dni}
-            onChange={(e) => setDni(e.target.value)}
-          />
+          {!esEmpresa && (
+            <input
+              className="entrada-auth"
+              type="text"
+              inputMode="numeric"
+              placeholder="DNI"
+              value={dni}
+              onChange={(e) => setDni(e.target.value)}
+            />
+          )}
 
           <div className="fila-dos-auth">
             <input
@@ -512,15 +573,6 @@ export default function Paso1() {
                 value={revalidar}
                 onChange={(e) => setRevalidar(e.target.value)}
               />
-              
-              <label className="fila-terminos-auth">
-                <input
-                  type="checkbox"
-                  checked={esEmpresa}
-                  onChange={(e) => setEsEmpresa(e.target.checked)}
-                />
-                <span className="spanEsEmpresa">En caso de ser una cuenta perteneciente a una empresa de servicios, marca esta opcion</span>
-              </label>
             </>
           )}
 

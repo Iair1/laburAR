@@ -1,7 +1,7 @@
 import config from "../dbconfig.js";
 import { Client } from "../db.js";
 import {v2 as cloudinary} from "cloudinary";
-import { asegurarCuentas } from "../esquema.js";
+import { asegurarCuentas, esEmpresa } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
 import { olvidarEstadoCuenta } from "../auth.middleware.js";
 import { notificar } from "../notificaciones.js";
@@ -97,7 +97,7 @@ async function resolverDenuncia(id, estado, nota) {
 const COLUMNAS_USUARIO = `u.id, u.nombre_completo, u.foto_perfil, u.email, u.localidad,
     COALESCE(u.es_admin, false) AS es_admin, COALESCE(u.suspendido, false) AS suspendido, u.motivo_suspension,
     COALESCE(u.eliminado, false) AS eliminado, COALESCE(u.verificado, false) AS verificado, u.dni_estado,
-    u.puntuacion_trabajador, u.puntuacion_contratador, u.fecha_alta,
+    ${esEmpresa("u")} AS es_empresa, u.puntuacion_trabajador, u.puntuacion_contratador, u.fecha_alta,
     (SELECT count(*)::int FROM denuncias x WHERE x.denunciadoid = u.id) AS denuncias_recibidas,
     (SELECT count(*)::int FROM denuncias x WHERE x.denunciadoid = u.id AND x.estado = 'pendiente') AS denuncias_pendientes`;
 

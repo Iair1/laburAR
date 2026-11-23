@@ -483,6 +483,12 @@ const Iconos = {
       <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" />
     </svg>
   ),
+  empresa: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16" /><path d="M15 9h4a1 1 0 0 1 1 1v11" /><path d="M3 21h18" />
+      <path d="M8 8h3M8 12h3M8 16h3" />
+    </svg>
+  ),
   verificado: (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2l2.4 1.8 3-.2.9 2.9 2.5 1.7-1 2.8 1 2.8-2.5 1.7-.9 2.9-3-.2L12 22l-2.4-1.8-3 .2-.9-2.9-2.5-1.7 1-2.8-1-2.8 2.5-1.7.9-2.9 3 .2L12 2zm-1.2 13.6l5.6-5.6-1.4-1.4-4.2 4.2-2-2-1.4 1.4 3.4 3.4z" />
@@ -559,6 +565,7 @@ function mapearTrabajador(u) {
     trabajos: u.trabajos || [],
     etiquetaCategoria: aptitudes[0] || "Servicios generales",
     verificado: Boolean(u.verificado),
+    esEmpresa: u.es_empresa === true,
     servicios: mapearServicios(u, aptitudes),
   };
 }
@@ -1113,6 +1120,9 @@ function PaginaBusqueda() {
                   </div>
 
                   <ul className="lista-meta-tarjeta">
+                    {t.esEmpresa && (
+                      <li className="item-meta-tarjeta" title="Cuenta de una empresa de servicios">{Iconos.empresa}Empresa</li>
+                    )}
                     <li className="item-meta-tarjeta">
                       {Iconos.precio}
                       {t.precio != null
@@ -1124,7 +1134,9 @@ function PaginaBusqueda() {
                     )}
                     <li className="item-meta-tarjeta">{Iconos.ubicacion}{t.zona}, Arg.</li>
                     {t.verificado && (
-                      <li className="item-meta-tarjeta" title="Revisamos su DNI">{Iconos.verificado}Identidad verificada</li>
+                      <li className="item-meta-tarjeta" title={t.esEmpresa ? "Revisamos su documentación" : "Revisamos su DNI"}>
+                        {Iconos.verificado}{t.esEmpresa ? "Empresa verificada" : "Identidad verificada"}
+                      </li>
                     )}
                   </ul>
 

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { Client } from "../db.js";
 import { registrarError } from "../errores.js";
 import { controlarLimite, ipDe } from "../limites.js";
+import { JWT_SECRET } from "../auth.middleware.js";
 
 // Errores que reporta el navegador (montado en /api/errores). No hace falta estar logueado.
 const router = Router();
@@ -13,7 +14,7 @@ router.post("/navegador", async (req, res) => {
     let userid = null;
     try {
         const token = req.headers.authorization?.split(" ")[1];
-        if (token) userid = jwt.verify(token, process.env.JWT_SECRET || "dev_secret").userid ?? null;
+        if (token) userid = jwt.verify(token, JWT_SECRET).userid ?? null;
     } catch {
         userid = null;
     }

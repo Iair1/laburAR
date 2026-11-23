@@ -2,10 +2,20 @@ import jwt from "jsonwebtoken";
 import config from "./dbconfig.js";
 import { Client } from "./db.js";
 import { asegurarCuentas } from "./esquema.js";
+import { EN_PRODUCCION } from "./entorno.js";
 
+
+// Clave con la que se firman las sesiones. La misma para firmar (al iniciar sesión) y para revisar.
+// En producción no hay clave de prueba: sin JWT_SECRET nadie puede iniciar sesión, y nadie puede
+// inventarse una sesión firmándola con la clave de prueba. En la compu de desarrollo sí se usa.
+export const JWT_SECRET = process.env.JWT_SECRET || (EN_PRODUCCION ? null : "dev_secret");
 
 if (!process.env.JWT_SECRET) {
-    console.warn("⚠️  Falta la variable JWT_SECRET: se está usando una clave de prueba. Cargala en Vercel antes de salir al público.");
+    if (EN_PRODUCCION) {
+        console.error("❌ Falta la variable JWT_SECRET: nadie va a poder iniciar sesión hasta que la cargues en Vercel.");
+    } else {
+        console.warn("⚠️  Falta la variable JWT_SECRET: en esta compu se usa una clave de prueba. En Vercel es obligatoria.");
+    }
 }
 
 // Estado de cada cuenta (activa / suspendida / eliminada) y si es administradora.
@@ -53,7 +63,7 @@ const verifyToken = async (req, res, next) => {
         if (!token) {
             return res.status(401).json({ message: "Token no proporcionado" });
         }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev_secret");
+        const decoded = jwt.verify(token, JWT_SECRET);
         if(decoded === undefined || decoded.userid === undefined){
             return res.status(401).json({ message: "No se pudo verificar el token" });
         }

@@ -58,6 +58,10 @@ function Terminos() {
           que te mandamos. Podés verificar tu teléfono con un código por SMS.
         </li>
         <li>Una cuenta por persona. No podés usar la cuenta de otro ni hacerte pasar por otra persona.</li>
+        <li>
+          Las empresas de servicios pueden crear una cuenta de empresa (sin DNI). Quien la crea declara que representa a la
+          empresa y que sus datos son verdaderos.
+        </li>
         <li>Cuidá tu contraseña: lo que se haga desde tu cuenta es tu responsabilidad.</li>
         <li>Podés eliminar tu cuenta cuando quieras desde <Link to="/mi-cuenta">Mi cuenta</Link>.</li>
       </ul>
@@ -69,7 +73,10 @@ function Terminos() {
           Si la ley exige matrícula o habilitación para un trabajo (por ejemplo, gas o electricidad), tenés que tenerla
           vigente para ofrecerlo.
         </li>
-        <li>La insignia de "Identidad verificada" solo indica que revisamos tu DNI; no certifica tu trabajo.</li>
+        <li>
+          La insignia de "Identidad verificada" solo indica que revisamos tu DNI ("Empresa verificada", la constancia de
+          CUIT de la empresa); no certifica tu trabajo.
+        </li>
         <li>Cumplí las citas que agendás o avisá con tiempo si no podés ir.</li>
         <li>Mandá propuestas y presupuestos con precios reales: si el cliente acepta, se agenda la cita con ese precio.</li>
       </ul>
@@ -167,7 +174,7 @@ function Privacidad() {
       <h2>1. Qué datos guardamos</h2>
       <ul>
         <li><strong>De tu cuenta:</strong> nombre, email, teléfono, DNI, domicilio, zona, foto de perfil y contraseña (guardada cifrada).</li>
-        <li><strong>Si ofrecés servicios:</strong> tus servicios, precios, experiencia, especialidades y fotos de trabajos. La foto del DNI, si la subís para verificar tu identidad.</li>
+        <li><strong>Si ofrecés servicios:</strong> tus servicios, precios, experiencia, especialidades y fotos de trabajos. La foto del DNI, si la subís para verificar tu identidad (en las cuentas de empresa, la constancia de CUIT).</li>
         <li><strong>De lo que hacés en el sitio:</strong> problemas y solicitudes, propuestas y precios, citas y cancelaciones, mensajes, reseñas, bloqueos, denuncias y búsquedas.</li>
         <li><strong>Para la seguridad del sitio:</strong> la dirección IP desde la que te registrás y los errores técnicos que ocurren mientras lo usás, para frenar el spam y arreglar fallas.</li>
         <li><strong>Si entrás con Google:</strong> tu nombre, email y foto de Google.</li>

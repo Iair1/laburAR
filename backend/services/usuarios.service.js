@@ -319,7 +319,7 @@ async function verificarTelefono(id, codigo) {
  * Crea la cuenta. `extra` puede traer { email, telefono, googleCredential, ip }.
  * Con googleCredential (registro con Google) el email sale de Google y no hace falta contraseña.
  */
-const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, extra = {}) => {
+const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, extra = {}, es_empresa) => {
     let { email, telefono, googleCredential, ip } = extra;
     let fotoGoogle = null;
     if (googleCredential) {
@@ -346,8 +346,8 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
         const hasheada = await bcrypt.hash(contraseña, 11);
         const fpurl = foto_perfil ? await subirImagen(foto_perfil) : fotoGoogle;
         const result = await client.query(
-            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, nombre_completo, dni, foto_perfil",
-            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora]
+            "INSERT INTO usuarios (nombre_completo, contraseña, localidad, direccion_calle, direccion_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora, es_empresa) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, nombre_completo, dni, foto_perfil",
+            [nombre_completo, hasheada, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, fpurl, disponibilidad, sobre_mi, cobro_por_hora, es_empresa]
         );
         const usuario = result.rows[0];
         let emailVerificado = null;

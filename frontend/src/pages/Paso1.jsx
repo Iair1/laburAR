@@ -151,7 +151,8 @@ const estilos = `
     color: #2b2b2b;
     margin: 0 0 16px;
   }
-
+  .spanEsEmpresa{
+  font-size: 0.8Srem}
   .fila-dos-auth { display: flex; gap: 10px; }
   .fila-dos-auth > input, .fila-dos-auth > select { flex: 1; min-width: 0; }
 
@@ -171,6 +172,12 @@ const estilos = `
     font-family: inherit;
   }
   .select-auth { cursor: pointer; color: #4a4a4a; }
+  .select-auth > option{
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4a4a4a;
+    letter-spacing: 0.06em;
+  }
   .entrada-auth::placeholder { color: #8a8a8a; }
   .entrada-auth:focus, .select-auth:focus { border-color: #570101; }
 
@@ -234,6 +241,7 @@ export default function Paso1() {
     domicilioAltura, setDomicilioAltura,
     codigoPostal, setCodigoPostal,
     localidad, setLocalidad,
+    esEmpresa, setEsEmpresa,
     registradoConGoogle, setRegistradoConGoogle,
     credencialGoogle, setCredencialGoogle,
     limpiarDatos,
@@ -296,12 +304,13 @@ export default function Paso1() {
 
   const manejarRegistro = async () => {
     const faltanCampos =
-      !nombre || !correo || !telefono || !dni ||
+      !nombre || !correo || !telefono ||
       !domicilioCalle || !domicilioAltura || !codigoPostal || !localidad;
     const faltaContrasena = !registradoConGoogle && (!contrasena || !revalidar);
-
-    if (faltanCampos || faltaContrasena) {
+    const noDNI = ((!dni && esEmpresa === false) || (dni && esEmpresa === true))
+    if (faltanCampos || faltaContrasena || noDNI) {
       setError("Por favor completá todos los campos");
+      console.log(esEmpresa)
       return;
     }
     if (!EMAIL_VALIDO.test(correo.trim())) {
@@ -341,6 +350,7 @@ export default function Paso1() {
         domicilioAltura,
         codigoPostal,
         localidad,
+        esEmpresa,
       };
 
       await registrarUsuario(datosCompletos);
@@ -444,7 +454,7 @@ export default function Paso1() {
           <input
             className="entrada-auth"
             type="text"
-            placeholder="DNI"
+            placeholder="DNI (si es una cuenta de empresa dejar vacío)"
             value={dni}
             onChange={(e) => setDni(e.target.value)}
           />
@@ -502,6 +512,15 @@ export default function Paso1() {
                 value={revalidar}
                 onChange={(e) => setRevalidar(e.target.value)}
               />
+              
+              <label className="fila-terminos-auth">
+                <input
+                  type="checkbox"
+                  checked={esEmpresa}
+                  onChange={(e) => setEsEmpresa(e.target.checked)}
+                />
+                <span className="spanEsEmpresa">En caso de ser una cuenta perteneciente a una empresa de servicios, marca esta opcion</span>
+              </label>
             </>
           )}
 

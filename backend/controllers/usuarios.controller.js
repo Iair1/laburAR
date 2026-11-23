@@ -108,17 +108,30 @@ const cambiarDato = async(req, res)=>{
 
 const crearCuenta = async (req, res) => {
     try{
+        console.log("crenado cuenta")
         const { nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad, sobre_mi, cobro_por_hora,
-            email, correo, telefono, google_credential } = req.body;
+            email, correo, telefono, google_credential, es_empresa } = req.body;
         // Con Google no hace falta contraseña (el email lo da Google)
-        if (!nombre_completo || (!contraseña && !google_credential) || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal || !dni) {
+        if (!nombre_completo || (!contraseña && !google_credential) || !localidad || !domicilio_calle || !domicilio_altura || !codigo_postal) {
             return res.status(400).json({ message: "Debe completar todos los campos" });
         }
+        let esempresa = es_empresa
+        if(!es_empresa){
+            esempresa = false
+        }
+        let dniamandar = null
+        if(dni != ""){
+            dniamandar = dni
+        }
+        if((!dni && es_empresa === false) || (dni && es_empresa === true)){
+            return res.status(400).json({message: "Debe completar el DNI obligatoriamente si no es una empresa, si es una, no lo complete."})
+        }
+    
         if (contraseña && !google_credential && String(contraseña).length < 6) {
             return res.status(400).json({ message: "La contraseña tiene que tener al menos 6 caracteres" });
         }
-        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dni, foto_perfil, disponibilidad,
-            undefined, undefined, { email: email || correo, telefono, googleCredential: google_credential, ip: ipDe(req) });
+        const usuario = await UsuariosService.crearCuenta(nombre_completo, contraseña, localidad, domicilio_calle, domicilio_altura, codigo_postal, dniamandar, foto_perfil, disponibilidad,
+            undefined, undefined, { email: email || correo, telefono, googleCredential: google_credential, ip: ipDe(req) }, esempresa);
         res.status(201).json({ message: "Cuenta creada exitosamente", usuario });
     }
     catch(error){

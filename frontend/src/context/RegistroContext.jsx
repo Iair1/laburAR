@@ -15,6 +15,7 @@ export const RegistroProvider = ({ children }) => {
   const [domicilioCalle, setDomicilioCalle] = useState("");
   const [domicilioAltura, setDomicilioAltura] = useState("");
   const [codigoPostal, setCodigoPostal] = useState("");
+  const [esEmpresa, setEsEmpresa] = useState(false);
   // Requerido por el backend en crearCuenta
   const [localidad, setLocalidad] = useState("");
 
@@ -35,6 +36,7 @@ export const RegistroProvider = ({ children }) => {
     setDomicilioCalle("");
     setDomicilioAltura("");
     setCodigoPostal("");
+    setEsEmpresa(false);
     setLocalidad("");
     setRegistradoConGoogle(false);
     setCredencialGoogle("");
@@ -51,6 +53,7 @@ export const RegistroProvider = ({ children }) => {
     domicilioCalle, setDomicilioCalle,
     domicilioAltura, setDomicilioAltura,
     codigoPostal, setCodigoPostal,
+    esEmpresa, setEsEmpresa,
     credencialGoogle, setCredencialGoogle,
     localidad, setLocalidad,
     registradoConGoogle, setRegistradoConGoogle,

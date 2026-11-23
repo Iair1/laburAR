@@ -106,6 +106,7 @@ export const registrarUsuario = async (datosUsuario) => {
       tipo_trabajo: datosUsuario.tipoTrabajo,
       cobro_por_hora: datosUsuario.cobroPorHora,
       tiene_matricula: datosUsuario.tieneMatricula,
+      es_empresa: datosUsuario.esEmpresa === true,
       foto_perfil: fotoBase64,
       foto_dni: fotoDniBase64,
       foto_aptitud: fotoAptitudBase64,

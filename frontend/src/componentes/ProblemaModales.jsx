@@ -1,3 +1,4 @@
+import { nombreCorto, nombreCortoDe } from "../nombres";
 import { useState } from "react";
 import Avatar from "./Avatar";
 import { ResenasModal } from "./Resenas";
@@ -83,7 +84,7 @@ export function DetalleProblemaModal({ problema, onCerrar, onAgendar, onCancelar
             Ver reseñas
           </button>
           <MenuModeracion
-            usuario={{ id: problema.cliente.id, nombre: problema.cliente.nombre }}
+            usuario={{ id: problema.cliente.id, nombre: problema.cliente.nombre, esEmpresa: problema.cliente.esEmpresa }}
             que="publicacion"
             solicitudid={problema.id}
             etiqueta="Denunciar o bloquear"
@@ -266,7 +267,7 @@ function ElegirDiaHoraModal({ titulo, subtitulo, detalle, fechas, horas, horaIni
 
 export function AgendarCitaModal({ problema, onCerrar, onConfirmar }) {
   const franja = FRANJAS[problema.franja];
-  const nombreCliente = problema.cliente?.nombre?.split(" ")[0] || "el cliente";
+  const nombreCliente = nombreCortoDe(problema.cliente, "el cliente");
   return (
     <ElegirDiaHoraModal
       titulo="Agendar cita"
@@ -290,7 +291,7 @@ export function AgendarCitaModal({ problema, onCerrar, onConfirmar }) {
 
 export function AceptarSolicitudModal({ solicitud, onCerrar, onConfirmar }) {
   const preferida = horaPreferida(solicitud.solicitud);
-  const nombreCliente = solicitud.nombre_completo?.split(" ")[0] || "el cliente";
+  const nombreCliente = nombreCorto(solicitud.nombre_completo, solicitud.es_empresa === true, "el cliente");
   return (
     <ElegirDiaHoraModal
       titulo="Aceptar solicitud"

@@ -502,6 +502,16 @@ const SENTENCIAS_CUENTAS_OPCIONALES = [
  */
 export const esEmpresa = (alias) => `COALESCE(${alias}.es_empresa::text IN ('true', 't'), false)`;
 
+/**
+ * La columna "es empresa" lista para un SELECT (`... AS es_empresa`). Si la base todavía no
+ * tiene la columna, devuelve false para todos, así la consulta nunca falla.
+ * @param {string} alias nombre o alias de la tabla usuarios en la consulta
+ * @param {string} [nombre] cómo se llama la columna en el resultado
+ */
+export async function columnaEmpresa(alias, nombre = "es_empresa") {
+    return `${(await asegurarCuentas()) ? esEmpresa(alias) : "false"} AS ${nombre}`;
+}
+
 let promesaCuentas = null;
 
 /**

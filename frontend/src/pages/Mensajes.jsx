@@ -1,3 +1,4 @@
+import { nombreCorto, nombreCortoDe } from "../nombres";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
@@ -647,7 +648,7 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
         )}
         {otro && (
           <MenuModeracion
-            usuario={{ id: otro.id, nombre: otro.nombre }}
+            usuario={{ id: otro.id, nombre: otro.nombre, esEmpresa: otro.esEmpresa }}
             bloqueado={datos?.yoBloquee}
             solicitudid={citaActiva?.id}
             onCambioBloqueo={recargarPermisos}
@@ -681,7 +682,7 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
           <p className="bienvenida-chat">{error}</p>
         ) : mensajes.length === 0 ? (
           <p className="bienvenida-chat">
-            Todavía no se escribieron. <strong>Mandale un mensaje a {otro?.nombre?.split(" ")[0]}</strong> para coordinar
+            Todavía no se escribieron. <strong>Mandale un mensaje a {nombreCortoDe(otro)}</strong> para coordinar
             la dirección, el horario o pedirle una foto del problema.
           </p>
         ) : (
@@ -759,7 +760,7 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
           <p className="aviso-redactar">
             {datos.yoBloquee ? (
               <>
-                Bloqueaste a {otro?.nombre?.split(" ")[0] || "esta persona"}: no se pueden escribir.{" "}
+                Bloqueaste a {nombreCortoDe(otro, "esta persona")}: no se pueden escribir.{" "}
                 <MenuDesbloquear otro={otro} onListo={recargarPermisos} />
               </>
             ) : datos.bloqueado ? (
@@ -829,7 +830,7 @@ function PanelChat({ otroId, onVolver, onSesionVencida, onActividad }) {
       )}
       {denunciandoMensaje && otro && (
         <DenunciarModal
-          usuario={{ id: otro.id, nombre: otro.nombre }}
+          usuario={{ id: otro.id, nombre: otro.nombre, esEmpresa: otro.esEmpresa }}
           que="mensaje"
           mensajeid={denunciandoMensaje.id}
           solicitudid={citaActiva?.id}
@@ -914,7 +915,7 @@ export default function Mensajes() {
   const chatsVisibles = useMemo(() => chats.filter((c) => !q || normalizarTexto(c.nombre).includes(q)), [chats, q]);
   const idsConChat = new Set(chats.map((c) => c.id));
   const contactosNuevos = contactos.filter((c) => !idsConChat.has(c.id) && (!q || normalizarTexto(c.nombre).includes(q)));
-  const primerNombre = (usuario?.nombre || "").split(" ")[0];
+  const primerNombre = nombreCorto(usuario?.nombre, usuario?.esEmpresa);
 
   if (!usuario) return null;
 

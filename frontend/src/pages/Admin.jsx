@@ -325,7 +325,7 @@ function PestanaDenuncias({ onVerUsuario, onCambio, version }) {
       {resolviendo && (
         <PedirTextoModal
           titulo={resolviendo.estado === "resuelta" ? "Marcar como resuelta" : "Descartar la denuncia"}
-          ayuda={resolviendo.estado === "resuelta" ? "Anotá qué se hizo (ej: se suspendió la cuenta, se habló con la persona)." : "Anotá por qué no corresponde."}
+          ayuda={`${resolviendo.estado === "resuelta" ? "Anotá qué se hizo (ej: se suspendió la cuenta, se habló con la persona)." : "Anotá por qué no corresponde."} Le avisamos a quien hizo la denuncia y le mostramos esta nota.`}
           textoBoton={resolviendo.estado === "resuelta" ? "Resolver" : "Descartar"}
           onConfirmar={async (nota) => {
             await admin.resolverDenuncia(resolviendo.denuncia.id, resolviendo.estado, nota);

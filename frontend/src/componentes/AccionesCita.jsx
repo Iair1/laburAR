@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DejarResenaModal, ResenasModal } from "./Resenas";
@@ -51,7 +52,7 @@ export default function AccionesCita({ otro, solicitudid, dia, estado, pendiente
   const [viendoResenas, setViendoResenas] = useState(false);
   const [reclamando, setReclamando] = useState(false);
   if (!otro?.id) return null;
-  const nombre = otro.nombre?.split(" ")[0] || "la otra persona";
+  const nombre = nombreCortoDe(otro, "la otra persona");
   const puedeTerminar = estado === "pendiente" && dia && dia <= hoyStr();
   // Desde el día de la cita (o si ya terminó) se puede reportar un problema con el trabajo
   const puedeReclamar = estado === "terminada" || (dia && dia <= hoyStr() && estado !== "cancelado");

@@ -37,6 +37,7 @@ export async function obtenerMisChats() {
   return (resultado.result || []).map((c) => ({
     id: c.id,
     nombre: c.nombre_completo,
+    esEmpresa: c.es_empresa === true,
     foto: c.foto_perfil || null,
     ultimoId: c.ultimo_id,
     ultimoTexto: c.ultimo_mensaje || "",
@@ -53,6 +54,7 @@ export async function obtenerContactos() {
   return (resultado.result || []).map((c) => ({
     id: c.id,
     nombre: c.nombre_completo,
+    esEmpresa: c.es_empresa === true,
     foto: c.foto_perfil || null,
     cita: aCita(c),
   }));
@@ -71,6 +73,7 @@ export async function obtenerChat(otroid, despuesDe) {
       ? {
           id: resultado.otro.id,
           nombre: resultado.otro.nombre_completo,
+          esEmpresa: resultado.otro.es_empresa === true,
           foto: resultado.otro.foto_perfil || null,
           zona: resultado.otro.localidad || "",
           puntuacionTrabajador: resultado.otro.puntuacion_trabajador,

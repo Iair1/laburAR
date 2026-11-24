@@ -264,7 +264,7 @@ export default function PerfilTrabajadorModal({ trabajador, onCerrar, onAgendar,
           <button className="cerrar-modal-perfil" onClick={onCerrar} aria-label="Cerrar">✕</button>
           <div className="moderacion-perfil">
             <MenuModeracion
-              usuario={{ id: trabajador.id, nombre: trabajador.nombre }}
+              usuario={{ id: trabajador.id, nombre: trabajador.nombre, esEmpresa: trabajador.esEmpresa }}
               onCambioBloqueo={(bloqueado) => {
                 if (!bloqueado) return;
                 onBloqueado?.(trabajador.id);

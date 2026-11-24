@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Avatar from "./Avatar";
@@ -277,7 +278,7 @@ export function DejarResenaModal({ pendiente, onCerrar, onListo }) {
   const [enviando, setEnviando] = useState(false);
   const [lista, setLista] = useState(false);
   const navegar = useNavigate();
-  const nombre = pendiente.otro?.nombre?.split(" ")[0] || "esta persona";
+  const nombre = nombreCortoDe(pendiente.otro, "esta persona");
   const soyCliente = pendiente.miRol === "contratador";
 
   useEffect(() => {
@@ -508,7 +509,7 @@ export function AvisoResenasPendientes() {
           <div className="fila-aviso-resena">
             <Avatar src={actual.otro.foto} nombre={actual.otro.nombre} tamano={42} />
             <div className="texto-aviso-resena">
-              <strong>¿Cómo te fue con {actual.otro.nombre?.split(" ")[0]}?</strong>
+              <strong>¿Cómo te fue con {nombreCortoDe(actual.otro)}?</strong>
               <span>
                 Terminó {actual.aptitud ? `el trabajo de ${actual.aptitud}` : "el trabajo"}. Dejale una reseña: ayuda a todos a elegir mejor.
               </span>

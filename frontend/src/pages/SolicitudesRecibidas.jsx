@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
@@ -211,7 +212,7 @@ export default function SolicitudesRecibidas() {
     return {
       id: s.id,
       titulo: texto.titulo || (texto.descripcion || "").slice(0, 60) || "Pedido",
-      cliente: { id: s.contratadorid, nombre: s.nombre_completo },
+      cliente: { id: s.contratadorid, nombre: s.nombre_completo, esEmpresa: s.es_empresa === true },
       categoria: s.aptitud || "",
       franja: texto.franja,
       periodo: s.periodo,
@@ -224,7 +225,7 @@ export default function SolicitudesRecibidas() {
     const s = presupuestando;
     await mandarPropuesta({ solicitudid: s.id, ...datos });
     setPresupuestando(null);
-    mostrarToast(`Le mandaste tu presupuesto de ${formatearPesos(datos.precio)} a ${s.cliente.nombre?.split(" ")[0] || "el cliente"}. Te avisamos cuando responda.`);
+    mostrarToast(`Le mandaste tu presupuesto de ${formatearPesos(datos.precio)} a ${nombreCortoDe(s.cliente, "el cliente")}. Te avisamos cuando responda.`);
     await cargarSolicitudes();
   };
 
@@ -295,7 +296,7 @@ export default function SolicitudesRecibidas() {
                       )}
                       <span style={{ marginLeft: "auto" }}>
                         <MenuModeracion
-                          usuario={{ id: s.contratadorid, nombre: s.nombre_completo }}
+                          usuario={{ id: s.contratadorid, nombre: s.nombre_completo, esEmpresa: s.es_empresa === true }}
                           que="publicacion"
                           solicitudid={s.id}
                           etiqueta="Denunciar o bloquear"
@@ -321,7 +322,7 @@ export default function SolicitudesRecibidas() {
                       {s.aptitud_especifica && <span className="chip-meta-solicitud">{s.aptitud_especifica}</span>}
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
                     </div>
-                    <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
+                    <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo, esEmpresa: s.es_empresa === true }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
                     {propuestaDe(s.id) && (
                       <div style={{ margin: "10px 0" }}>
                         <TarjetaOferta
@@ -381,7 +382,7 @@ export default function SolicitudesRecibidas() {
             textoBoton="Enviar presupuesto"
             horas={horasEntre("07:00", "21:00")}
             horaInicial={presupuestando.horaPreferida || ""}
-            ayudaHora={presupuestando.horaPreferida ? `${presupuestando.cliente.nombre?.split(" ")[0]} prefiere a las ${presupuestando.horaPreferida} hs` : ""}
+            ayudaHora={presupuestando.horaPreferida ? `${nombreCortoDe(presupuestando.cliente)} prefiere a las ${presupuestando.horaPreferida} hs` : ""}
             onCerrar={() => setPresupuestando(null)}
             onConfirmar={confirmarPresupuesto}
           />

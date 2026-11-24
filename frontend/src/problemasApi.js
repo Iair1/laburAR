@@ -69,6 +69,7 @@ export function aProblema(fila) {
           nombre: fila.nombre_completo,
           foto: fila.foto_perfil || null,
           puntuacion: fila.puntuacion_contratador,
+          esEmpresa: fila.es_empresa === true,
         }
       : null,
     // misProblemas trae los del trabajador que agendó
@@ -78,6 +79,7 @@ export function aProblema(fila) {
           nombre: fila.trabajador_nombre,
           foto: fila.trabajador_foto || null,
           puntuacion: fila.puntuacion_trabajador,
+          esEmpresa: fila.trabajador_es_empresa === true,
         }
       : null,
   };

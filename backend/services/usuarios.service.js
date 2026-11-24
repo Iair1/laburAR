@@ -95,7 +95,7 @@ async function cambiarDato(id, inf) {
         );
         const emailNuevo = inf.find((item) => item.dato === "email");
         if (emailNuevo && emailConfigurado()) {
-            const actual = await client.query("SELECT id, email, nombre_completo FROM usuarios WHERE id = $1", [id]);
+            const actual = await client.query(`SELECT id, email, nombre_completo, ${esEmpresa("usuarios")} AS es_empresa FROM usuarios WHERE id = $1`, [id]);
             await mandarLinkVerificacion(client, actual.rows[0]);
         }
         return result.rows[0];
@@ -150,7 +150,11 @@ function limpiarTelefono(telefono) {
 /* ------------------------------------------------------------------ */
 
 const hashToken = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
-const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "";
+// Para saludar: el nombre de pila de una persona o el nombre entero de una empresa
+const nombreParaSaludar = (usuario) => {
+    const nombre = String(usuario?.nombre_completo || "").trim();
+    return usuario?.es_empresa === true ? nombre : nombre.split(/\s+/)[0] || "";
+};
 
 // Manda el link para confirmar el email. Devuelve false si el envío de emails no está configurado.
 async function mandarLinkVerificacion(client, usuario) {
@@ -161,7 +165,7 @@ async function mandarLinkVerificacion(client, usuario) {
         "INSERT INTO verificaciones_email (userid, email, token, vence) VALUES ($1, $2, $3, now() + interval '48 hours')",
         [usuario.id, usuario.email, hashToken(token)]);
     const { texto, html } = armarEmail({
-        saludo: usuario.nombre_completo ? `Hola, ${primerNombre(usuario.nombre_completo)}` : "",
+        saludo: usuario.nombre_completo ? `Hola, ${nombreParaSaludar(usuario)}` : "",
         titulo: "Confirmá tu email",
         detalle: "Tocá el botón para confirmar que este email es tuyo. Así podés publicar problemas, mandar propuestas y mensajes, y recibir los avisos.\nEl link vence en 48 horas.",
         boton: "Confirmar mi email",
@@ -207,7 +211,7 @@ async function reenviarVerificacion(id) {
     const client = new Client(config);
     try {
         await client.connect();
-        const result = await client.query("SELECT id, email, email_verificado, nombre_completo FROM usuarios WHERE id = $1", [id]);
+        const result = await client.query(`SELECT id, email, email_verificado, nombre_completo, ${esEmpresa("usuarios")} AS es_empresa FROM usuarios WHERE id = $1`, [id]);
         const usuario = result.rows[0];
         if (!usuario?.email) throw errorConEstado("Primero cargá tu email en Mi cuenta.", 400);
         if (usuario.email_verificado === true) throw errorConEstado("Tu email ya está confirmado.", 400);
@@ -358,7 +362,7 @@ const crearCuenta = async (nombre_completo, contraseña, localidad, domicilio_ca
             await client.query("UPDATE usuarios SET email = $2, telefono = $3, email_verificado = $4 WHERE id = $1",
                 [usuario.id, email || null, limpiarTelefono(telefono), emailVerificado]);
             if (emailVerificado === false) {
-                await mandarLinkVerificacion(client, { id: usuario.id, email, nombre_completo });
+                await mandarLinkVerificacion(client, { id: usuario.id, email, nombre_completo, es_empresa: es_empresa === true });
             }
         }
         return { ...usuario, email: email || null, email_verificado: emailVerificado };
@@ -414,6 +418,7 @@ async function emitirSesion(client, dbUser) {
         email: dbUser.email || null,
         es_admin: dbUser.es_admin === true,
         email_verificado: typeof dbUser.email_verificado === "boolean" ? dbUser.email_verificado : null,
+        es_empresa: ["true", "t"].includes(String(dbUser.es_empresa)),
     };
     return {token, notificaciones, usuario};
 }
@@ -508,7 +513,8 @@ const recuperarContraseña = async (email) => {
     try {
         await client.connect();
         const result = await client.query(
-            "SELECT id, nombre_completo FROM usuarios WHERE lower(email) = $1 AND eliminado IS NOT TRUE ORDER BY id LIMIT 1", [limpio]);
+            `SELECT id, nombre_completo, ${esEmpresa("usuarios")} AS es_empresa FROM usuarios
+             WHERE lower(email) = $1 AND eliminado IS NOT TRUE ORDER BY id LIMIT 1`, [limpio]);
         const usuario = result.rows[0];
         if (!usuario) return;
         // Como mucho 3 códigos por hora
@@ -519,7 +525,7 @@ const recuperarContraseña = async (email) => {
         const hasheado = await bcrypt.hash(codigo, 8);
         await client.query(
             "INSERT INTO recuperaciones (userid, codigo, vence) VALUES ($1, $2, now() + interval '15 minutes')", [usuario.id, hasheado]);
-        const nombre = String(usuario.nombre_completo || "").split(" ")[0];
+        const nombre = nombreParaSaludar(usuario);
         await enviarEmail({
             para: limpio,
             asunto: `${codigo} es tu código para recuperar la contraseña de LaburAR`,

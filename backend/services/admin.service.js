@@ -4,7 +4,7 @@ import {v2 as cloudinary} from "cloudinary";
 import { asegurarCuentas, esEmpresa } from "../esquema.js";
 import { errorConEstado } from "../moderacion.js";
 import { olvidarEstadoCuenta } from "../auth.middleware.js";
-import { notificar } from "../notificaciones.js";
+import { notificar, nombreDe } from "../notificaciones.js";
 
 
 // Abre una conexión, corre la función y la cierra siempre
@@ -90,11 +90,19 @@ async function resolverDenuncia(id, estado, nota) {
             UPDATE denuncias SET estado = $2, nota_admin = $3, fecha_resuelta = now()
             WHERE id = $1 RETURNING *`, [id, estado, String(nota ?? "").trim().slice(0, 1000) || null]);
         if (result.rowCount === 0) throw errorConEstado("Denuncia no encontrada", 404);
-        const notificacion = await client.query(`INSERT INTO notificaciones
-        (tipo, userid, contenido) 
-        VALUES ('Denuncia atendida', $1, $2)`,
-    [result.rows[0].denuncianteid, `Su denuncia contra ${result.rows[0].denunciadoid} ha sido ${result.rows[0].estado} por un administrador. Mensaje: ${String(nota ?? "").trim().slice(0, 1000)}`])
-        return result.rows[0];
+        // Le avisamos a quien hizo la denuncia (si el aviso falla, la denuncia queda resuelta igual)
+        const denuncia = result.rows[0];
+        const denunciado = await nombreDe(client, denuncia.denunciadoid, "otra cuenta");
+        await notificar(client, {
+            userid: denuncia.denuncianteid,
+            tipo: "denuncia-atendida",
+            titulo: estado === "resuelta" ? "Revisamos tu denuncia y tomamos medidas" : "Revisamos tu denuncia",
+            contenido: [
+                `Tu denuncia contra ${denunciado} fue ${estado} por un administrador.`,
+                denuncia.nota_admin ? `Mensaje: ${denuncia.nota_admin}` : "",
+            ].filter(Boolean).join(" "),
+        });
+        return denuncia;
     });
 }
 

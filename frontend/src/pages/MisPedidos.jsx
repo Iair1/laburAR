@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
@@ -71,6 +72,7 @@ function aPedido(fila) {
       nombre: fila.nombre_completo,
       foto: fila.foto_perfil || null,
       puntuacion: fila.puntuacion_trabajador != null ? Number(fila.puntuacion_trabajador) : null,
+      esEmpresa: fila.es_empresa === true,
     },
   };
 }
@@ -175,7 +177,7 @@ export default function MisPedidos() {
       throw err;
     }
     setRespondiendo(null);
-    mostrarToast(`¡Listo! Cita agendada con ${oferta.trabajador?.nombre?.split(" ")[0] || "el trabajador"}: ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
+    mostrarToast(`¡Listo! Cita agendada con ${nombreCortoDe(oferta.trabajador, "el trabajador")}: ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
     await cargar();
   };
   const confirmarContraoferta = async (oferta, precio, mensaje) => {
@@ -300,7 +302,7 @@ export default function MisPedidos() {
             </div>
           ) : (
             <div className="caja-estado-pedido esperando">
-              Esperando que {p.trabajador.nombre?.split(" ")[0]} te mande su presupuesto (día, hora y precio).
+              Esperando que {nombreCortoDe(p.trabajador)} te mande su presupuesto (día, hora y precio).
               <AccionesCita otro={p.trabajador} solicitudid={p.id} estado={p.estado} rolOtro="trabajador" />
             </div>
           )

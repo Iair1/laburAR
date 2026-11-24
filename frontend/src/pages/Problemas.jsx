@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
@@ -304,7 +305,7 @@ export default function Problemas() {
       throw err;
     }
     setProblemaAgendando(null);
-    mostrarToast(`¡Listo! Le mandaste tu propuesta de ${formatearPesos(datos.precio)} a ${problema.cliente?.nombre?.split(" ")[0] || "quien lo publicó"}. Te avisamos cuando responda.`);
+    mostrarToast(`¡Listo! Le mandaste tu propuesta de ${formatearPesos(datos.precio)} a ${nombreCortoDe(problema.cliente, "quien lo publicó")}. Te avisamos cuando responda.`);
     await cargar();
     cambiarVista("propuestas");
   };
@@ -317,7 +318,7 @@ export default function Problemas() {
       throw err;
     }
     setRespondiendo(null);
-    mostrarToast(`¡Cita agendada! ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}. Le avisamos a ${oferta.cliente?.nombre?.split(" ")[0] || "el cliente"}.`);
+    mostrarToast(`¡Cita agendada! ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}. Le avisamos a ${nombreCortoDe(oferta.cliente, "el cliente")}.`);
     await cargar();
     cambiarVista("citas");
   };

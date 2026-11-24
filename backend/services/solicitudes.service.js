@@ -1,9 +1,9 @@
 import config from "../dbconfig.js";
 import { Client, HOY } from "../db.js";
-import { asegurarCuentas, asegurarOfertas } from "../esquema.js";
+import { asegurarCuentas, asegurarOfertas, columnaEmpresa } from "../esquema.js";
 import { hayBloqueo, cuentaActiva, verificarQuePuedenInteractuar, errorConEstado, exigirEmailVerificado } from "../moderacion.js";
 import { controlarLimite } from "../limites.js";
-import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia } from "../notificaciones.js";
+import { notificar, nombreCorto, nombreCortoDe, tituloDeSolicitud, textoDia } from "../notificaciones.js";
 import { cerrarOfertasDelProblema } from "./ofertas.service.js";
 
 
@@ -83,11 +83,11 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
         );
         // Un pedido directo a un trabajador: le llega el aviso
         if(trabajadorid) {
-            const cliente = await nombreDe(client, id);
+            const cliente = await nombreCortoDe(client, id);
             await notificar(client, {
                 userid: Number(trabajadorid),
                 tipo: "solicitud-nueva",
-                titulo: `${primerNombre(cliente)} te mandó una solicitud`,
+                titulo: `${cliente} te mandó una solicitud`,
                 contenido: `«${tituloDeSolicitud(solicitud)}»${aptitud ? ` · ${aptitud}` : ""}`,
                 enlace: "/solicitudes-recibidas",
                 otroid: Number(id),
@@ -104,12 +104,13 @@ async function subirSolicitud(id, localidad, solicitud, periodo, aptitudid, apti
 }
 
 async function misProblemas(id) {
+    const empresa = await columnaEmpresa("ut", "trabajador_es_empresa");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
             SELECT s.*, a.aptitud,
-                ut.nombre_completo AS trabajador_nombre, ut.foto_perfil AS trabajador_foto, ut.puntuacion_trabajador
+                ut.nombre_completo AS trabajador_nombre, ut.foto_perfil AS trabajador_foto, ut.puntuacion_trabajador, ${empresa}
             FROM solicitudes s
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
             LEFT JOIN usuarios ut ON ut.id = s.trabajadorid
@@ -126,11 +127,12 @@ async function misProblemas(id) {
 }
 
 async function misSolicitudes(id) {
+    const empresa = await columnaEmpresa("u");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud, ${empresa}
             FROM solicitudes s
             INNER JOIN usuarios u ON u.id = s.trabajadorid
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
@@ -147,11 +149,12 @@ async function misSolicitudes(id) {
 }
 
 async function trabajosPendientes(id) {
+    const empresa = await columnaEmpresa("u");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, ${empresa}
             FROM solicitudes s
             INNER JOIN usuarios u ON u.id = s.contratadorid
             WHERE s.trabajadorid = $1 AND s.estado = 'pendiente'
@@ -167,11 +170,12 @@ async function trabajosPendientes(id) {
 }
 
 async function serviciosPendientes(id) {
+    const empresa = await columnaEmpresa("u");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
-            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud
+            SELECT s.*, u.nombre_completo, u.foto_perfil, u.puntuacion_contratador, u.puntuacion_trabajador, a.aptitud, ${empresa}
             FROM solicitudes s
             INNER JOIN usuarios u ON u.id = s.trabajadorid
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
@@ -189,12 +193,12 @@ async function serviciosPendientes(id) {
 
 async function busqueda(id) {
     const cuentasListas = await asegurarCuentas();
+    const empresa = await columnaEmpresa("uc");
     const client = new Client(config);
-    console.log(id);
     try {
         await client.connect();
         const sUtiles = await client.query(`
-            SELECT s.id, s.solicitud, s.periodo, s.diassemana, s.contratadorid, s.localidad, s.estado, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
+            SELECT s.id, s.solicitud, s.periodo, s.diassemana, s.contratadorid, s.localidad, s.estado, a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador, ${empresa},
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua
@@ -285,11 +289,11 @@ const aceptarSolicitud = async(id, solicitudid, dia, hora = null) => {
             throw new Error("La solicitud que desea aceptar no existe, no le pertenece a este usuario, o no coincide con las fechas propuestas por el usuario.-");
         }
         const s = result.rows[0];
-        const trabajador = await nombreDe(client, id, "El trabajador");
+        const trabajador = await nombreCortoDe(client, id, "El trabajador");
         const aviso = await notificar(client, {
             userid: s.contratadorid,
             tipo: "solicitud-aceptada",
-            titulo: `${primerNombre(trabajador)} aceptó tu solicitud`,
+            titulo: `${trabajador} aceptó tu solicitud`,
             contenido: `${dia ? `Cita: ${textoDia(dia, hora)} · ` : ""}«${tituloDeSolicitud(s.solicitud)}»`,
             enlace: "/mis-pedidos?vista=aceptados",
             otroid: Number(id),
@@ -314,11 +318,11 @@ const rechazarSolicitud = async(id, solicitudid) => {
         }
         await client.query("UPDATE ofertas SET estado = 'retirada', actualizada = now() WHERE solicitudid = $1 AND estado = 'pendiente'", [solicitudid])
             .catch(() => {});
-        const trabajador = await nombreDe(client, id, "El trabajador");
+        const trabajador = await nombreCortoDe(client, id, "El trabajador");
         const aviso = await notificar(client, {
             userid: result.rows[0].contratadorid,
             tipo: "solicitud-rechazada",
-            titulo: `${primerNombre(trabajador)} no puede tomar tu pedido`,
+            titulo: `${trabajador} no puede tomar tu pedido`,
             contenido: `«${tituloDeSolicitud(result.rows[0].solicitud)}» · Buscá otro trabajador`,
             enlace: "/buscar",
             otroid: Number(id),
@@ -335,6 +339,7 @@ const rechazarSolicitud = async(id, solicitudid) => {
 
 const cancelarTrabajo = async(id, solicitudid, motivo = null) => {
     const cuentasListas = await asegurarCuentas();
+    const empresa = await columnaEmpresa("u");
     const client = new Client(config);
     try {
         await client.connect();
@@ -344,7 +349,7 @@ const cancelarTrabajo = async(id, solicitudid, motivo = null) => {
             FROM usuarios u
             WHERE (s.contratadorid = $1 OR s.trabajadorid = $1) AND s.id = $2 AND s.estado = 'pendiente'
             AND u.id = CASE WHEN s.contratadorid = $1 THEN s.contratadorid ELSE s.trabajadorid END
-            RETURNING s.*, u.nombre_completo`, [id, solicitudid]);
+            RETURNING s.*, u.nombre_completo, ${empresa}`, [id, solicitudid]);
         if(result.rowCount === 0) {
             throw new Error("La solicitud que desea cancelar no existe o no le pertenece a este usuario");
         }
@@ -366,7 +371,7 @@ const cancelarTrabajo = async(id, solicitudid, motivo = null) => {
         await notificar(client, {
             userid: otro,
             tipo: "trabajo-cancelado",
-            titulo: `${primerNombre(c.nombre_completo)} canceló la cita`,
+            titulo: `${nombreCorto(c.nombre_completo, c.es_empresa, "La otra persona")} canceló la cita`,
             contenido: [`«${tituloDeSolicitud(c.solicitud)}»`, textoDia(Array.isArray(c.periodo) ? c.periodo[0] : null), motivo ? `Motivo: ${motivo}` : ""]
                 .filter(Boolean).join(" · "),
             enlace,
@@ -419,11 +424,11 @@ const terminarTrabajo = async(id, solicitudid) => {
         const s = result.rows[0];
         await anotarHistorial(client, [s]);
         const otro = s.contratadorid === Number(id) ? s.trabajadorid : s.contratadorid;
-        const yo = await nombreDe(client, id, "La otra persona");
+        const yo = await nombreCortoDe(client, id, "La otra persona");
         await notificar(client, {
             userid: otro,
             tipo: "trabajo-terminado",
-            titulo: `${primerNombre(yo)} marcó el trabajo como terminado`,
+            titulo: `${yo} marcó el trabajo como terminado`,
             contenido: `«${tituloDeSolicitud(s.solicitud)}» · Dejale una reseña`,
             enlace: `resena:${s.id}`,
             otroid: Number(id),
@@ -450,8 +455,10 @@ const revisarTerminadas = async() => {
                 s.id,
                 s.trabajadorid, 
                 ut.nombre_completo AS trabajador_nombre,
+                ${await columnaEmpresa("ut", "trabajador_es_empresa")},
                 s.contratadorid, 
                 uc.nombre_completo AS contratador_nombre,
+                ${await columnaEmpresa("uc", "contratador_es_empresa")},
                 s.solicitud
             FROM updated_solicitudes s
             JOIN usuarios ut ON s.trabajadorid = ut.id
@@ -464,7 +471,7 @@ const revisarTerminadas = async() => {
             const avisoC = await notificar(client, {
                 userid: trabajo.contratadorid,
                 tipo: "trabajo-terminado",
-                titulo: `¿Cómo te fue con ${primerNombre(trabajo.trabajador_nombre)}?`,
+                titulo: `¿Cómo te fue con ${nombreCorto(trabajo.trabajador_nombre, trabajo.trabajador_es_empresa, "el trabajador")}?`,
                 contenido: `«${titulo}» terminó · Dejale una reseña`,
                 enlace: `resena:${trabajo.id}`,
                 otroid: trabajo.trabajadorid,
@@ -473,7 +480,7 @@ const revisarTerminadas = async() => {
             const avisoT = await notificar(client, {
                 userid: trabajo.trabajadorid,
                 tipo: "trabajo-terminado",
-                titulo: `¿Cómo te fue con ${primerNombre(trabajo.contratador_nombre)}?`,
+                titulo: `¿Cómo te fue con ${nombreCorto(trabajo.contratador_nombre, trabajo.contratador_es_empresa, "el cliente")}?`,
                 contenido: `«${titulo}» terminó · Dejale una reseña`,
                 enlace: `resena:${trabajo.id}`,
                 otroid: trabajo.contratadorid,
@@ -494,13 +501,13 @@ const revisarTerminadas = async() => {
 
 async function busquedaAA(id) {
     const cuentasListas = await asegurarCuentas();
+    const empresa = await columnaEmpresa("uc");
     const client = new Client(config);
-    console.log(id);
     try {
         await client.connect();
         const sUtiles = await client.query(`
             SELECT s.id, s.solicitud, s.periodo, s.diassemana, s.localidad, s.contratadorid, s.aptitudid,
-                a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador,
+                a.aptitud, ae.aptitud_especifica, t.trabajo, uc.nombre_completo, uc.foto_perfil, uc.puntuacion_contratador, ${empresa},
                 (
                     + CASE WHEN EXISTS (
                         SELECT 1 FROM usuarios_aptitudes ua

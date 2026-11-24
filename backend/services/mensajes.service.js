@@ -1,10 +1,10 @@
 import config from "../dbconfig.js";
 import { Client } from "../db.js";
 import {v2 as cloudinary} from "cloudinary";
-import { asegurarResenasYMensajes, asegurarCuentas, asegurarOfertas } from "../esquema.js";
+import { asegurarResenasYMensajes, asegurarCuentas, asegurarOfertas, columnaEmpresa } from "../esquema.js";
 import { hayBloqueo, cuentaActiva, exigirEmailVerificado } from "../moderacion.js";
 import { controlarLimite } from "../limites.js";
-import { avisarPorEmail, nombreDe, primerNombre } from "../notificaciones.js";
+import { avisarPorEmail, nombreCortoDe } from "../notificaciones.js";
 
 
 function errorConEstado(mensaje, status) {
@@ -74,11 +74,11 @@ async function mandarMensaje(id, receptor, texto, imagen = null) {
             WHERE emisorid = $1 AND receptorid = $2 AND id <> $3 AND leido IS NOT TRUE AND fecha > now() - interval '30 minutes'
             LIMIT 1`, [id, receptor, result.rows[0].id]).catch(() => ({ rowCount: 1 }));
         if (tanda.rowCount === 0) {
-            const yo = await nombreDe(client, id);
+            const yo = await nombreCortoDe(client, id);
             const vistaPrevia = String(texto || "").trim().replace(/\s+/g, " ");
             await avisarPorEmail(client, receptor, {
-                asunto: `${primerNombre(yo)} te mandó un mensaje`,
-                titulo: `${primerNombre(yo)} te mandó un mensaje`,
+                asunto: `${yo} te mandó un mensaje`,
+                titulo: `${yo} te mandó un mensaje`,
                 detalle: vistaPrevia ? `“${vistaPrevia.length > 160 ? `${vistaPrevia.slice(0, 159)}…` : vistaPrevia}”` : "Te mandó una foto.",
                 enlace: `/mensajes?con=${id}`,
                 boton: "Responder",
@@ -130,7 +130,8 @@ async function conseguirChat(id, otroid, despuesDe = null) {
             return { mensajes: mensajes.rows };
         }
         const otro = await client.query(
-            "SELECT id, nombre_completo, foto_perfil, localidad, puntuacion_trabajador, puntuacion_contratador FROM usuarios WHERE id = $1",
+            `SELECT id, nombre_completo, foto_perfil, localidad, puntuacion_trabajador, puntuacion_contratador, ${await columnaEmpresa("usuarios")}
+             FROM usuarios WHERE id = $1`,
             [otroid]);
         const citas = await client.query(`
             SELECT s.id, s.solicitud, s.periodo, s.estado, s.dirigida, a.aptitud,
@@ -173,6 +174,7 @@ async function conseguirChat(id, otroid, despuesDe = null) {
 async function misChats(id) {
     id = Number(id);
     await asegurarResenasYMensajes();
+    const empresa = await columnaEmpresa("u");
     const client = new Client(config);
     try{
         await client.connect();
@@ -186,7 +188,7 @@ async function misChats(id) {
                 FROM mios
                 ORDER BY otro, id DESC
             )
-            SELECT u.id, u.nombre_completo, u.foto_perfil,
+            SELECT u.id, u.nombre_completo, u.foto_perfil, ${empresa},
                 ul.id AS ultimo_id, ul.contenido AS ultimo_mensaje, (ul.imagen IS NOT NULL) AS ultimo_es_imagen,
                 ul.fecha AS ultima_fecha, ul.emisorid AS ultimo_emisorid,
                 (SELECT count(*)::int FROM mensajes x
@@ -205,12 +207,13 @@ async function misChats(id) {
  */
 async function contactos(id) {
     id = Number(id);
+    const empresa = await columnaEmpresa("o");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
             SELECT * FROM (
-                SELECT DISTINCT ON (o.id) o.id, o.nombre_completo, o.foto_perfil,
+                SELECT DISTINCT ON (o.id) o.id, o.nombre_completo, o.foto_perfil, ${empresa},
                     s.id AS solicitudid, s.solicitud, s.periodo, s.estado, s.dirigida, a.aptitud,
                     CASE WHEN s.trabajadorid = $1 THEN 'trabajador' ELSE 'contratador' END AS mi_rol
                 FROM solicitudes s

@@ -1,6 +1,6 @@
 // notificaciones.js
 // Una sola forma de avisarle algo a alguien (la campanita del sitio).
-import { asegurarNotificaciones, asegurarCuentas } from "./esquema.js";
+import { asegurarNotificaciones, asegurarCuentas, esEmpresa } from "./esquema.js";
 import { enviarEmail, emailConfigurado } from "./email.js";
 import { armarEmail } from "./avisosEmail.js";
 
@@ -35,7 +35,8 @@ export async function avisarPorEmail(client, userid, { asunto, titulo, detalle =
     if (transaccion) await client.query("SAVEPOINT aviso_email");
     try {
         const result = await client.query(
-            "SELECT email, email_verificado, avisos_email, eliminado, nombre_completo FROM usuarios WHERE id = $1", [userid]);
+            `SELECT email, email_verificado, avisos_email, eliminado, nombre_completo, ${esEmpresa("usuarios")} AS es_empresa
+             FROM usuarios WHERE id = $1`, [userid]);
         usuario = result.rows[0];
         if (transaccion) await client.query("RELEASE SAVEPOINT aviso_email");
     } catch (error) {
@@ -44,7 +45,7 @@ export async function avisarPorEmail(client, userid, { asunto, titulo, detalle =
         return;
     }
     if (!usuario?.email || usuario.email_verificado === false || usuario.avisos_email === false || usuario.eliminado) return;
-    const { texto, html } = armarEmail({ saludo: `Hola, ${primerNombre(usuario.nombre_completo)}`, titulo, detalle, boton, enlace });
+    const { texto, html } = armarEmail({ saludo: `Hola, ${nombreCorto(usuario.nombre_completo, usuario.es_empresa)}`, titulo, detalle, boton, enlace });
     const mandar = () => enviarEmail({ para: usuario.email, asunto: asunto || titulo, texto, html });
     if (typeof client.despuesDeGuardar === "function") {
         await client.despuesDeGuardar(mandar);
@@ -100,6 +101,25 @@ export async function nombreDe(client, id, reemplazo = "Alguien") {
 
 /** Solo el nombre de pila ("Juan Pérez" → "Juan"), para títulos cortos. */
 export const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "Alguien";
+
+/**
+ * Cómo se nombra a alguien en un título corto: el nombre de pila de una persona
+ * ("Juan Pérez" → "Juan") o el nombre entero de una empresa ("El Taller del Sur").
+ */
+export function nombreCorto(nombre, empresa = false, reemplazo = "Alguien") {
+    const limpio = String(nombre || "").trim();
+    if (!limpio) return reemplazo;
+    return empresa === true ? limpio : limpio.split(/\s+/)[0];
+}
+
+/** El nombre corto de un usuario (ver nombreCorto), o el texto de reemplazo si no se encuentra. */
+export async function nombreCortoDe(client, id, reemplazo = "Alguien") {
+    if (!id) return reemplazo;
+    const empresa = (await asegurarCuentas()) ? `, ${esEmpresa("usuarios")} AS es_empresa` : "";
+    const result = await client.query(`SELECT nombre_completo${empresa} FROM usuarios WHERE id = $1`, [id]).catch(() => null);
+    const fila = result?.rows[0];
+    return nombreCorto(fila?.nombre_completo, fila?.es_empresa === true, reemplazo);
+}
 
 /**
  * Título corto de una solicitud o problema, sacado de su texto:

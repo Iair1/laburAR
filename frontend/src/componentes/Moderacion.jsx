@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./ProblemasUI";
 import { ConfirmarModal } from "./ProblemaModales";
@@ -57,7 +58,7 @@ export function DenunciarModal({ usuario, que = "perfil", solicitudid, mensajeid
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [listo, setListo] = useState("");
-  const nombre = usuario?.nombre?.split(" ")[0] || "esta persona";
+  const nombre = nombreCortoDe(usuario, "esta persona");
 
   const enviar = async () => {
     if (!motivo) {
@@ -183,7 +184,7 @@ export function MenuModeracion({ usuario, bloqueado = false, que = "perfil", sol
 
   // Sin sesión, o si es mi propio perfil, no hay nada que mostrar
   if (!usuario?.id || !yo || !localStorage.getItem("token") || String(yo.id) === String(usuario.id)) return null;
-  const nombre = usuario.nombre?.split(" ")[0] || "esta persona";
+  const nombre = nombreCortoDe(usuario, "esta persona");
 
   const bloquear = async () => {
     setProcesando(true);

@@ -1214,7 +1214,7 @@ function PaginaBusqueda() {
                     {s.trabajo && <li className="item-meta-tarjeta">{Iconos.reloj}{s.trabajo}</li>}
                   </ul>
 
-                  <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
+                  <AccionesCita otro={{ id: s.contratadorid, nombre: s.nombre_completo, esEmpresa: s.es_empresa === true }} solicitudid={s.id} estado={s.estado} rolOtro="cliente" />
                   <div className="acciones-tarjeta" style={{ marginTop: 10 }}>
                     <button className="boton-ver-perfil" onClick={() => manejarRechazar(s)} disabled={enProceso}>
                       Rechazar

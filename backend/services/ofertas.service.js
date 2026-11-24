@@ -2,7 +2,7 @@ import config from "../dbconfig.js";
 import { Client, HOY } from "../db.js";
 import { asegurarOfertas, asegurarCuentas, esEmpresa } from "../esquema.js";
 import { verificarQuePuedenInteractuar, errorConEstado, hayBloqueo, cuentaActiva, exigirEmailVerificado } from "../moderacion.js";
-import { notificar, nombreDe, primerNombre, tituloDeSolicitud, textoDia, pesos } from "../notificaciones.js";
+import { notificar, nombreCortoDe, tituloDeSolicitud, textoDia, pesos } from "../notificaciones.js";
 
 
 // Propuestas de precio para los problemas publicados (solicitudes con dirigida = false).
@@ -137,13 +137,13 @@ async function nueva(id, { solicitudid, dia, hora, precio, mensaje }) {
             [solicitudid, id, s.contratadorid, dia, hora, precio, mensaje || null, titulo]);
         const oferta = result.rows[0];
         await anotar(client, oferta.id, id, "trabajador", "propuesta", precio, mensaje);
-        const trabajador = await nombreDe(client, id, "Un trabajador");
+        const trabajador = await nombreCortoDe(client, id, "Un trabajador");
         await notificar(client, {
             userid: s.contratadorid,
             tipo: "oferta-nueva",
             titulo: dirigida
-                ? `${primerNombre(trabajador)} te mandó un presupuesto: ${pesos(precio)}`
-                : `${primerNombre(trabajador)} te ofreció ${pesos(precio)}`,
+                ? `${trabajador} te mandó un presupuesto: ${pesos(precio)}`
+                : `${trabajador} te ofreció ${pesos(precio)}`,
             contenido: `«${titulo}» · ${textoDia(dia, hora)}`,
             enlace: enlaceCliente(s.id, dirigida),
             otroid: id,
@@ -205,13 +205,13 @@ async function aceptar(id, ofertaid) {
         const titulo = o.titulo || tituloDeSolicitud(o.solicitud);
         const dirigida = esDirigida(o.dirigida);
         await cerrarOfertasDelProblema(client, o.solicitudid, { excepto: o.id, titulo, motivo: "tomado", dirigida });
-        const yo = await nombreDe(client, id);
+        const yo = await nombreCortoDe(client, id);
         await notificar(client, {
             userid: otro,
             tipo: "oferta-aceptada",
             titulo: rol === "cliente"
-                ? `${primerNombre(yo)} aceptó tu ${dirigida ? "presupuesto" : "propuesta"}`
-                : `${primerNombre(yo)} aceptó tu contraoferta`,
+                ? `${yo} aceptó tu ${dirigida ? "presupuesto" : "propuesta"}`
+                : `${yo} aceptó tu contraoferta`,
             contenido: `Cita: ${textoDia(o.dia, o.hora)} · ${pesos(o.precio)} · «${titulo}»`,
             enlace: rol === "cliente"
                 ? (dirigida ? "/trabajos-pendientes" : "/problemas?vista=citas")
@@ -244,12 +244,12 @@ async function contraofertar(id, ofertaid, precio, mensaje) {
             "UPDATE ofertas SET precio = $2, turno = $3, actualizada = now() WHERE id = $1 RETURNING *",
             [o.id, precio, otroTurno]);
         await anotar(client, o.id, id, rol, "contraoferta", precio, mensaje);
-        const yo = await nombreDe(client, id);
+        const yo = await nombreCortoDe(client, id);
         const titulo = o.titulo || tituloDeSolicitud(o.solicitud);
         await notificar(client, {
             userid: otro,
             tipo: "contraoferta",
-            titulo: `${primerNombre(yo)} te propuso ${pesos(precio)}`,
+            titulo: `${yo} te propuso ${pesos(precio)}`,
             contenido: mensaje ? `«${titulo}» · “${recortar(mensaje, 60)}”` : `Contraoferta para «${titulo}»`,
             enlace: rol === "cliente" ? enlaceTrabajador(esDirigida(o.dirigida)) : enlaceCliente(o.solicitudid, esDirigida(o.dirigida)),
             otroid: id,
@@ -276,15 +276,15 @@ async function rechazar(id, ofertaid, { eliminarPublicacion = false, mensaje = n
             "UPDATE ofertas SET estado = $2, rechazada_por = $3, actualizada = now() WHERE id = $1 RETURNING *",
             [o.id, estado, rol]);
         await anotar(client, o.id, id, rol, estado, null, mensaje);
-        const yo = await nombreDe(client, id);
+        const yo = await nombreCortoDe(client, id);
         const titulo = o.titulo || tituloDeSolicitud(o.solicitud);
         const borrar = rol === "cliente" && eliminarPublicacion;
         const dirigida = esDirigida(o.dirigida);
 
         let tituloAviso;
-        if (rol === "cliente") tituloAviso = `${primerNombre(yo)} rechazó tu propuesta`;
-        else if (estado === "retirada") tituloAviso = `${primerNombre(yo)} retiró su propuesta`;
-        else tituloAviso = `${primerNombre(yo)} rechazó tu contraoferta`;
+        if (rol === "cliente") tituloAviso = `${yo} rechazó tu propuesta`;
+        else if (estado === "retirada") tituloAviso = `${yo} retiró su propuesta`;
+        else tituloAviso = `${yo} rechazó tu contraoferta`;
         await notificar(client, {
             userid: otro,
             tipo: estado === "retirada" ? "oferta-retirada" : "oferta-rechazada",
@@ -311,12 +311,13 @@ async function rechazar(id, ofertaid, { eliminarPublicacion = false, mensaje = n
 /** Propuestas que mandó el trabajador (las abiertas primero), con el problema y el cliente. */
 async function mias(id) {
     id = Number(id);
-    return conOfertas(async (client) => {
+    return conOfertas(async (client, cuentas) => {
         const result = await client.query(`
             SELECT o.*, to_char(o.dia, 'YYYY-MM-DD') AS dia_texto, (o.dia < ${HOY}) AS vencida,
                 s.estado AS estado_problema, s.periodo, s.diassemana, s.localidad, s.solicitud, s.trabajadorid AS trabajador_asignado, s.dirigida,
                 a.aptitud,
                 u.nombre_completo AS cliente_nombre, u.foto_perfil AS cliente_foto, u.puntuacion_contratador,
+                ${cuentas ? esEmpresa("u") : "false"} AS cliente_es_empresa,
                 ${HISTORIAL}
             FROM ofertas o
             LEFT JOIN solicitudes s ON s.id = o.solicitudid

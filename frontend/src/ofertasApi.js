@@ -80,7 +80,13 @@ export function aOferta(fila) {
         }
       : { id: fila.trabajadorid, nombre: "Trabajador", foto: null },
     cliente: fila.cliente_nombre
-      ? { id: fila.contratadorid, nombre: fila.cliente_nombre, foto: fila.cliente_foto || null, puntuacion: fila.puntuacion_contratador }
+      ? {
+          id: fila.contratadorid,
+          nombre: fila.cliente_nombre,
+          foto: fila.cliente_foto || null,
+          puntuacion: fila.puntuacion_contratador,
+          esEmpresa: fila.cliente_es_empresa === true,
+        }
       : { id: fila.contratadorid, nombre: "Cliente", foto: null },
     // Lo que se sabe del problema (solo en /mias; null si el cliente lo borró)
     problema: fila.estado_problema

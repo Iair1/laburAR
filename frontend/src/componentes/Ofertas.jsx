@@ -4,6 +4,7 @@
 //  · TarjetaOferta: una propuesta, con el ida y vuelta y los botones de quien tiene el turno
 //  · PropuestasModal: las propuestas que recibió el cliente para un problema
 //  · ContraofertaModal / RechazarOfertaModal / AceptarOfertaModal
+import { nombreCortoDe } from "../nombres";
 import { useState } from "react";
 import Avatar from "./Avatar";
 import { Calendario, Modal } from "./ProblemasUI";
@@ -140,7 +141,6 @@ function IconoCalendario() {
   );
 }
 
-const primerNombre = (nombre) => String(nombre || "").trim().split(/\s+/)[0] || "";
 
 /** Campo de precio en pesos: "$ 25.000" mientras se escribe. */
 export function CampoPrecio({ id, valor, onCambio, conError = false, autoFocus = false, etiqueta = "Precio" }) {
@@ -175,7 +175,7 @@ export function ProponerModal({ problema, tarifa = null, onCerrar, onConfirmar, 
   const fechas = fechasPosibles(problema);
   const horas = horasDadas || horasDeFranja(problema.franja);
   const franja = FRANJAS[problema.franja];
-  const nombreCliente = primerNombre(problema.cliente?.nombre) || "el cliente";
+  const nombreCliente = nombreCortoDe(problema.cliente) || "el cliente";
   const [dia, setDia] = useState(fechas.length === 1 ? fechas[0] : "");
   const [hora, setHora] = useState(horas.includes(horaInicial) ? horaInicial : "");
   const [precioTexto, setPrecioTexto] = useState("");
@@ -277,7 +277,7 @@ function Historial({ oferta, rol }) {
   const [abierto, setAbierto] = useState(false);
   const pasos = oferta.historial.filter((p) => p.accion !== "cerrada");
   if (pasos.length <= 1) return null;
-  const nombres = { cliente: primerNombre(oferta.cliente?.nombre), trabajador: primerNombre(oferta.trabajador?.nombre) };
+  const nombres = { cliente: nombreCortoDe(oferta.cliente), trabajador: nombreCortoDe(oferta.trabajador) };
   return (
     <>
       <button type="button" className="boton-historial" onClick={() => setAbierto((v) => !v)} aria-expanded={abierto}>
@@ -312,7 +312,7 @@ export function TarjetaOferta({ oferta, rol, titulo = null, resaltada = false, s
   const [viendoResenas, setViendoResenas] = useState(false);
   const estado = estadoDeOferta(oferta, rol);
   const otro = rol === "cliente" ? oferta.trabajador : oferta.cliente;
-  const nombreOtro = primerNombre(otro?.nombre) || (rol === "cliente" ? "el trabajador" : "el cliente");
+  const nombreOtro = nombreCortoDe(otro) || (rol === "cliente" ? "el trabajador" : "el cliente");
   const abierta = oferta.estado === "pendiente" && !oferta.vencida;
   const apagada = ["rechazada", "retirada", "cerrada"].includes(oferta.estado) || oferta.vencida;
   const mensaje = ultimoMensaje(oferta);
@@ -463,7 +463,7 @@ export function PropuestasModal({ problema, ofertas, resaltada = null, onCerrar,
 
 export function ContraofertaModal({ oferta, rol, onCerrar, onConfirmar }) {
   const otro = rol === "cliente" ? oferta.trabajador : oferta.cliente;
-  const nombreOtro = primerNombre(otro?.nombre) || "la otra persona";
+  const nombreOtro = nombreCortoDe(otro) || "la otra persona";
   const [precioTexto, setPrecioTexto] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -548,7 +548,7 @@ export function AceptarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, o
         <br />por <strong>{formatearPesos(oferta.precio)}</strong>
       </div>
       <p className="texto-seccion-modal" style={{ textAlign: "center", margin: "0.8rem 0 0", fontSize: "0.78rem", color: "#555" }}>
-        La cita queda agendada y le avisamos a {primerNombre(otro?.nombre) || "la otra persona"}.
+        La cita queda agendada y le avisamos a {nombreCortoDe(otro) || "la otra persona"}.
         {rol === "cliente" && otrasAbiertas > 0
           ? ` Las otras ${otrasAbiertas === 1 ? "propuesta se cierra" : `${otrasAbiertas} propuestas se cierran`} y el problema deja de estar publicado.`
           : rol === "cliente" ? " El problema deja de estar publicado." : ""}
@@ -570,7 +570,7 @@ export function AceptarOfertaModal({ oferta, rol, otrasAbiertas = 0, onCerrar, o
 
 export function RechazarOfertaModal({ oferta, rol, otrasAbiertas = 0, dirigida = false, onCerrar, onConfirmar }) {
   const otro = rol === "cliente" ? oferta.trabajador : oferta.cliente;
-  const nombreOtro = primerNombre(otro?.nombre) || "la otra persona";
+  const nombreOtro = nombreCortoDe(otro) || "la otra persona";
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState("");
   const retirar = rol === "trabajador" && oferta.turno === "cliente";

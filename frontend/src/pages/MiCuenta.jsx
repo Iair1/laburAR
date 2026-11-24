@@ -145,8 +145,9 @@ export default function MiCuenta() {
         // La sesión guarda si es administrador (para el link al panel)
         const actual = obtenerSesionUsuario();
         const verificado = typeof p.email_verificado === "boolean" ? p.email_verificado : null;
-        if (actual && (actual.esAdmin !== (p.es_admin === true) || (p.email && actual.correo !== p.email) || (actual.emailVerificado ?? null) !== verificado)) {
-          guardarSesionUsuario({ ...actual, esAdmin: p.es_admin === true, correo: p.email || actual.correo, emailVerificado: verificado });
+        const empresa = p.es_empresa === true;
+        if (actual && (actual.esAdmin !== (p.es_admin === true) || (actual.esEmpresa === true) !== empresa || (p.email && actual.correo !== p.email) || (actual.emailVerificado ?? null) !== verificado)) {
+          guardarSesionUsuario({ ...actual, esAdmin: p.es_admin === true, esEmpresa: empresa, correo: p.email || actual.correo, emailVerificado: verificado });
         }
         setZona(normalizarZona(p.localidad));
         setDireccion({ calle: p.direccion_calle || "", altura: p.direccion_altura || "", cp: p.codigo_postal || "" });

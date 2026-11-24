@@ -225,7 +225,7 @@ export default function SolicitudesRecibidas() {
                       {s.trabajo && <span className="chip-meta-solicitud">{s.trabajo}</span>}
                     </div>
                     <AccionesCita
-                      otro={{ id: s.contratadorid, nombre: s.nombre_completo }}
+                      otro={{ id: s.contratadorid, nombre: s.nombre_completo, esEmpresa: s.es_empresa === true }}
                       solicitudid={s.id}
                       dia={normalizarPeriodo(s.periodo)[0]}
                       estado={s.estado}

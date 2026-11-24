@@ -24,6 +24,7 @@ const TIPOS = {
   solicitudes: { icono: "estrella", tono: "nuevo" }, // las viejas que mandaba el sistema al terminar un trabajo
   reseña: { icono: "estrella", tono: "bien" },
   verificacion: { icono: "escudo", tono: "bien" },
+  "denuncia-atendida": { icono: "escudo", tono: "neutro" },
 };
 
 const recortar = (texto, largo) => {

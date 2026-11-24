@@ -23,7 +23,7 @@ function aPendiente(fila) {
     aptitud: fila.aptitud || "",
     dia,
     miRol: fila.mi_rol, // "trabajador" | "contratador"
-    otro: { id: fila.otroid, nombre: fila.otro_nombre, foto: fila.otro_foto || null },
+    otro: { id: fila.otroid, nombre: fila.otro_nombre, foto: fila.otro_foto || null, esEmpresa: fila.otro_es_empresa === true },
   };
 }
 

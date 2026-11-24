@@ -1,7 +1,7 @@
 import config from "../dbconfig.js";
 import { Client, HOY } from "../db.js";
-import { asegurarResenasYMensajes, columnasDeResena, sqlResena } from "../esquema.js";
-import { notificar, primerNombre } from "../notificaciones.js";
+import { asegurarResenasYMensajes, columnasDeResena, sqlResena, columnaEmpresa } from "../esquema.js";
+import { notificar, nombreCortoDe } from "../notificaciones.js";
 
 
 // Un trabajo (solicitud) se puede reseñar cuando terminó: el sistema lo marcó como
@@ -84,13 +84,13 @@ async function nuevaReseña(id, reseña, puntuacion, otroid, rol, trabajo) {
             `UPDATE usuarios SET ${columnaPromedio} = (SELECT ROUND(AVG(${r.puntos}), 1) FROM ${tabla} r WHERE ${r.igual(campoOtro, "$1::integer")})
              WHERE id = $1::integer RETURNING id, ${columnaPromedio}`, [otro]));
         await pasoOpcional(client, "avisarle a la otra persona", async () => {
-            const autor = await client.query("SELECT nombre_completo FROM usuarios WHERE id = $1", [id]);
+            const autor = await nombreCortoDe(client, id);
             const estrellas = "★".repeat(puntuacion) + "☆".repeat(5 - puntuacion);
             const texto = reseña.length > 70 ? `${reseña.slice(0, 69).trim()}…` : reseña;
             await notificar(client, {
                 userid: otro,
                 tipo: "reseña",
-                titulo: `${primerNombre(autor.rows[0]?.nombre_completo)} te dejó una reseña`,
+                titulo: `${autor} te dejó una reseña`,
                 contenido: `${estrellas} “${texto}”`,
                 enlace: "/mi-cuenta#resenas",
                 otroid: id,
@@ -114,13 +114,14 @@ async function pendientes(id) {
     await asegurarResenasYMensajes();
     const rt = sqlResena("resena_al_trabajador", "r");
     const rc = sqlResena("resena_al_contratador", "r");
+    const empresa = await columnaEmpresa("o", "otro_es_empresa");
     const client = new Client(config);
     try{
         await client.connect();
         const result = await client.query(`
             SELECT s.id AS trabajo, s.solicitud, s.periodo, s.dirigida, a.aptitud,
                 CASE WHEN s.trabajadorid = $1 THEN 'trabajador' ELSE 'contratador' END AS mi_rol,
-                o.id AS otroid, o.nombre_completo AS otro_nombre, o.foto_perfil AS otro_foto
+                o.id AS otroid, o.nombre_completo AS otro_nombre, o.foto_perfil AS otro_foto, ${empresa}
             FROM solicitudes s
             LEFT JOIN aptitudes a ON a.id = s.aptitudid
             INNER JOIN usuarios o ON o.id = CASE WHEN s.trabajadorid = $1 THEN s.contratadorid ELSE s.trabajadorid END

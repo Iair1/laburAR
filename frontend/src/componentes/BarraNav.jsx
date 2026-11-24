@@ -1,3 +1,4 @@
+import { nombreCorto } from "../nombres";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -267,7 +268,7 @@ const estilos = `
     font-weight: 600;
     color: #1a1a1a;
     text-transform: uppercase;
-    max-width: 120px;
+    max-width: 160px; /* entra el nombre de una empresa ("El Taller del Sur") */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -330,6 +331,10 @@ const estilos = `
   }
   .boton-iniciar-sesion-nav:hover { background: #3b1e0d; }
 
+  /* Con el buscador en el medio, en pantallas medianas el nombre no entra: queda solo la foto */
+  @media (max-width: 1060px) {
+    .barra-nav.con-buscador .nombre-boton-usuario { display: none; }
+  }
   @media (max-width: 860px) {
     .barra-nav { padding: 0 1rem; flex-wrap: wrap; height: auto; min-height: 60px; row-gap: 8px; padding-top: 8px; padding-bottom: 8px; }
     .nav-centro { order: 3; flex-basis: 100%; }
@@ -568,12 +573,12 @@ export default function BarraNav({ centro = null }) {
     navegar("/");
   };
 
-  const primerNombre = (usuario?.nombre || "Usuario").split(" ")[0];
+  const primerNombre = nombreCorto(usuario?.nombre, usuario?.esEmpresa, "Usuario");
 
   return (
     <>
       <style>{estilos}</style>
-      <header className="barra-nav">
+      <header className={`barra-nav ${centro ? "con-buscador" : ""}`}>
         <div className="logotipo" onClick={() => navegar("/")}>
           <img src={logoIcono} alt="" className="logo-icono-nav" />
           <img src={logoTexto} alt="LABURAR" className="logo-texto-nav" />
@@ -696,7 +701,7 @@ export default function BarraNav({ centro = null }) {
                     nombre={usuario.nombre}
                     tamano={30}
                   />
-                  <span className="nombre-boton-usuario">{primerNombre}</span>
+                  <span className="nombre-boton-usuario" title={usuario?.nombre || undefined}>{primerNombre}</span>
                   <IconoFlecha abierta={menuAbierto} />
                 </button>
                 {menuAbierto && (

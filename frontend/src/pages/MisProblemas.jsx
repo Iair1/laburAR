@@ -1,3 +1,4 @@
+import { nombreCortoDe } from "../nombres";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import BarraNav from "../componentes/BarraNav";
@@ -218,7 +219,7 @@ export default function MisProblemas() {
     }
     setRespondiendo(null);
     cerrarPropuestas();
-    mostrarToast(`¡Listo! Cita agendada con ${oferta.trabajador?.nombre?.split(" ")[0] || "el trabajador"}: ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
+    mostrarToast(`¡Listo! Cita agendada con ${nombreCortoDe(oferta.trabajador, "el trabajador")}: ${textoCuando(oferta.dia, oferta.hora)} por ${formatearPesos(oferta.precio)}.`);
     await cargar();
   };
 
@@ -230,7 +231,7 @@ export default function MisProblemas() {
       throw err;
     }
     setRespondiendo(null);
-    mostrarToast(`Le propusiste ${formatearPesos(precio)} a ${oferta.trabajador?.nombre?.split(" ")[0] || "el trabajador"}. Te avisamos cuando responda.`);
+    mostrarToast(`Le propusiste ${formatearPesos(precio)} a ${nombreCortoDe(oferta.trabajador, "el trabajador")}. Te avisamos cuando responda.`);
     await cargar();
   };
 

@@ -90,6 +90,10 @@ async function resolverDenuncia(id, estado, nota) {
             UPDATE denuncias SET estado = $2, nota_admin = $3, fecha_resuelta = now()
             WHERE id = $1 RETURNING *`, [id, estado, String(nota ?? "").trim().slice(0, 1000) || null]);
         if (result.rowCount === 0) throw errorConEstado("Denuncia no encontrada", 404);
+        const notificacion = await client.query(`INSERT INTO notificaciones
+        (tipo, userid, contenido) 
+        VALUES ('Denuncia atendida', $1, $2)`,
+    [result.rows[0].denuncianteid, `Su denuncia contra ${result.rows[0].denunciadoid} ha sido ${result.rows[0].estado} por un administrador. Mensaje: ${String(nota ?? "").trim().slice(0, 1000)}`])
         return result.rows[0];
     });
 }
